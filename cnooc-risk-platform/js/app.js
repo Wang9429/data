@@ -21,7 +21,7 @@ const App = {
   selectedRiskId: null,
 
   menuItems: [
-    { id: 'dashboard', icon: '📊', label: '首页驾驶舱' },
+    { id: 'dashboard', icon: '📊', label: '驾驶舱' },
     { id: 'process', icon: '🔄', label: '投资价值链监测' },
     { id: 'warnings', icon: '🔔', label: '风险预警中心' },
     { id: 'penetration', icon: '🔎', label: '风险穿透分析' },
@@ -30,7 +30,7 @@ const App = {
   ],
 
   pageTitles: {
-    dashboard: '集团股权投资风险态势驾驶舱',
+    dashboard: '集团股权投资风险监管驾驶舱',
     process: '投资价值链监测',
     scenarios: '风险场景管理',
     warnings: '风险预警中心',
@@ -43,10 +43,9 @@ const App = {
 
   init() {
     this.renderNav();
-    this.renderCoreChain();
     this.renderDashboardMetrics();
     this.renderDashboardHeatmap();
-    this.renderProcessMap();
+    this.renderDashboardInsights();
     this.renderTopRisks();
     this.renderProcessTree();
     this.renderValueChainOverview();
@@ -233,6 +232,31 @@ const App = {
       const children = parent.nextElementSibling;
       if (children) children.classList.add('show');
     }
+    this.renderStageDetail(stageId);
+  },
+
+  renderStageDetail(stageId, activityName) {
+    const detail = APP_DATA.valueChainDetails[stageId];
+    const panel = document.getElementById('processDetail');
+    if (!detail || !panel) return;
+    panel.innerHTML = `
+      <div class="breadcrumb"><a onclick="App.navigate('dashboard')">驾驶舱</a><span>›</span><span>投资价值链监测 › ${detail.stage}${activityName ? ' › ' + activityName : ''}</span></div>
+      <div class="card"><div class="card-title">${detail.stage}${activityName ? '：' + activityName : '阶段监管要点'}</div>
+        <div class="info-grid">
+          <div class="info-item"><div class="info-label">责任部门</div><div class="info-value">${detail.department}</div></div>
+          <div class="info-item"><div class="info-label">主要业务活动</div><div class="info-value">${detail.activities}</div></div>
+          <div class="info-item full"><div class="info-label">监管目标</div><div class="info-value">${detail.objective}</div></div>
+        </div>
+      </div>
+      <div class="card"><div class="card-title">风险场景与控制活动</div>
+        <div class="info-grid"><div class="info-item"><div class="info-label">一级风险场景</div><div class="info-value">${detail.scenario}</div></div><div class="info-item"><div class="info-label">重点风险</div><div class="info-value" style="color:var(--danger)">${detail.risk}</div></div><div class="info-item full"><div class="info-label">关键控制活动</div><div class="info-value">${detail.control}</div></div></div>
+      </div>
+      <div class="card"><div class="card-title">三层监测环</div><div class="rules-section">
+        <div class="rules-group"><div class="rules-title">事前准入</div><ul class="rules-list"><li>${detail.before}</li></ul></div>
+        <div class="rules-group"><div class="rules-title">事中监测</div><ul class="rules-list"><li>${detail.during}</li></ul></div>
+        <div class="rules-group"><div class="rules-title">事后评价</div><ul class="rules-list"><li>${detail.after}</li></ul></div>
+      </div></div>
+      <div class="card"><div class="card-title">监管提示</div><p style="font-size:13px;color:var(--text-secondary)">该阶段风险、控制活动和监测规则均已纳入集团股权投资穿透监管范围。点击下方按钮可查看关联风险预警。</p><button class="btn btn-primary" style="margin-top:12px" onclick="App.navigate('warnings')">查看关联风险预警</button></div>`;
   },
 
   selectActivity(activityId) {
@@ -251,7 +275,8 @@ const App = {
     const panel = document.getElementById('processDetail');
 
     if (!detail) {
-      panel.innerHTML = `<div class="card"><p style="color:var(--text-secondary);padding:40px;text-align:center;">该业务活动详情正在完善中，请选择"经营情况跟踪"查看完整示例。</p></div>`;
+      const stage = APP_DATA.processTree.children.find(x => x.children.some(y => y.id === activityId));
+      if (stage) this.renderStageDetail(stage.id, child ? child.textContent.trim() : '业务活动');
       return;
     }
 
@@ -434,7 +459,7 @@ const App = {
         <div class="evidence-line"><span>2026-03<br><b>利润下降20%</b></span><i>↓</i><span>2026-05<br><b>触发黄色预警</b></span><i>↓</i><span>2026-06<br><b>升级${data.level}</b></span><i>↓</i><span>2026-07<br><b>制定整改措施</b></span></div>
       </div>
       <div class="card ai-insight">
-        <div class="card-title">Risk AI Assistant · 风险分析助手</div>
+        <div class="card-title">风险智能分析助手</div>
         <p><strong>风险原因总结：</strong>被投资企业经营指标连续两个季度下滑，现有投后监测频率不足，经营异常未及时触发预警。</p>
         <p><strong>控制优化建议：</strong>增加核心经营指标月度采集；建立自动预警规则；强化董事履职跟踪。</p>
       </div>
@@ -524,7 +549,17 @@ const App = {
       <div class="analysis-card"><h4>行业集中度（CR5）</h4><strong>72%</strong><p>前五大行业投资金额占比，风险等级：<span class="badge badge-warning">中等</span></p></div>
       <div class="analysis-card"><h4>投资收益分析</h4><strong>8.6%</strong><p>优秀项目45个 · 正常220个 · 关注68个 · 亏损23个</p></div>
       <div class="analysis-card"><h4>组合风险评分</h4><strong>78 分</strong><p>行业、区域、收益、经营四维综合评分：<span class="badge badge-warning">关注</span></p></div>`;
-    document.getElementById('portfolioAi').innerHTML = `<div class="card-title">Investment AI Advisor · 投资组合洞察</div><p><strong>当前判断：</strong>集团投资组合整体稳定，但新能源领域投资集中度较高，部分项目收益低于目标。</p><p><strong>优化建议：</strong>加强低收益项目退出评估；优化新能源投资比例；提高海外投资风险监测频率。</p>`;
+    document.getElementById('portfolioAi').innerHTML = `<div class="card-title">投资组合智能洞察</div><p><strong>当前判断：</strong>集团投资组合整体稳定，但新能源领域投资集中度较高，部分项目收益低于目标。</p><p><strong>优化建议：</strong>加强低收益项目退出评估；优化新能源投资比例；提高海外投资风险监测频率。</p>`;
+  },
+
+  renderDashboardInsights() {
+    const insights = document.getElementById('dashboardInsights');
+    if (insights) insights.innerHTML = `
+      <div class="insight-card"><div class="insight-head"><span>重点监管单位</span><button onclick="App.navigate('warnings')">查看风险清单 ›</button></div><div class="unit-risk"><b>海油工程</b><span class="badge badge-danger">L4 风险 5项</span><small>经营持续下滑、海外装备项目收益偏离</small></div><div class="unit-risk"><b>国际公司</b><span class="badge badge-warning">L3 风险 5项</span><small>境外运营、东道国政策变化</small></div><div class="unit-risk"><b>新能源公司</b><span class="badge badge-warning">L3 风险 2项</span><small>收益未达预期、利润完成偏低</small></div></div>
+      <div class="insight-card"><div class="insight-head"><span>总部监管重点</span><button onclick="App.navigate('process',{stageId:'post-invest'})">进入投后管理 ›</button></div><div class="supervision-list"><p><b>01</b> 投后管理：18项风险，5项重大风险，需强化月度经营监测</p><p><b>02</b> 投资退出：10项风险，重点关注退出收益偏差和退出周期</p><p><b>03</b> 立项论证：5项风险，关注收益测算及可研论证质量</p></div></div>
+      <div class="insight-card"><div class="insight-head"><span>整改督办提示</span><button onclick="App.navigate('rectification')">进入整改闭环 ›</button></div><div class="rect-overview"><strong>6</strong><span>项超期整改</span><strong>92%</strong><span>验证通过率</span></div><p class="insight-note">重大风险整改周期不超过90天；本月已完成8项风险关闭验证。</p></div>`;
+    const bottom = document.getElementById('dashboardBottom');
+    if (bottom) bottom.innerHTML = `<div class="bottom-item"><span>投资组合风险评分</span><strong>78 分</strong><em>关注</em><p>行业、区域、收益、经营四维综合测算</p></div><div class="bottom-item"><span>资本配置结构</span><strong>864 亿元</strong><p>油气产业链 37% · 海洋工程 25% · 新能源 18%</p></div><div class="bottom-item"><span>本月监管动态</span><strong>新增预警 12 项</strong><p>自动识别 9 项 · 人工上报 3 项 · 已关闭 8 项</p></div>`;
   },
 
   renderDashboardHeatmap() {
