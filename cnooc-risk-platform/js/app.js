@@ -72,9 +72,9 @@ const App = {
       item.classList.toggle('active', item.dataset.page === pageId);
     });
 
-    if (pageId === 'penetration' && params.riskId) {
-      this.selectedRiskId = params.riskId;
-      this.renderPenetration(params.riskId);
+    if (pageId === 'penetration') {
+      this.selectedRiskId = params.riskId || this.selectedRiskId || 'risk-2';
+      this.renderPenetration(this.selectedRiskId);
       document.getElementById('penetrationBack').style.display = 'block';
     }
 
@@ -417,6 +417,17 @@ const App = {
         </div>
       </div>
 
+      <div class="risk-analysis-banner">
+        <div class="risk-score"><span>风险评分</span><strong>${data.level.includes('重大') ? '92' : '76'}<small>分</small></strong><em>${data.level}</em></div>
+        <div class="score-breakdown">
+          <div><span>发生可能性</span><b>高</b><i style="width:88%"></i></div>
+          <div><span>影响程度</span><b>高</b><i style="width:92%"></i></div>
+          <div><span>暴露规模</span><b>较高</b><i style="width:76%"></i></div>
+          <div><span>控制有效性</span><b>部分有效</b><i style="width:45%"></i></div>
+        </div>
+        <div class="risk-rule"><span>风险规则</span><strong>${data.indicator.name} ${data.indicator.deviation}，触发重大风险预警</strong><small>规则引擎 · 自动识别 · 首次发现：2026-06-15</small></div>
+      </div>
+
       <div class="penetration-grid">
         <div class="penetration-card">
           <h4>业务流程穿透</h4>
@@ -449,6 +460,56 @@ const App = {
         </div>
       </div>
 
+      <div class="analysis-two-col">
+        <div class="card">
+          <div class="card-title">风险成因分析</div>
+          <div class="cause-map">
+            <div class="cause-center">风险发生<br><strong>${data.name}</strong></div>
+            <div class="cause-item external"><b>外部因素</b><span>行业需求波动、市场竞争加剧</span><em>影响度 25%</em></div>
+            <div class="cause-item operating"><b>经营因素</b><span>收入下降、成本上升、项目进度滞后</span><em>影响度 35%</em></div>
+            <div class="cause-item management"><b>管理因素</b><span>投后跟踪频率不足、经营分析滞后</span><em>影响度 25%</em></div>
+            <div class="cause-item control"><b>控制因素</b><span>预警阈值触发滞后、责任响应不及时</span><em>影响度 15%</em></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">控制有效性评价</div>
+          <div class="control-evaluation">
+            <div><span>控制设计有效性</span><b class="badge badge-success">有效</b><p>已建立经营指标监测与年度投资评价机制</p></div>
+            <div><span>控制执行有效性</span><b class="badge badge-warning">部分有效</b><p>季度监测频率难以及时识别月度经营异常</p></div>
+            <div><span>控制评价结论</span><b class="badge badge-danger">需优化</b><p>建议将核心经营指标采集频率提升至月度</p></div>
+          </div>
+          <button class="btn btn-outline" onclick="App.navigate('process',{activityId:'post-track'})">查看关联控制活动</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">数据来源与数据血缘</div>
+        <div class="lineage-flow">
+          <span>财务系统<br><small>净利润、现金流</small></span><i>→</i>
+          <span>经营指标模型<br><small>利润下降率</small></span><i>→</i>
+          <span>风险规则引擎<br><small>阈值 -30%</small></span><i>→</i>
+          <span>风险预警<br><small>当前 ${data.indicator.current}</small></span><i>→</i>
+          <span>集团监管分析<br><small>整改督办</small></span>
+        </div>
+      </div>
+
+      <div class="analysis-two-col">
+        <div class="card">
+          <div class="card-title">责任主体穿透</div>
+          <div class="responsibility-tree">
+            <div>集团总部 · 投资管理部 <small>监管督办</small></div>
+            <i>↓</i><div>${data.unit} · 投资管理部门 <small>风险管理</small></div>
+            <i>↓</i><div>项目负责人 <small>整改执行</small></div>
+            <i>↓</i><div>委派董事 / 经营负责人 <small>经营监督</small></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">处置与整改建议</div>
+          <ol class="action-list"><li>5个工作日内完成专项经营分析并报送集团。</li><li>30日内制定经营改善与收益提升方案。</li><li>将经营指标监测频率由季度调整为月度。</li><li>提交投资管理委员会审议，纳入重点项目督办。</li></ol>
+          <button class="btn btn-primary" onclick="App.navigate('rectification')">进入整改闭环管理</button>
+        </div>
+      </div>
+
       <div class="emergency-box">
         <h4>应急行动（${data.emergency.level}）</h4>
         <ol>${data.emergency.measures.map(m => `<li>${m}</li>`).join('')}</ol>
@@ -462,6 +523,8 @@ const App = {
         <div class="card-title">风险智能分析助手</div>
         <p><strong>风险原因总结：</strong>被投资企业经营指标连续两个季度下滑，现有投后监测频率不足，经营异常未及时触发预警。</p>
         <p><strong>控制优化建议：</strong>增加核心经营指标月度采集；建立自动预警规则；强化董事履职跟踪。</p>
+        <div class="ai-questions"><button onclick="App.answerAi('level')">为什么升级为重大风险？</button><button onclick="App.answerAi('action')">建议如何处置？</button><button onclick="App.answerAi('control')">控制如何优化？</button></div>
+        <div class="ai-answer" id="aiAnswer">可点击上方问题，查看模拟分析结论。</div>
       </div>
 
       <div style="margin-top:16px;display:flex;gap:10px;">
@@ -608,6 +671,16 @@ const App = {
 
   closeDrawer(event) {
     if (!event || event.target === document.getElementById('drawerOverlay')) document.getElementById('drawerOverlay').classList.remove('show');
+  },
+
+  answerAi(type) {
+    const answers = {
+      level: '风险升级为重大风险的直接原因是：核心指标连续两个季度显著低于阈值，当前偏差已超过预警红线；同时风险敞口较大，控制执行出现滞后。',
+      action: '建议立即启动专项经营分析，明确集团、所属企业和项目负责人的整改责任；30日内形成改善方案，按月跟踪关键指标，并提交投资管理委员会审议。',
+      control: '建议将经营指标监测由季度改为月度，接入财务系统自动采集净利润、现金流和资产负债率；设置分级阈值并明确预警响应时限。'
+    };
+    const target = document.getElementById('aiAnswer');
+    if (target) target.textContent = answers[type];
   }
 };
 
