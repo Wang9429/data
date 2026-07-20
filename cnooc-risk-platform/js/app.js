@@ -56,6 +56,7 @@ const App = {
     this.renderControls();
     this.renderMatters();
     this.renderRectification();
+    this.renderRectificationGovernance();
     this.renderRectKanban();
     this.renderPortfolio();
   },
@@ -597,6 +598,26 @@ const App = {
     document.getElementById('rectFlow').innerHTML = r.steps.map((step, i) =>
       (i > 0 ? '<span class="rect-arrow">↓</span>' : '') + `<div class="rect-step">${step}</div>`
     ).join('');
+  },
+
+  renderRectificationGovernance() {
+    const governance = document.getElementById('rectificationGovernance');
+    const analysis = document.getElementById('rectificationAnalysis');
+    if (governance) governance.innerHTML = `
+      <div class="closure-steps">
+        <div class="closure-step critical"><span>01</span><div><b>风险发现与任务生成</b><p>风险等级达到 L3 及以上，系统自动生成整改任务并推送责任单位。</p><small>责任：集团投资管理部 · 时限：发现后 1 个工作日 · 输出：整改任务单</small></div></div>
+        <div class="closure-arrow">→</div>
+        <div class="closure-step"><span>02</span><div><b>责任确认与方案制定</b><p>所属企业确认责任部门、责任人、整改措施和计划完成时间。</p><small>责任：所属企业投资管理部门 · 时限：5 个工作日 · 输出：整改方案</small></div></div>
+        <div class="closure-arrow">→</div>
+        <div class="closure-step"><span>03</span><div><b>整改执行与过程督办</b><p>按节点上传证据材料，集团按风险等级实施分级督办。</p><small>责任：项目负责人 · 时限：L4≤90天 / L3≤180天 · 输出：执行记录</small></div></div>
+        <div class="closure-arrow">→</div>
+        <div class="closure-step"><span>04</span><div><b>效果验证与风险关闭</b><p>核验风险指标、控制有效性和同类风险复发情况，形成验证结论。</p><small>责任：集团投资管理部 · 输出：验证报告、风险关闭决定</small></div></div>
+      </div>
+      <div class="closure-rules"><div><b>自动督办规则</b><span>L4风险每周跟踪；L3风险每月跟踪；临近到期15日自动提醒。</span></div><div><b>超期升级规则</b><span>超过计划完成日自动升级红色督办，并推送责任单位负责人。</span></div><div><b>关闭准入规则</b><span>指标恢复、控制有效、验证通过且无同类风险复发，方可关闭。</span></div></div>`;
+    if (analysis) analysis.innerHTML = `
+      <div class="analysis-card"><h4>整改进度与时效</h4><div class="closure-progress"><div><span>整改制定</span><b>100%</b><i style="width:100%"></i></div><div><span>整改执行</span><b>68%</b><i style="width:68%"></i></div><div><span>整改验证</span><b>92%</b><i style="width:92%"></i></div></div><p>平均整改周期 <strong>45天</strong>，同比缩短 12%。</p></div>
+      <div class="analysis-card"><h4>整改效果评价</h4><div class="effect-compare"><span>整改前</span><b class="badge badge-danger">L4 · 利润下降36%</b><i>→</i><span>整改后</span><b class="badge badge-success">L2 · 利润恢复增长5%</b></div><p>验证维度：风险等级变化、控制有效性、指标恢复、同类风险复发。</p><p><strong>当前验证通过率：92%</strong></p></div>
+      <div class="analysis-card"><h4>长效机制沉淀</h4><ul class="mechanism-list"><li>新增“经营指标月度监测”自动预警规则</li><li>将重大事项报送纳入所属企业月度考核</li><li>优化投后管理制度中风险阈值及响应时限</li><li>对重复发生风险开展专项复盘</li></ul></div>`;
   },
 
   renderPortfolio() {
