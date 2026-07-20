@@ -35,6 +35,11 @@
           <div class="core-chain" id="coreChain"></div>
           <div class="metrics-grid" id="dashboardMetrics"></div>
           <div class="card">
+            <div class="card-title">投资价值链风险热力地图</div>
+            <div class="heatmap-legend"><span class="legend-normal">正常</span><span class="legend-watch">关注</span><span class="legend-warning">预警</span><span class="legend-critical">重大风险</span></div>
+            <div id="dashboardHeatmap"></div>
+          </div>
+          <div class="card">
             <div class="card-title">股权投资全过程风险地图</div>
             <div class="process-map" id="processMap"></div>
           </div>
@@ -57,6 +62,14 @@
 
         <!-- 投资业务全过程监测 -->
         <div class="page" id="page-process">
+          <div class="card">
+            <div class="card-title">投资价值链总览</div>
+            <div class="value-chain-overview" id="valueChainOverview"></div>
+          </div>
+          <div class="card">
+            <div class="card-title">业务环节风险矩阵</div>
+            <div class="risk-matrix-wrap" id="riskMatrix"></div>
+          </div>
           <div class="two-col">
             <div class="process-tree" id="processTree"></div>
             <div class="detail-panel" id="processDetail">
@@ -83,8 +96,10 @@
         <!-- 风险预警监测 -->
         <div class="page" id="page-warnings">
           <div class="warning-summary" id="warningSummary"></div>
+          <div class="warning-charts" id="warningCharts"></div>
           <div class="card">
-            <div class="card-title">风险预警列表</div>
+            <div class="card-title">风险事件池</div>
+            <div class="filter-bar" id="warningFilters"></div>
             <table class="data-table" id="warningsTable">
               <thead>
                 <tr>
@@ -98,6 +113,7 @@
               </thead>
               <tbody></tbody>
             </table>
+            <div class="pagination" id="warningPagination"></div>
           </div>
         </div>
 
@@ -159,6 +175,10 @@
         <div class="page" id="page-rectification">
           <div class="rect-stats" id="rectStats"></div>
           <div class="card">
+            <div class="card-title">整改任务看板</div>
+            <div class="kanban-board" id="rectKanban"></div>
+          </div>
+          <div class="card">
             <div class="card-title">整改闭环流程</div>
             <div class="rect-flow" id="rectFlow"></div>
           </div>
@@ -210,6 +230,8 @@
 
         <!-- 投资组合分析 -->
         <div class="page" id="page-portfolio">
+          <div class="metrics-grid portfolio-kpis" id="portfolioKpis"></div>
+          <div class="portfolio-analysis-row" id="portfolioAnalysis"></div>
           <div class="portfolio-section">
             <div class="card">
               <div class="card-title">按所属单位</div>
@@ -228,9 +250,13 @@
               <div class="portfolio-grid" id="portfolioByRegion"></div>
             </div>
           </div>
+          <div class="card ai-insight" id="portfolioAi"></div>
         </div>
       </div>
     </main>
+  </div>
+  <div class="drawer-overlay" id="drawerOverlay" onclick="App.closeDrawer(event)">
+    <aside class="drawer" id="drawerPanel"></aside>
   </div>
 
   <script src="js/data.js"></script>

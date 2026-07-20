@@ -241,3 +241,42 @@ const APP_DATA = {
   ]
   }
 };
+
+Object.assign(APP_DATA, {
+  dashboardHeatmap: [
+    { stage: '战略规划', level: 'normal', risks: 1, label: '正常' },
+    { stage: '项目获取', level: 'watch', risks: 2, label: '关注' },
+    { stage: '立项论证', level: 'warning', risks: 5, label: '预警' },
+    { stage: '尽职调查', level: 'watch', risks: 4, label: '关注' },
+    { stage: '投资方案', level: 'watch', risks: 2, label: '关注' },
+    { stage: '投资决策', level: 'warning', risks: 3, label: '预警' },
+    { stage: '协议交割', level: 'normal', risks: 1, label: '正常' },
+    { stage: '投后管理', level: 'critical', risks: 18, label: '重大风险' },
+    { stage: '投资退出', level: 'warning', risks: 10, label: '预警' }
+  ],
+  warningTrend: [
+    ['2025.08', 31, 5], ['09', 34, 6], ['10', 35, 7], ['11', 32, 9],
+    ['12', 38, 6], ['2026.01', 36, 8], ['02', 39, 7], ['03', 41, 5],
+    ['04', 43, 6], ['05', 42, 9], ['06', 46, 12], ['07', 46, 8]
+  ],
+  warningEnterpriseHeatmap: [
+    { unit: '海油工程', l4: 5, l3: 8, l2: 12 },
+    { unit: '国际公司', l4: 2, l3: 5, l2: 6 },
+    { unit: '新能源公司', l4: 1, l3: 2, l2: 4 },
+    { unit: '海油发展', l4: 0, l3: 3, l2: 5 }
+  ],
+  rectificationTasks: [
+    { id: 'RECT-202601001', riskId: 'risk-2', title: '被投资企业经营持续下滑风险', company: '海油工程', owner: '投资管理部', level: 'L4', status: '整改执行', deadline: '2026-09-30', progress: 60, measure: '建立月度经营指标监测机制；完善董事履职报告机制。' },
+    { id: 'RECT-202601002', riskId: 'risk-1', title: '投资收益未达到预期风险', company: '新能源公司', owner: '投资管理部', level: 'L4', status: '整改制定', deadline: '2026-08-30', progress: 30, measure: '开展专项经营分析，制定收益提升方案。' },
+    { id: 'RECT-202601003', riskId: 'risk-3', title: '重大事项报告不及时风险', company: '海油发展', owner: '投资管理部', level: 'L3', status: '整改验证', deadline: '2026-07-30', progress: 90, measure: '完善重大事项报告机制并验证执行效果。' },
+    { id: 'RECT-202601004', riskId: 'risk-4', title: '投资决策论证不足风险', company: '海油发展', owner: '战略发展部', level: 'L3', status: '已关闭', deadline: '2026-05-20', progress: 100, measure: '补充可研报告并完成专家评审。' }
+  ],
+  portfolioSummary: [
+    ['投资项目总数', '356', '个项目 · 覆盖18家企业'],
+    ['股权投资余额', '864', '亿元 · 同比 +12%'],
+    ['投资行业数量', '15', '个重点行业'],
+    ['投资收益率', '8.6', '% · 目标10%'],
+    ['高风险投资项目', '23', '个 · L4 8个'],
+    ['待退出项目', '12', '个项目']
+  ]
+});
