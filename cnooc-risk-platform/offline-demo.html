@@ -1,0 +1,2007 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>海油集团股权投资全生命周期风险穿透监测平台（离线演示版）</title>
+  <style>
+:root {
+  --primary: #003d7a;
+  --primary-light: #0056a8;
+  --primary-dark: #002a54;
+  --accent: #00a0e9;
+  --accent-gold: #c9a227;
+  --bg-main: #f0f4f8;
+  --bg-card: #ffffff;
+  --text-primary: #1a2332;
+  --text-secondary: #5a6a7e;
+  --border: #dce3ec;
+  --danger: #e53935;
+  --warning: #f9a825;
+  --info: #1e88e5;
+  --success: #43a047;
+  --sidebar-width: 260px;
+  --header-height: 64px;
+  --shadow: 0 2px 12px rgba(0, 45, 98, 0.08);
+  --shadow-hover: 0 4px 20px rgba(0, 45, 98, 0.14);
+  --radius: 8px;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: "PingFang SC", "Microsoft YaHei", "Helvetica Neue", sans-serif;
+  background: var(--bg-main);
+  color: var(--text-primary);
+  line-height: 1.6;
+  overflow-x: hidden;
+}
+
+/* Layout */
+.app-container { display: flex; min-height: 100vh; }
+
+.sidebar {
+  width: var(--sidebar-width);
+  background: linear-gradient(180deg, var(--primary-dark) 0%, var(--primary) 100%);
+  color: #fff;
+  position: fixed;
+  top: 0; left: 0; bottom: 0;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 4px 0 20px rgba(0, 0, 0, 0.15);
+}
+
+.sidebar-header {
+  padding: 20px 16px;
+  border-bottom: 1px solid rgba(255,255,255,0.12);
+}
+
+.sidebar-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.logo-icon {
+  width: 40px; height: 40px;
+  background: linear-gradient(135deg, var(--accent) 0%, #0077c8 100%);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.sidebar-title {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.sidebar-subtitle {
+  font-size: 11px;
+  color: rgba(255,255,255,0.65);
+  line-height: 1.5;
+  margin-top: 6px;
+}
+
+.nav-menu {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px 0;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 20px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 14px;
+  color: rgba(255,255,255,0.8);
+  border-left: 3px solid transparent;
+}
+
+.nav-item:hover {
+  background: rgba(255,255,255,0.08);
+  color: #fff;
+}
+
+.nav-item.active {
+  background: rgba(255,255,255,0.12);
+  color: #fff;
+  border-left-color: var(--accent);
+  font-weight: 500;
+}
+
+.nav-icon { font-size: 16px; width: 20px; text-align: center; }
+
+.main-content {
+  margin-left: var(--sidebar-width);
+  flex: 1;
+  min-height: 100vh;
+}
+
+.top-header {
+  height: var(--header-height);
+  background: var(--bg-card);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 28px;
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  box-shadow: var(--shadow);
+}
+
+.header-title { font-size: 18px; font-weight: 600; color: var(--primary); }
+
+.header-meta {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.page-content { padding: 24px 28px; }
+
+.page { display: none; }
+.page.active { display: block; animation: fadeIn 0.3s ease; }
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Cards */
+.card {
+  background: var(--bg-card);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 20px;
+  margin-bottom: 20px;
+  border: 1px solid var(--border);
+}
+
+.card-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--primary);
+  margin-bottom: 16px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid var(--accent);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.card-title::before {
+  content: "";
+  width: 4px;
+  height: 18px;
+  background: var(--accent);
+  border-radius: 2px;
+}
+
+/* Metric Cards */
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.metric-card {
+  background: var(--bg-card);
+  border-radius: var(--radius);
+  padding: 18px;
+  box-shadow: var(--shadow);
+  border: 1px solid var(--border);
+  transition: transform 0.2s, box-shadow 0.2s;
+  position: relative;
+  overflow: hidden;
+}
+
+.metric-card::after {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--primary), var(--accent));
+}
+
+.metric-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-hover);
+}
+
+.metric-card .label {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+}
+
+.metric-card .value {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--primary);
+  line-height: 1.2;
+}
+
+.metric-card .value span { font-size: 14px; font-weight: 400; }
+
+.metric-card .sub-items {
+  margin-top: 12px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.8;
+}
+
+.metric-card .sub-items strong { color: var(--text-primary); }
+
+/* Process Map */
+.process-map {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  overflow-x: auto;
+  padding: 10px 0;
+}
+
+.process-stage {
+  flex: 1;
+  min-width: 130px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+}
+
+.process-stage:not(:last-child)::after {
+  content: "↓";
+  position: absolute;
+  right: -12px;
+  top: 50%;
+  transform: translateY(-50%) rotate(-90deg);
+  color: var(--accent);
+  font-size: 18px;
+  font-weight: bold;
+  z-index: 2;
+}
+
+.process-box {
+  background: linear-gradient(135deg, #f8fafc 0%, #eef3f9 100%);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 10px;
+  margin: 0 4px;
+  transition: all 0.2s;
+  height: 100%;
+}
+
+.process-stage:hover .process-box {
+  border-color: var(--accent);
+  background: linear-gradient(135deg, #e8f4fd 0%, #d6ebfa 100%);
+  box-shadow: var(--shadow-hover);
+}
+
+.process-box .stage-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--primary);
+  margin-bottom: 10px;
+  min-height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.process-box .stage-stats {
+  font-size: 11px;
+  color: var(--text-secondary);
+  line-height: 1.7;
+}
+
+.process-box .stage-stats .num {
+  color: var(--primary);
+  font-weight: 600;
+}
+
+.process-stage.highlight .process-box {
+  border-color: var(--accent);
+  background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+}
+
+/* Tables */
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.data-table th {
+  background: linear-gradient(180deg, #f5f8fc 0%, #eef3f9 100%);
+  color: var(--primary);
+  font-weight: 600;
+  padding: 12px 14px;
+  text-align: left;
+  border-bottom: 2px solid var(--border);
+  white-space: nowrap;
+}
+
+.data-table td {
+  padding: 11px 14px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-primary);
+}
+
+.data-table tbody tr { transition: background 0.15s; }
+
+.data-table tbody tr:hover { background: #f5f9fd; }
+
+.data-table tbody tr.clickable { cursor: pointer; }
+
+/* Badges */
+.badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.badge-danger { background: #ffebee; color: var(--danger); }
+.badge-warning { background: #fff8e1; color: #e65100; }
+.badge-info { background: #e3f2fd; color: var(--info); }
+.badge-success { background: #e8f5e9; color: var(--success); }
+.badge-primary { background: #e8f0fe; color: var(--primary); }
+
+/* Two-column layout */
+.two-col { display: grid; grid-template-columns: 280px 1fr; gap: 20px; }
+
+/* Process Tree */
+.process-tree {
+  background: var(--bg-card);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  border: 1px solid var(--border);
+  padding: 16px;
+  max-height: calc(100vh - 160px);
+  overflow-y: auto;
+}
+
+.tree-node { margin-bottom: 2px; }
+
+.tree-parent {
+  padding: 8px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--primary);
+  cursor: pointer;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tree-parent:hover { background: #f0f6fc; }
+
+.tree-parent .arrow {
+  font-size: 10px;
+  transition: transform 0.2s;
+  width: 12px;
+}
+
+.tree-parent.expanded .arrow { transform: rotate(90deg); }
+
+.tree-children { padding-left: 20px; display: none; }
+.tree-children.show { display: block; }
+
+.tree-child {
+  padding: 7px 12px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  border-radius: 4px;
+  border-left: 2px solid transparent;
+}
+
+.tree-child:hover { background: #f0f6fc; color: var(--primary); }
+
+.tree-child.active {
+  background: #e3f2fd;
+  color: var(--primary);
+  border-left-color: var(--accent);
+  font-weight: 500;
+}
+
+/* Detail Panel */
+.detail-panel { min-height: 400px; }
+
+.info-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.info-item {
+  background: #f8fafc;
+  border-radius: 6px;
+  padding: 14px;
+  border: 1px solid var(--border);
+}
+
+.info-item .info-label {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-bottom: 4px;
+}
+
+.info-item .info-value {
+  font-size: 14px;
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.info-item.full { grid-column: 1 / -1; }
+
+/* Risk scenario cards */
+.scenario-group { margin-bottom: 20px; }
+
+.scenario-level1 {
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+  color: #fff;
+  padding: 14px 18px;
+  border-radius: var(--radius) var(--radius) 0 0;
+  font-size: 15px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.scenario-level1 .num {
+  background: rgba(255,255,255,0.2);
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+}
+
+.scenario-children {
+  border: 1px solid var(--border);
+  border-top: none;
+  border-radius: 0 0 var(--radius) var(--radius);
+  background: var(--bg-card);
+}
+
+.scenario-item {
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.scenario-item:last-child { border-bottom: none; }
+.scenario-item:hover { background: #f5f9fd; }
+
+.scenario-item .name {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--primary);
+  margin-bottom: 4px;
+}
+
+.scenario-item .desc {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+/* Warning summary */
+.warning-summary {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.warning-stat {
+  background: var(--bg-card);
+  border-radius: var(--radius);
+  padding: 20px;
+  text-align: center;
+  box-shadow: var(--shadow);
+  border: 1px solid var(--border);
+}
+
+.warning-stat .num {
+  font-size: 32px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.warning-stat .label { font-size: 13px; color: var(--text-secondary); }
+.warning-stat.red .num { color: var(--danger); }
+.warning-stat.yellow .num { color: var(--warning); }
+.warning-stat.blue .num { color: var(--info); }
+.warning-stat.total .num { color: var(--primary); }
+
+/* Penetration */
+.penetration-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
+}
+
+.penetration-card {
+  background: var(--bg-card);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  border: 1px solid var(--border);
+  padding: 18px;
+}
+
+.penetration-card h4 {
+  font-size: 14px;
+  color: var(--primary);
+  margin-bottom: 14px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.chain-flow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+}
+
+.chain-item {
+  background: #e8f0fe;
+  color: var(--primary);
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.chain-arrow { color: var(--accent); font-weight: bold; font-size: 14px; }
+
+.penetration-metric {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px dashed var(--border);
+  font-size: 13px;
+}
+
+.penetration-metric:last-child { border-bottom: none; }
+.penetration-metric .label { color: var(--text-secondary); }
+.penetration-metric .value { font-weight: 500; }
+.penetration-metric .value.danger { color: var(--danger); }
+
+.emergency-box {
+  background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%);
+  border: 1px solid #ffcc80;
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-top: 16px;
+}
+
+.emergency-box h4 { color: #e65100; margin-bottom: 10px; font-size: 14px; }
+
+.emergency-box ol {
+  padding-left: 20px;
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
+.emergency-box ol li { margin-bottom: 4px; }
+
+/* Control stats */
+.control-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.control-stat-card {
+  background: var(--bg-card);
+  border-radius: var(--radius);
+  padding: 20px;
+  text-align: center;
+  box-shadow: var(--shadow);
+  border: 1px solid var(--border);
+}
+
+.control-stat-card .num { font-size: 28px; font-weight: 700; color: var(--primary); }
+.control-stat-card .label { font-size: 13px; color: var(--text-secondary); margin-top: 4px; }
+.control-stat-card.abnormal .num { color: var(--danger); }
+
+/* Matters */
+.matter-types {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+
+.matter-card {
+  background: linear-gradient(135deg, #f8fafc 0%, #eef3f9 100%);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px;
+  text-align: center;
+}
+
+.matter-card .type { font-size: 14px; font-weight: 600; color: var(--primary); margin-bottom: 10px; }
+.matter-card .count { font-size: 24px; font-weight: 700; color: var(--primary); }
+.matter-card .pending { font-size: 12px; color: var(--warning); margin-top: 6px; }
+
+/* Rectification flow */
+.rect-flow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  padding: 30px 10px;
+  flex-wrap: wrap;
+}
+
+.rect-step {
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+  color: #fff;
+  padding: 12px 20px;
+  border-radius: var(--radius);
+  font-size: 13px;
+  font-weight: 500;
+  text-align: center;
+  min-width: 110px;
+}
+
+.rect-arrow {
+  color: var(--accent);
+  font-size: 20px;
+  font-weight: bold;
+  padding: 0 6px;
+}
+
+.rect-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+/* Portfolio */
+.portfolio-section { margin-bottom: 24px; }
+
+.portfolio-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 14px;
+}
+
+.portfolio-item {
+  background: #f8fafc;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  transition: all 0.2s;
+}
+
+.portfolio-item:hover {
+  border-color: var(--accent);
+  box-shadow: var(--shadow);
+}
+
+.portfolio-item .name { font-size: 14px; font-weight: 600; color: var(--primary); margin-bottom: 8px; }
+.portfolio-item .stat { font-size: 12px; color: var(--text-secondary); line-height: 1.8; }
+.portfolio-item .stat strong { color: var(--text-primary); }
+
+/* Rules section */
+.rules-section { margin-top: 16px; }
+
+.rules-group { margin-bottom: 14px; }
+
+.rules-group .rules-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--primary);
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.rules-group .rules-title::before {
+  content: "";
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.rules-list {
+  list-style: none;
+  padding-left: 14px;
+}
+
+.rules-list li {
+  font-size: 13px;
+  color: var(--text-secondary);
+  padding: 4px 0;
+  position: relative;
+  padding-left: 16px;
+}
+
+.rules-list li::before {
+  content: "•";
+  position: absolute;
+  left: 0;
+  color: var(--accent);
+}
+
+/* Breadcrumb */
+.breadcrumb {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.breadcrumb a {
+  color: var(--accent);
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.breadcrumb a:hover { text-decoration: underline; }
+
+/* Core chain banner */
+.core-chain {
+  background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary) 50%, var(--primary-light) 100%);
+  color: #fff;
+  border-radius: var(--radius);
+  padding: 16px 24px;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-size: 12px;
+}
+
+.core-chain .chain-node {
+  background: rgba(255,255,255,0.15);
+  padding: 4px 12px;
+  border-radius: 14px;
+  white-space: nowrap;
+}
+
+.core-chain .chain-sep { opacity: 0.6; }
+
+/* Back button */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s;
+}
+
+.btn-primary {
+  background: var(--primary);
+  color: #fff;
+}
+
+.btn-primary:hover { background: var(--primary-light); }
+
+.btn-outline {
+  background: transparent;
+  color: var(--primary);
+  border: 1px solid var(--border);
+}
+
+.btn-outline:hover { background: #f0f6fc; }
+
+.page-actions { margin-bottom: 16px; }
+
+/* Rank number */
+.rank-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px; height: 24px;
+  border-radius: 50%;
+  font-size: 12px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.rank-1 { background: #e53935; }
+.rank-2 { background: #f57c00; }
+.rank-3 { background: #fbc02d; color: #333; }
+.rank-other { background: #90a4ae; }
+
+/* Responsive */
+@media (max-width: 1400px) {
+  .metrics-grid { grid-template-columns: repeat(3, 1fr); }
+}
+
+@media (max-width: 1200px) {
+  .metrics-grid { grid-template-columns: repeat(2, 1fr); }
+  .penetration-grid { grid-template-columns: 1fr; }
+  .two-col { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 768px) {
+  .sidebar { width: 60px; }
+  .sidebar-title, .sidebar-subtitle, .nav-item span { display: none; }
+  .main-content { margin-left: 60px; }
+  .metrics-grid { grid-template-columns: 1fr; }
+}
+
+/* PRD 增强组件：热力图、价值链、看板、抽屉及轻量级分析图表 */
+.heatmap-legend { display:flex; gap:16px; justify-content:flex-end; font-size:12px; margin:-34px 0 16px; }
+.heatmap-legend span::before { content:""; display:inline-block; width:9px; height:9px; border-radius:50%; margin-right:5px; }
+.legend-normal::before { background:#1e88e5; }.legend-watch::before { background:#f9a825; }.legend-warning::before { background:#f57c00; }.legend-critical::before { background:#e53935; }
+.dashboard-heatmap { display:grid; grid-template-columns:repeat(9,minmax(105px,1fr)); gap:9px; min-height:160px; }
+.heatmap-stage { color:#fff; border:0; border-radius:8px; padding:17px 8px; cursor:pointer; text-align:left; transition:.2s; }
+.heatmap-stage:hover,.value-chain-card:hover { transform:translateY(-3px); filter:brightness(1.06); }
+.heatmap-stage span,.heatmap-stage small { display:block; font-size:12px; opacity:.9; }.heatmap-stage b { display:block; font-size:32px; margin:9px 0 2px; }
+.heatmap-stage.normal { background:#1e88e5; }.heatmap-stage.watch { background:#f9a825; }.heatmap-stage.warning { background:#f57c00; }.heatmap-stage.critical { background:#e53935; }
+.value-chain-overview { display:flex; gap:8px; overflow-x:auto; padding:2px; }.value-chain-card { flex:1; min-width:132px; padding:13px; background:#f5f9fd; border:1px solid var(--border); border-radius:8px; cursor:pointer; text-align:left; }
+.value-chain-card strong,.value-chain-card span,.value-chain-card em { display:block; font-size:12px; margin-bottom:5px; }.value-chain-card strong { color:var(--primary); font-size:13px; }.value-chain-card em { font-style:normal; font-weight:600; }.risk-high { color:var(--danger); }.risk-mid { color:#e65100; }.risk-low { color:var(--success); }
+.risk-matrix-wrap { overflow-x:auto; }.matrix-table { width:100%; border-collapse:collapse; font-size:12px; text-align:center; }.matrix-table th,.matrix-table td { padding:8px; border:1px solid var(--border); white-space:nowrap; }.matrix-table th { color:var(--primary); background:#f5f8fc; }.matrix-dot { border:0; background:transparent; cursor:pointer; font-size:18px; min-width:28px; }.matrix-dot.l1 { color:#f9a825; }.matrix-dot.l2 { color:#f57c00; }.matrix-dot.l3,.matrix-dot.l4 { color:#e53935; }.matrix-note { font-size:12px; color:var(--text-secondary); margin-top:10px; }
+.warning-charts,.portfolio-analysis-row { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin-bottom:20px; }.chart-card,.analysis-card { background:#fff; border:1px solid var(--border); border-radius:var(--radius); box-shadow:var(--shadow); padding:16px; min-height:170px; }.chart-card h4,.analysis-card h4 { color:var(--primary); margin-bottom:10px; }.donut { width:82px; height:82px; border:14px solid #e3f2fd; border-top-color:var(--danger); border-right-color:var(--warning); border-radius:50%; margin:8px auto; text-align:center; padding-top:14px; }.donut b,.donut span { display:block; }.donut span { font-size:10px; color:var(--text-secondary); }.bar-chart { height:100px; display:flex; align-items:end; gap:6px; border-bottom:1px solid var(--border); }.bar-chart i { flex:1; background:linear-gradient(#00a0e9,#003d7a); min-width:8px; border-radius:3px 3px 0 0; }.enterprise-line { display:grid; grid-template-columns:1fr 52px 52px 52px; gap:5px; font-size:11px; align-items:center; margin:8px 0; }.enterprise-line b { text-align:center; border-radius:3px; padding:3px; }
+.filter-bar { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px; }.filter-bar input,.filter-bar select { border:1px solid var(--border); border-radius:5px; padding:7px 10px; font-size:12px; }.filter-bar input { min-width:230px; }.filter-chip,.pagination button { background:#fff; border:1px solid var(--border); color:var(--text-secondary); padding:6px 11px; border-radius:5px; cursor:pointer; }.filter-chip.active,.pagination button.active { color:#fff; background:var(--primary); border-color:var(--primary); }.pagination { margin-top:16px; display:flex; gap:6px; align-items:center; justify-content:flex-end; font-size:12px; color:var(--text-secondary); }
+.kanban-board { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; overflow-x:auto; }.kanban-column { min-width:210px; background:#f5f8fc; border-radius:8px; padding:10px; }.kanban-column h4 { color:var(--primary); display:flex; justify-content:space-between; margin-bottom:10px; }.kanban-column h4 span { background:#dce8f4; border-radius:12px; padding:0 7px; font-size:12px; }.kanban-card { width:100%; background:#fff; border:1px solid var(--border); border-radius:6px; text-align:left; padding:11px; margin-bottom:8px; cursor:pointer; box-shadow:0 1px 4px rgba(0,45,98,.08); }.kanban-card strong,.kanban-card small,.kanban-card em { display:block; margin-top:6px; font-size:12px; }.kanban-card em { color:var(--text-secondary); font-style:normal; }.progress { height:6px; background:#e7edf4; border-radius:8px; overflow:hidden; margin-top:8px; }.progress i { display:block; height:100%; background:linear-gradient(90deg,var(--accent),var(--primary)); border-radius:8px; }
+.drawer-overlay { position:fixed; inset:0; background:rgba(0,25,55,.35); z-index:200; visibility:hidden; opacity:0; transition:.2s; }.drawer-overlay.show { visibility:visible; opacity:1; }.drawer { height:100%; width:min(460px,94vw); background:#fff; margin-left:auto; padding:24px; overflow-y:auto; transform:translateX(100%); transition:.25s; box-shadow:-6px 0 24px rgba(0,0,0,.2); }.drawer-overlay.show .drawer { transform:translateX(0); }.drawer-header { display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); margin-bottom:18px; padding-bottom:12px; color:var(--primary); }.drawer-header button { border:0; background:transparent; font-size:28px; cursor:pointer; }.drawer-section { margin-top:20px; padding:12px; background:#f6f9fc; border-radius:6px; }.drawer-section label { color:var(--text-secondary); font-size:12px; }.drawer-section p { font-size:13px; margin-top:6px; line-height:1.8; }
+.portfolio-kpis { grid-template-columns:repeat(6,1fr); }.analysis-card strong { display:block; font-size:30px; color:var(--primary); margin:18px 0 8px; }.analysis-card p,.ai-insight p { font-size:13px; color:var(--text-secondary); line-height:1.8; }.ai-insight { border-left:4px solid var(--accent); }
+.evidence-line { display:flex; align-items:center; justify-content:center; gap:12px; flex-wrap:wrap; }.evidence-line span { padding:10px 15px; background:#f5f8fc; border:1px solid var(--border); border-radius:6px; font-size:12px; text-align:center; }.evidence-line b { color:var(--primary); }.evidence-line i { color:var(--accent); font-style:normal; font-size:18px; }
+@media(max-width:1200px){.dashboard-heatmap{grid-template-columns:repeat(3,1fr)}.warning-charts,.portfolio-analysis-row{grid-template-columns:1fr}.portfolio-kpis{grid-template-columns:repeat(3,1fr)}}@media(max-width:768px){.dashboard-heatmap{grid-template-columns:1fr}.heatmap-legend{margin:0 0 12px;justify-content:flex-start;flex-wrap:wrap}.portfolio-kpis{grid-template-columns:1fr}.kanban-board{grid-template-columns:repeat(4,210px)}}
+
+</style>
+</head>
+<body>
+  <div class="app-container">
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="sidebar-logo">
+          <div class="logo-icon">CNOOC</div>
+          <div class="sidebar-title">海油集团股权投资全生命周期<br>风险穿透监测平台</div>
+        </div>
+        <div class="sidebar-subtitle">基于风险场景、控制活动与业务流程融合的股权投资穿透监管平台</div>
+      </div>
+      <nav class="nav-menu" id="navMenu"></nav>
+    </aside>
+
+    <main class="main-content">
+      <header class="top-header">
+        <div class="header-title" id="pageTitle">集团股权投资风险态势驾驶舱</div>
+        <div class="header-meta">
+          <span>数据更新时间：2026-07-20</span>
+          <span>|</span>
+          <span>模拟数据演示版</span>
+        </div>
+      </header>
+
+      <div class="page-content">
+        <!-- 首页驾驶舱 -->
+        <div class="page active" id="page-dashboard">
+          <div class="core-chain" id="coreChain"></div>
+          <div class="metrics-grid" id="dashboardMetrics"></div>
+          <div class="card">
+            <div class="card-title">投资价值链风险热力地图</div>
+            <div class="heatmap-legend"><span class="legend-normal">正常</span><span class="legend-watch">关注</span><span class="legend-warning">预警</span><span class="legend-critical">重大风险</span></div>
+            <div id="dashboardHeatmap"></div>
+          </div>
+          <div class="card">
+            <div class="card-title">股权投资全过程风险地图</div>
+            <div class="process-map" id="processMap"></div>
+          </div>
+          <div class="card">
+            <div class="card-title">重点风险 TOP10</div>
+            <table class="data-table" id="topRisksTable">
+              <thead>
+                <tr>
+                  <th>排名</th>
+                  <th>风险事项</th>
+                  <th>所属业务环节</th>
+                  <th>涉及项目</th>
+                  <th>风险等级</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- 投资业务全过程监测 -->
+        <div class="page" id="page-process">
+          <div class="card">
+            <div class="card-title">投资价值链总览</div>
+            <div class="value-chain-overview" id="valueChainOverview"></div>
+          </div>
+          <div class="card">
+            <div class="card-title">业务环节风险矩阵</div>
+            <div class="risk-matrix-wrap" id="riskMatrix"></div>
+          </div>
+          <div class="two-col">
+            <div class="process-tree" id="processTree"></div>
+            <div class="detail-panel" id="processDetail">
+              <div class="card">
+                <p style="color: var(--text-secondary); text-align: center; padding: 60px 20px;">
+                  请在左侧业务流程树中选择业务环节和活动节点<br>
+                  <span style="font-size: 12px;">推荐：投后管理 → 经营情况跟踪</span>
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 风险场景管理 -->
+        <div class="page" id="page-scenarios">
+          <div class="card" style="margin-bottom: 16px; padding: 14px 20px;">
+            <p style="font-size: 13px; color: var(--text-secondary);">
+              <strong style="color: var(--primary);">依据国资委46号文</strong> — 一级风险场景覆盖投资决策、投资实施、投资管理、投资收益、投资退出及境外投资风险六大领域，下设二级风险场景实现精细化穿透管理。
+            </p>
+          </div>
+          <div id="scenarioList"></div>
+        </div>
+
+        <!-- 风险预警监测 -->
+        <div class="page" id="page-warnings">
+          <div class="warning-summary" id="warningSummary"></div>
+          <div class="warning-charts" id="warningCharts"></div>
+          <div class="card">
+            <div class="card-title">风险事件池</div>
+            <div class="filter-bar" id="warningFilters"></div>
+            <table class="data-table" id="warningsTable">
+              <thead>
+                <tr>
+                  <th>风险事项</th>
+                  <th>所属单位</th>
+                  <th>投资项目</th>
+                  <th>指标异常</th>
+                  <th>状态</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+            <div class="pagination" id="warningPagination"></div>
+          </div>
+        </div>
+
+        <!-- 风险穿透分析 -->
+        <div class="page" id="page-penetration">
+          <div class="page-actions" id="penetrationBack" style="display:none;">
+            <button class="btn btn-outline" onclick="App.navigate('warnings')">← 返回风险预警列表</button>
+          </div>
+          <div id="penetrationContent">
+            <div class="card">
+              <p style="color: var(--text-secondary); text-align: center; padding: 40px;">
+                请从风险预警列表或重点风险 TOP10 点击风险事项，查看穿透分析详情
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- 控制活动管理 -->
+        <div class="page" id="page-controls">
+          <div class="control-stats" id="controlStats"></div>
+          <div class="card">
+            <div class="card-title">控制活动清单</div>
+            <table class="data-table" id="controlsTable">
+              <thead>
+                <tr>
+                  <th>业务环节</th>
+                  <th>风险场景</th>
+                  <th>控制活动</th>
+                  <th>控制要求</th>
+                  <th>执行频率</th>
+                  <th>责任部门</th>
+                  <th>监测状态</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- 投资事项及股东权利管理 -->
+        <div class="page" id="page-matters">
+          <div class="metrics-grid" style="grid-template-columns: repeat(2, 1fr); margin-bottom: 20px;">
+            <div class="metric-card">
+              <div class="label">重大事项</div>
+              <div class="value">128<span>项</span></div>
+            </div>
+            <div class="metric-card">
+              <div class="label">待跟踪</div>
+              <div class="value" style="color: var(--warning);">12<span>项</span></div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-title">事项类型分布</div>
+            <div class="matter-types" id="matterTypes"></div>
+          </div>
+        </div>
+
+        <!-- 整改闭环管理 -->
+        <div class="page" id="page-rectification">
+          <div class="rect-stats" id="rectStats"></div>
+          <div class="card">
+            <div class="card-title">整改任务看板</div>
+            <div class="kanban-board" id="rectKanban"></div>
+          </div>
+          <div class="card">
+            <div class="card-title">整改闭环流程</div>
+            <div class="rect-flow" id="rectFlow"></div>
+          </div>
+          <div class="card">
+            <div class="card-title">近期整改事项</div>
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>风险事项</th>
+                  <th>责任部门</th>
+                  <th>整改措施</th>
+                  <th>状态</th>
+                  <th>完成期限</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>投资收益未达到预期风险</td>
+                  <td>投资管理部</td>
+                  <td>开展专项投资评价，制定收益提升方案</td>
+                  <td><span class="badge badge-warning">整改中</span></td>
+                  <td>2026-08-30</td>
+                </tr>
+                <tr>
+                  <td>重大事项报告滞后风险</td>
+                  <td>海油发展</td>
+                  <td>完善重大事项报告机制，明确报送时限</td>
+                  <td><span class="badge badge-success">已完成</span></td>
+                  <td>2026-06-15</td>
+                </tr>
+                <tr>
+                  <td>经营指标偏离风险</td>
+                  <td>新能源公司</td>
+                  <td>加强经营跟踪，每月提交经营分析报告</td>
+                  <td><span class="badge badge-warning">整改中</span></td>
+                  <td>2026-09-15</td>
+                </tr>
+                <tr>
+                  <td>投资决策论证不足风险</td>
+                  <td>战略发展部</td>
+                  <td>补充完善可研报告，组织专家评审</td>
+                  <td><span class="badge badge-success">已完成</span></td>
+                  <td>2026-05-20</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- 投资组合分析 -->
+        <div class="page" id="page-portfolio">
+          <div class="metrics-grid portfolio-kpis" id="portfolioKpis"></div>
+          <div class="portfolio-analysis-row" id="portfolioAnalysis"></div>
+          <div class="portfolio-section">
+            <div class="card">
+              <div class="card-title">按所属单位</div>
+              <div class="portfolio-grid" id="portfolioByUnit"></div>
+            </div>
+          </div>
+          <div class="portfolio-section">
+            <div class="card">
+              <div class="card-title">按产业领域</div>
+              <div class="portfolio-grid" id="portfolioByIndustry"></div>
+            </div>
+          </div>
+          <div class="portfolio-section">
+            <div class="card">
+              <div class="card-title">按区域</div>
+              <div class="portfolio-grid" id="portfolioByRegion"></div>
+            </div>
+          </div>
+          <div class="card ai-insight" id="portfolioAi"></div>
+        </div>
+      </div>
+    </main>
+  </div>
+  <div class="drawer-overlay" id="drawerOverlay" onclick="App.closeDrawer(event)">
+    <aside class="drawer" id="drawerPanel"></aside>
+  </div>
+
+  <script>
+// 海油集团股权投资全生命周期风险穿透监测平台 - 模拟数据
+
+const APP_DATA = {
+  processStages: [
+  { id: 'strategy', name: '投资战略规划', projects: 356, risks: 6, warnings: 1, controls: 18 },
+  { id: 'opportunity', name: '项目机会识别', projects: 89, risks: 5, warnings: 0, controls: 14 },
+  { id: 'approval', name: '立项论证', projects: 42, risks: 9, warnings: 3, controls: 26 },
+  { id: 'due-diligence', name: '尽职调查', projects: 38, risks: 7, warnings: 2, controls: 22 },
+  { id: 'plan', name: '投资方案制定', projects: 35, risks: 6, warnings: 1, controls: 19 },
+  { id: 'decision', name: '投资决策审批', projects: 32, risks: 8, warnings: 2, controls: 24 },
+  { id: 'signing', name: '协议签署与交割', projects: 28, risks: 5, warnings: 1, controls: 16 },
+  { id: 'post-invest', name: '投后管理', projects: 128, risks: 15, warnings: 5, controls: 41 },
+  { id: 'exit', name: '投资退出', projects: 18, risks: 4, warnings: 1, controls: 12 }
+  ],
+
+  processTree: {
+  name: '股权投资管理',
+  children: [
+    { id: 'strategy', name: '投资战略规划', children: [
+      { id: 'strategy-plan', name: '年度投资计划制定' },
+      { id: 'strategy-match', name: '投资方向匹配分析' }
+    ]},
+    { id: 'opportunity', name: '项目机会识别', children: [
+      { id: 'opp-source', name: '项目来源管理' },
+      { id: 'opp-screen', name: '初步筛选评价' }
+    ]},
+    { id: 'approval', name: '立项论证', children: [
+      { id: 'approval-feasibility', name: '可行性研究' },
+      { id: 'approval-return', name: '投资收益测算' },
+      { id: 'approval-risk', name: '风险评估' }
+    ]},
+    { id: 'due-diligence', name: '尽职调查', children: [
+      { id: 'dd-finance', name: '财务调查' },
+      { id: 'dd-legal', name: '法律调查' },
+      { id: 'dd-business', name: '业务调查' }
+    ]},
+    { id: 'plan', name: '投资方案制定', children: [
+      { id: 'plan-structure', name: '交易结构设计' },
+      { id: 'plan-draft', name: '投资方案编制' }
+    ]},
+    { id: 'decision', name: '投资决策审批', children: [
+      { id: 'decision-review', name: '内部审核' },
+      { id: 'decision-meeting', name: '决策会议审批' }
+    ]},
+    { id: 'signing', name: '协议签署与交割', children: [
+      { id: 'sign-review', name: '协议审查' },
+      { id: 'sign-fund', name: '资金交割' }
+    ]},
+    { id: 'post-invest', name: '投后管理', children: [
+      { id: 'post-track', name: '经营情况跟踪' },
+      { id: 'post-major', name: '重大事项管理' },
+      { id: 'post-rights', name: '股东权利行使' },
+      { id: 'post-eval', name: '投资评价' }
+    ]},
+    { id: 'exit', name: '投资退出', children: [
+      { id: 'exit-plan', name: '退出方案制定' },
+      { id: 'exit-exec', name: '退出实施' }
+    ]}
+  ]
+  },
+
+  businessActivityDetail: {
+  'post-track': {
+    stage: '投后管理',
+    activity: '经营情况跟踪',
+    goal: '持续掌握被投资企业经营情况，及时发现经营偏离和投资价值变化。',
+    department: '投资管理部',
+    level1Risk: '投资管理风险',
+    level2Risk: '被投资企业经营情况跟踪不到位风险',
+    riskDesc: '未持续跟踪被投资企业经营指标、重大经营事项和发展变化，导致投资风险未及时识别。',
+    controls: [
+      { name: '经营情况定期分析', requirement: '获取经营数据并形成分析报告', frequency: '季度' },
+      { name: '重大事项报告管理', requirement: '重大事项5个工作日内报送', frequency: '实时' },
+      { name: '年度投资评价', requirement: '开展投资目标实现评价', frequency: '年度' }
+    ],
+    rules: {
+      before: ['是否建立投后管理计划', '是否明确经营跟踪指标', '是否明确责任人员'],
+      during: ['收入完成率低于80%', '利润完成率低于目标70%', '重大诉讼事项发生', '触发风险预警'],
+      after: ['连续两个年度收益未达到目标', '启动专项投资评价']
+    }
+  }
+  },
+
+  topRisks: [
+  { rank: 1, name: '被投资企业经营指标偏离风险', stage: '投后管理', project: 'XX新能源项目', level: '重大', id: 'risk-2' },
+  { rank: 2, name: '投资收益未达到预期风险', stage: '投资评价', project: 'XX产业项目', level: '重大', id: 'risk-1' },
+  { rank: 3, name: '重大事项报告不及时风险', stage: '投后管理', project: 'XX海外项目', level: '较大', id: 'risk-3' },
+  { rank: 4, name: '投资决策论证不足风险', stage: '立项论证', project: 'XX项目', level: '较大', id: 'risk-4' },
+  { rank: 5, name: '境外投资运营风险', stage: '境外投资管理', project: 'XX海外项目', level: '较大', id: 'risk-5' },
+  { rank: 6, name: '投资方向偏离战略风险', stage: '投资战略规划', project: 'XX战略项目', level: '较大', id: 'risk-6' },
+  { rank: 7, name: '交割条件落实不到位风险', stage: '协议签署与交割', project: 'XX装备项目', level: '一般', id: 'risk-7' },
+  { rank: 8, name: '股东权利行使不到位风险', stage: '投后管理', project: 'XX产业项目', level: '一般', id: 'risk-8' },
+  { rank: 9, name: '投资资产减值风险', stage: '投后管理', project: 'XX化工项目', level: '一般', id: 'risk-9' },
+  { rank: 10, name: '退出时机判断风险', stage: '投资退出', project: 'XX_legacy项目', level: '一般', id: 'risk-10' }
+  ],
+
+  riskScenarios: [
+  {
+    id: 'decision', name: '投资决策风险', level: 1,
+    children: [
+      { name: '投资方向偏离集团战略风险', desc: '投资项目与集团主责主业及战略布局匹配不足。' },
+      { name: '投资论证不充分风险', desc: '可研分析、收益测算、风险分析不足。' },
+      { name: '投资收益预测偏差风险', desc: '投资收益预测与实际经营存在较大偏差。' }
+    ]
+  },
+  {
+    id: 'implement', name: '投资实施风险', level: 1,
+    children: [
+      { name: '投资审批程序执行不到位风险', desc: '审批流程未严格执行，存在越权审批情形。' },
+      { name: '投资协议管理不到位风险', desc: '协议条款审查不充分，关键条款缺失。' },
+      { name: '交割条件落实不到位风险', desc: '交割前置条件未完全落实即完成资金支付。' }
+    ]
+  },
+  {
+    id: 'manage', name: '投资管理风险', level: 1,
+    children: [
+      { name: '投后管理不到位风险', desc: '投后管理计划未有效执行，跟踪频次不足。' },
+      { name: '被投资企业重大事项管理不到位风险', desc: '重大事项未及时识别和报告。' },
+      { name: '股东权利行使不到位风险', desc: '股东权利未有效行使，影响投资权益。' },
+      { name: '董事履职管理不到位风险', desc: '委派董事履职不充分，未有效参与决策。' }
+    ]
+  },
+  {
+    id: 'return', name: '投资收益风险', level: 1,
+    children: [
+      { name: '投资收益未达到预期风险', desc: '实际投资收益低于可研预测目标。' },
+      { name: '长期低效投资风险', desc: '投资项目长期未能产生预期效益。' },
+      { name: '投资资产减值风险', desc: '投资资产存在减值迹象未及时计提。' }
+    ]
+  },
+  {
+    id: 'exit', name: '投资退出风险', level: 1,
+    children: [
+      { name: '退出方案制定风险', desc: '退出方案论证不充分，退出路径不明确。' },
+      { name: '退出时机判断风险', desc: '退出时机选择不当，影响退出收益。' },
+      { name: '退出实施风险', desc: '退出实施过程中出现障碍或纠纷。' }
+    ]
+  },
+  {
+    id: 'overseas', name: '境外投资风险（海油特色）', level: 1,
+    children: [
+      { name: '东道国政策变化风险', desc: '东道国投资政策、税收政策发生变化。' },
+      { name: '境外合规风险', desc: '境外投资未满足当地合规要求。' },
+      { name: '境外运营风险', desc: '境外项目运营管理面临特殊挑战。' },
+      { name: '汇率波动影响风险', desc: '汇率波动对投资收益产生不利影响。' }
+    ]
+  }
+  ],
+
+  warnings: [
+  { id: 'risk-1', name: '投资收益未达到预期风险', unit: '海油工程', project: '海外装备项目', indicator: '收益率下降35%', status: '红色', level: '重大' },
+  { id: 'risk-2', name: '经营指标偏离风险', unit: '新能源公司', project: 'XX新能源项目', indicator: '利润完成率62%', status: '红色', level: '重大' },
+  { id: 'risk-3', name: '重大事项报告滞后风险', unit: '某所属企业', project: 'XX产业项目', indicator: '超过5日未报送', status: '黄色', level: '较大' },
+  { id: 'risk-4', name: '投资决策论证不足风险', unit: '海油发展', project: 'XX项目', indicator: '可研报告缺失2项', status: '黄色', level: '较大' },
+  { id: 'risk-5', name: '境外投资运营风险', unit: '海油国际', project: 'XX海外项目', indicator: '运营亏损扩大', status: '黄色', level: '较大' },
+  { id: 'risk-6', name: '投资方向偏离战略风险', unit: '海油化学', project: 'XX战略项目', indicator: '主业匹配度偏低', status: '蓝色', level: '一般' },
+  { id: 'risk-7', name: '交割条件落实不到位', unit: '海油工程', project: 'XX装备项目', indicator: '2项条件未落实', status: '蓝色', level: '一般' },
+  { id: 'risk-8', name: '股东权利行使不到位', unit: '海油发展', project: 'XX产业项目', indicator: '股东大会未出席', status: '蓝色', level: '一般' }
+  ],
+
+  riskPenetration: {
+  'risk-1': {
+    name: '投资收益未达到预期风险',
+    level: '重大风险',
+    unit: '海油工程',
+    project: 'XX新能源装备项目',
+    amount: '18亿元',
+    exposure: '2.6亿元',
+    impact: '预计投资收益下降22%',
+    processChain: ['投资管理', '投后管理', '经营情况跟踪', '投资评价'],
+    control: { name: '年度投资评价', requirement: '评价投资目标实现情况', status: '异常' },
+    indicator: { name: '投资收益率', target: '8%', current: '5.2%', deviation: '-35%' },
+    responsibility: ['集团投资管理部', '所属企业投资管理部门', '项目负责人', '委派董事'],
+  policy: ['国资委投资监管要求', '中国海油投资管理制度', '所属企业投资管理办法', '项目投资协议'],
+    systems: ['投资管理系统', '财务管理系统', '合同管理系统', '经营分析报告'],
+    emergency: { level: 'L3', measures: ['开展专项经营分析', '提交投资管理委员会审议', '制定风险化解方案'], department: '投资管理部门' }
+  },
+  'risk-2': {
+    name: '经营指标偏离风险',
+    level: '重大风险',
+    unit: '新能源公司',
+    project: 'XX新能源项目',
+    amount: '12亿元',
+    exposure: '1.8亿元',
+    impact: '利润完成率仅62%',
+    processChain: ['投资管理', '投后管理', '经营情况跟踪'],
+    control: { name: '经营情况定期分析', requirement: '获取经营数据并形成分析报告', status: '异常' },
+    indicator: { name: '利润完成率', target: '100%', current: '62%', deviation: '-38%' },
+    responsibility: ['集团投资管理部', '新能源公司', '项目负责人'],
+    policy: ['国资委投资监管要求', '中国海油投资管理制度', '新能源公司投资管理办法'],
+    systems: ['投资管理系统', '财务管理系统', '经营分析报告'],
+    emergency: { level: 'L2', measures: ['启动经营指标专项分析', '要求被投企业提交整改方案'], department: '投资管理部门' }
+  }
+  },
+
+  controls: [
+  { stage: '投后管理', scenario: '投资管理风险', activity: '经营情况定期分析', requirement: '获取经营数据并形成分析报告', frequency: '季度', department: '投资管理部', status: '正常' },
+  { stage: '投后管理', scenario: '投资管理风险', activity: '重大事项报告管理', requirement: '重大事项5个工作日内报送', frequency: '实时', department: '投资管理部', status: '异常' },
+  { stage: '投后管理', scenario: '投资收益风险', activity: '年度投资评价', requirement: '评价投资目标实现情况', frequency: '年度', department: '投资管理部', status: '异常' },
+  { stage: '立项论证', scenario: '投资决策风险', activity: '可行性研究审查', requirement: '完成可研报告并通过评审', frequency: '项目级', department: '战略发展部', status: '正常' },
+  { stage: '立项论证', scenario: '投资决策风险', activity: '投资收益测算', requirement: '完成收益测算及敏感性分析', frequency: '项目级', department: '财务部', status: '正常' },
+  { stage: '尽职调查', scenario: '投资实施风险', activity: '财务尽职调查', requirement: '完成财务DD报告', frequency: '项目级', department: '财务部', status: '正常' },
+  { stage: '投资决策审批', scenario: '投资决策风险', activity: '投资决策会议', requirement: '按权限提交决策会议审议', frequency: '项目级', department: '投资管理部', status: '正常' },
+  { stage: '协议签署与交割', scenario: '投资实施风险', activity: '协议审查', requirement: '法律合规审查通过', frequency: '项目级', department: '法律部', status: '正常' },
+  { stage: '投资退出', scenario: '投资退出风险', activity: '退出方案论证', requirement: '完成退出方案及收益测算', frequency: '项目级', department: '投资管理部', status: '正常' },
+  { stage: '境外投资管理', scenario: '境外投资风险', activity: '境外合规审查', requirement: '满足东道国合规要求', frequency: '年度', department: '国际部', status: '异常' }
+  ],
+
+  matters: [
+  { type: '增资事项', count: 28, pending: 3 },
+  { type: '股权变更', count: 22, pending: 2 },
+  { type: '董事会事项', count: 35, pending: 4 },
+  { type: '重大资产处置', count: 15, pending: 1 },
+  { type: '利润分配', count: 18, pending: 1 },
+  { type: '退出安排', count: 10, pending: 1 }
+  ],
+
+  rectification: {
+  total: 62, inProgress: 8, completed: 54, overdue: 3,
+  steps: ['风险发现', '责任确认', '整改措施制定', '整改执行', '效果验证', '风险关闭']
+  },
+
+  portfolio: {
+  byUnit: [
+    { name: '海油工程', projects: 42, riskProjects: 5 },
+    { name: '海油发展', projects: 38, riskProjects: 4 },
+    { name: '新能源公司', projects: 48, riskProjects: 6 },
+    { name: '海油化学', projects: 35, riskProjects: 3 },
+    { name: '海油国际', projects: 58, riskProjects: 8 }
+  ],
+  byIndustry: [
+    { name: '油气产业链', projects: 156 },
+    { name: '新能源', projects: 48 },
+    { name: '装备制造', projects: 36 },
+    { name: '海洋工程', projects: 42 },
+    { name: '战略新兴产业', projects: 74 }
+  ],
+  byRegion: [
+    { name: '境内', projects: 298 },
+    { name: '境外', projects: 58 }
+  ]
+  }
+};
+
+Object.assign(APP_DATA, {
+  dashboardHeatmap: [
+    { stage: '战略规划', level: 'normal', risks: 1, label: '正常' },
+    { stage: '项目获取', level: 'watch', risks: 2, label: '关注' },
+    { stage: '立项论证', level: 'warning', risks: 5, label: '预警' },
+    { stage: '尽职调查', level: 'watch', risks: 4, label: '关注' },
+    { stage: '投资方案', level: 'watch', risks: 2, label: '关注' },
+    { stage: '投资决策', level: 'warning', risks: 3, label: '预警' },
+    { stage: '协议交割', level: 'normal', risks: 1, label: '正常' },
+    { stage: '投后管理', level: 'critical', risks: 18, label: '重大风险' },
+    { stage: '投资退出', level: 'warning', risks: 10, label: '预警' }
+  ],
+  warningTrend: [
+    ['2025.08', 31, 5], ['09', 34, 6], ['10', 35, 7], ['11', 32, 9],
+    ['12', 38, 6], ['2026.01', 36, 8], ['02', 39, 7], ['03', 41, 5],
+    ['04', 43, 6], ['05', 42, 9], ['06', 46, 12], ['07', 46, 8]
+  ],
+  warningEnterpriseHeatmap: [
+    { unit: '海油工程', l4: 5, l3: 8, l2: 12 },
+    { unit: '国际公司', l4: 2, l3: 5, l2: 6 },
+    { unit: '新能源公司', l4: 1, l3: 2, l2: 4 },
+    { unit: '海油发展', l4: 0, l3: 3, l2: 5 }
+  ],
+  rectificationTasks: [
+    { id: 'RECT-202601001', riskId: 'risk-2', title: '被投资企业经营持续下滑风险', company: '海油工程', owner: '投资管理部', level: 'L4', status: '整改执行', deadline: '2026-09-30', progress: 60, measure: '建立月度经营指标监测机制；完善董事履职报告机制。' },
+    { id: 'RECT-202601002', riskId: 'risk-1', title: '投资收益未达到预期风险', company: '新能源公司', owner: '投资管理部', level: 'L4', status: '整改制定', deadline: '2026-08-30', progress: 30, measure: '开展专项经营分析，制定收益提升方案。' },
+    { id: 'RECT-202601003', riskId: 'risk-3', title: '重大事项报告不及时风险', company: '海油发展', owner: '投资管理部', level: 'L3', status: '整改验证', deadline: '2026-07-30', progress: 90, measure: '完善重大事项报告机制并验证执行效果。' },
+    { id: 'RECT-202601004', riskId: 'risk-4', title: '投资决策论证不足风险', company: '海油发展', owner: '战略发展部', level: 'L3', status: '已关闭', deadline: '2026-05-20', progress: 100, measure: '补充可研报告并完成专家评审。' }
+  ],
+  portfolioSummary: [
+    ['投资项目总数', '356', '个项目 · 覆盖18家企业'],
+    ['股权投资余额', '864', '亿元 · 同比 +12%'],
+    ['投资行业数量', '15', '个重点行业'],
+    ['投资收益率', '8.6', '% · 目标10%'],
+    ['高风险投资项目', '23', '个 · L4 8个'],
+    ['待退出项目', '12', '个项目']
+  ]
+});
+
+</script>
+  <script>
+// Edge 在直接打开本地文件时偶发阻止相对路径 CSS。本兜底样式仅在主样式
+// 未加载时注入，确保下载后离线演示仍可正常展示。
+function ensureOfflineStyles() {
+  if (window.getComputedStyle(document.documentElement).getPropertyValue('--primary').trim()) return;
+
+  const style = document.createElement('style');
+  style.textContent = [
+    '*{box-sizing:border-box}body{margin:0;font-family:"Microsoft YaHei",Arial,sans-serif;background:#f0f4f8;color:#1a2332;font-size:14px}.app-container{display:flex;min-height:100vh}',
+    '.sidebar{width:260px;background:#003d7a;color:#fff;position:fixed;top:0;bottom:0;left:0;z-index:10}.sidebar-header{padding:20px 16px;border-bottom:1px solid #3170aa}.sidebar-logo{display:flex;gap:10px;align-items:center}.logo-icon{width:40px;height:40px;padding-top:12px;background:#00a0e9;border-radius:8px;text-align:center;font-size:11px;font-weight:bold}.sidebar-title{font-size:14px;font-weight:bold;line-height:1.4}.sidebar-subtitle{font-size:11px;color:#d4e9fa;margin-top:8px;line-height:1.5}.nav-menu{padding-top:12px}.nav-item{padding:12px 20px;cursor:pointer;color:#dbeeff;border-left:3px solid transparent}.nav-item:hover,.nav-item.active{color:#fff;background:#145895;border-left-color:#00a0e9}.nav-icon{display:inline-block;width:24px}',
+    '.main-content{margin-left:260px;width:calc(100% - 260px)}.top-header{height:64px;background:#fff;border-bottom:1px solid #dce3ec;padding:0 28px;display:flex;align-items:center;justify-content:space-between}.header-title{font-size:18px;font-weight:bold;color:#003d7a}.header-meta{font-size:12px;color:#5a6a7e}.page-content{padding:24px 28px}.page{display:none}.page.active{display:block}.card,.metric-card,.warning-stat,.control-stat-card,.penetration-card{background:#fff;border:1px solid #dce3ec;border-radius:8px;padding:18px;margin-bottom:20px;box-shadow:0 2px 8px #dce3ec}.card-title{font-size:16px;font-weight:bold;color:#003d7a;border-bottom:2px solid #00a0e9;padding-bottom:10px;margin-bottom:16px}',
+    '.metrics-grid,.warning-summary,.control-stats,.rect-stats{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:16px;margin-bottom:20px}.warning-summary,.rect-stats{grid-template-columns:repeat(4,minmax(0,1fr))}.control-stats{grid-template-columns:repeat(3,minmax(0,1fr))}.metric-card{margin:0}.metric-card .label,.warning-stat .label,.control-stat-card .label{color:#5a6a7e;font-size:13px}.metric-card .value,.warning-stat .num,.control-stat-card .num{font-size:28px;font-weight:bold;color:#003d7a}.metric-card .sub-items{margin-top:10px;font-size:12px;color:#5a6a7e;line-height:1.8}.warning-stat{text-align:center;margin:0}.warning-stat.red .num,.control-stat-card.abnormal .num{color:#e53935}.warning-stat.yellow .num{color:#f9a825}.warning-stat.blue .num{color:#1e88e5}',
+    '.core-chain{background:#003d7a;color:#fff;border-radius:8px;padding:15px;margin-bottom:20px;line-height:2.4}.chain-node{background:#145895;border-radius:14px;padding:4px 10px}.chain-sep{padding:0 6px}.process-map{display:flex;overflow-x:auto;padding:8px 0}.process-stage{min-width:135px;flex:1;cursor:pointer}.process-box{margin:3px;padding:12px 8px;background:#f4f8fc;border:1px solid #dce3ec;border-radius:8px;text-align:center;height:100%}.stage-name{font-weight:bold;color:#003d7a;min-height:42px}.stage-stats{font-size:11px;color:#5a6a7e;line-height:1.7}.num{font-weight:bold}.data-table{width:100%;border-collapse:collapse}.data-table th{background:#eef3f9;color:#003d7a;text-align:left;padding:12px;border-bottom:2px solid #dce3ec}.data-table td{padding:11px;border-bottom:1px solid #dce3ec}.badge{padding:3px 10px;border-radius:12px;font-size:12px}.badge-danger{background:#ffebee;color:#e53935}.badge-warning{background:#fff8e1;color:#e65100}.badge-info{background:#e3f2fd;color:#1e88e5}.badge-success{background:#e8f5e9;color:#43a047}',
+    '.two-col{display:grid;grid-template-columns:280px 1fr;gap:20px}.process-tree{background:#fff;border:1px solid #dce3ec;border-radius:8px;padding:16px}.tree-parent,.tree-child{padding:8px 12px;cursor:pointer}.tree-parent{font-weight:bold;color:#003d7a}.tree-children{display:none;padding-left:18px}.tree-children.show{display:block}.tree-child.active{background:#e3f2fd;border-left:2px solid #00a0e9}.info-grid,.penetration-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.info-item{padding:12px;background:#f8fafc;border:1px solid #dce3ec;border-radius:6px}.info-item.full{grid-column:1/-1}.info-label{font-size:12px;color:#5a6a7e}.info-value{font-weight:bold;margin-top:4px}.scenario-level1,.rect-step{background:#003d7a;color:#fff;padding:13px 18px;font-weight:bold}.scenario-children{border:1px solid #dce3ec}.scenario-item{padding:14px 18px;border-bottom:1px solid #dce3ec}.scenario-item .name{font-weight:bold;color:#003d7a}.scenario-item .desc{font-size:12px;color:#5a6a7e}.matter-types,.portfolio-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}.matter-card,.portfolio-item{padding:16px;border:1px solid #dce3ec;border-radius:8px;background:#f8fafc;text-align:center}.matter-card .type,.portfolio-item .name{font-weight:bold;color:#003d7a}.rect-flow{display:flex;align-items:center;justify-content:center;gap:8px;padding:25px}.rect-step{border-radius:8px}.rect-arrow,.chain-arrow{color:#00a0e9;font-size:18px}.btn{padding:7px 13px;border:0;border-radius:5px;cursor:pointer}.btn-primary{background:#003d7a;color:#fff}.btn-outline{background:#fff;color:#003d7a;border:1px solid #dce3ec}',
+    '@media(max-width:1100px){.metrics-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.two-col,.penetration-grid{grid-template-columns:1fr}}@media(max-width:700px){.sidebar{width:60px}.sidebar-title,.sidebar-subtitle,.nav-item span:not(.nav-icon){display:none}.main-content{margin-left:60px;width:calc(100% - 60px)}.metrics-grid,.warning-summary,.rect-stats,.control-stats,.matter-types,.portfolio-grid{grid-template-columns:1fr}.header-meta{display:none}.page-content{padding:16px}}'
+  ].join('');
+  document.head.appendChild(style);
+}
+
+const App = {
+  currentPage: 'dashboard',
+  selectedRiskId: null,
+
+  menuItems: [
+    { id: 'dashboard', icon: '📊', label: '首页驾驶舱' },
+    { id: 'process', icon: '🔄', label: '投资价值链监测' },
+    { id: 'warnings', icon: '🔔', label: '风险预警中心' },
+    { id: 'penetration', icon: '🔎', label: '风险穿透分析' },
+    { id: 'rectification', icon: '✅', label: '整改闭环管理' },
+    { id: 'portfolio', icon: '📈', label: '投资组合分析' }
+  ],
+
+  pageTitles: {
+    dashboard: '集团股权投资风险态势驾驶舱',
+    process: '投资价值链监测',
+    scenarios: '风险场景管理',
+    warnings: '风险预警中心',
+    penetration: '风险穿透分析',
+    controls: '控制活动管理',
+    matters: '投资事项及股东权利管理',
+    rectification: '整改闭环管理',
+    portfolio: '投资组合分析'
+  },
+
+  init() {
+    this.renderNav();
+    this.renderCoreChain();
+    this.renderDashboardMetrics();
+    this.renderDashboardHeatmap();
+    this.renderProcessMap();
+    this.renderTopRisks();
+    this.renderProcessTree();
+    this.renderValueChainOverview();
+    this.renderRiskMatrix();
+    this.renderScenarios();
+    this.renderWarnings();
+    this.renderWarningCharts();
+    this.renderControls();
+    this.renderMatters();
+    this.renderRectification();
+    this.renderRectKanban();
+    this.renderPortfolio();
+  },
+
+  navigate(pageId, params = {}) {
+    this.currentPage = pageId;
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    const page = document.getElementById('page-' + pageId);
+    if (page) page.classList.add('active');
+
+    document.getElementById('pageTitle').textContent = this.pageTitles[pageId] || pageId;
+
+    document.querySelectorAll('.nav-item').forEach(item => {
+      item.classList.toggle('active', item.dataset.page === pageId);
+    });
+
+    if (pageId === 'penetration' && params.riskId) {
+      this.selectedRiskId = params.riskId;
+      this.renderPenetration(params.riskId);
+      document.getElementById('penetrationBack').style.display = 'block';
+    }
+
+    if (pageId === 'process' && params.activityId) {
+      setTimeout(() => this.selectActivity(params.activityId), 100);
+    }
+
+    if (pageId === 'process' && params.stageId) {
+      setTimeout(() => this.expandStage(params.stageId), 100);
+    }
+  },
+
+  renderNav() {
+    const nav = document.getElementById('navMenu');
+    nav.innerHTML = this.menuItems.map(item => `
+      <div class="nav-item ${item.id === 'dashboard' ? 'active' : ''}" data-page="${item.id}" onclick="App.navigate('${item.id}')">
+        <span class="nav-icon">${item.icon}</span>
+        <span>${item.label}</span>
+      </div>
+    `).join('');
+  },
+
+  renderCoreChain() {
+    const chain = [
+      '国资委46号文一级风险场景',
+      '海油集团投资业务二级风险场景',
+      '投资业务环节',
+      '控制活动',
+      '监测指标',
+      '风险预警',
+      '责任主体',
+      '制度依据',
+      '整改闭环'
+    ];
+    document.getElementById('coreChain').innerHTML = chain.map((node, i) =>
+      (i > 0 ? '<span class="chain-sep">↓</span>' : '') +
+      `<span class="chain-node">${node}</span>`
+    ).join('');
+  },
+
+  renderDashboardMetrics() {
+    document.getElementById('dashboardMetrics').innerHTML = `
+      <div class="metric-card">
+        <div class="label">存量股权投资项目</div>
+        <div class="value">356<span>个</span></div>
+        <div class="sub-items">
+          覆盖所属单位：<strong>18家</strong><br>
+          涉及行业：油气产业链、新能源、海洋工程、装备制造、战略新兴产业
+        </div>
+      </div>
+      <div class="metric-card">
+        <div class="label">股权投资规模</div>
+        <div class="value" style="font-size:22px;">1,286<span>亿元</span></div>
+        <div class="sub-items">
+          累计投资金额：<strong>1,286亿元</strong><br>
+          当前投资余额：<strong>864亿元</strong>
+        </div>
+      </div>
+      <div class="metric-card">
+        <div class="label">重点关注项目</div>
+        <div class="value">23<span>个</span></div>
+        <div class="sub-items">
+          涉及所属单位：<strong>7家</strong><br>
+          境外项目 <strong>6个</strong> · 产业投资 <strong>17个</strong>
+        </div>
+      </div>
+      <div class="metric-card">
+        <div class="label">风险预警情况</div>
+        <div class="value" style="color:var(--danger);">46<span>项</span></div>
+        <div class="sub-items">
+          重大风险：<strong style="color:var(--danger)">8项</strong><br>
+          较大风险：<strong style="color:var(--warning)">15项</strong> · 一般关注：<strong>23项</strong>
+        </div>
+      </div>
+      <div class="metric-card">
+        <div class="label">整改闭环情况</div>
+        <div class="value" style="color:var(--success);">87.1<span>%</span></div>
+        <div class="sub-items">
+          年度整改事项：<strong>62项</strong><br>
+          已完成：<strong>54项</strong> · 超期：<strong style="color:var(--danger)">3项</strong>
+        </div>
+      </div>
+    `;
+  },
+
+  renderProcessMap() {
+    const container = document.getElementById('processMap');
+    const highlightStages = ['strategy', 'approval', 'post-invest'];
+    container.innerHTML = APP_DATA.processStages.map(stage => `
+      <div class="process-stage ${highlightStages.includes(stage.id) ? 'highlight' : ''}"
+           onclick="App.navigate('process', { stageId: '${stage.id}' })">
+        <div class="process-box">
+          <div class="stage-name">${stage.name}</div>
+          <div class="stage-stats">
+            涉及项目：<span class="num">${stage.projects}</span>个<br>
+            关联风险：<span class="num">${stage.risks}</span>项<br>
+            当前预警：<span class="num">${stage.warnings}</span>项<br>
+            控制活动：<span class="num">${stage.controls}</span>项
+          </div>
+        </div>
+      </div>
+    `).join('');
+  },
+
+  renderTopRisks() {
+    const tbody = document.querySelector('#topRisksTable tbody');
+    tbody.innerHTML = APP_DATA.topRisks.map(r => {
+      const rankClass = r.rank <= 3 ? `rank-${r.rank}` : 'rank-other';
+      const levelBadge = r.level === '重大' ? 'badge-danger' : r.level === '较大' ? 'badge-warning' : 'badge-info';
+      return `<tr class="clickable" onclick="App.navigate('penetration', { riskId: '${r.id}' })">
+        <td><span class="rank-num ${rankClass}">${r.rank}</span></td>
+        <td>${r.name}</td>
+        <td>${r.stage}</td>
+        <td>${r.project}</td>
+        <td><span class="badge ${levelBadge}">${r.level}</span></td>
+      </tr>`;
+    }).join('');
+  },
+
+  renderProcessTree() {
+    const container = document.getElementById('processTree');
+    const tree = APP_DATA.processTree;
+    let html = `<div class="tree-node"><div class="tree-parent expanded" style="font-size:14px;">📁 ${tree.name}</div><div class="tree-children show">`;
+
+    tree.children.forEach(node => {
+      html += `
+        <div class="tree-node">
+          <div class="tree-parent" data-stage="${node.id}" onclick="App.toggleTreeNode(this)">
+            <span class="arrow">▶</span> ${node.name}
+          </div>
+          <div class="tree-children">
+            ${node.children.map(child => `
+              <div class="tree-child" data-activity="${child.id}" onclick="App.selectActivity('${child.id}')">
+                ${child.name}
+              </div>
+            `).join('')}
+          </div>
+        </div>`;
+    });
+
+    html += '</div></div>';
+    container.innerHTML = html;
+  },
+
+  toggleTreeNode(el) {
+    el.classList.toggle('expanded');
+    const children = el.nextElementSibling;
+    if (children) children.classList.toggle('show');
+  },
+
+  expandStage(stageId) {
+    const parent = document.querySelector(`.tree-parent[data-stage="${stageId}"]`);
+    if (parent) {
+      parent.classList.add('expanded');
+      const children = parent.nextElementSibling;
+      if (children) children.classList.add('show');
+    }
+  },
+
+  selectActivity(activityId) {
+    document.querySelectorAll('.tree-child').forEach(el => el.classList.remove('active'));
+    const child = document.querySelector(`.tree-child[data-activity="${activityId}"]`);
+    if (child) {
+      child.classList.add('active');
+      const parent = child.closest('.tree-node').querySelector('.tree-parent');
+      if (parent) {
+        parent.classList.add('expanded');
+        parent.nextElementSibling.classList.add('show');
+      }
+    }
+
+    const detail = APP_DATA.businessActivityDetail[activityId];
+    const panel = document.getElementById('processDetail');
+
+    if (!detail) {
+      panel.innerHTML = `<div class="card"><p style="color:var(--text-secondary);padding:40px;text-align:center;">该业务活动详情正在完善中，请选择"经营情况跟踪"查看完整示例。</p></div>`;
+      return;
+    }
+
+    panel.innerHTML = `
+      <div class="breadcrumb">
+        <a onclick="App.navigate('dashboard')">首页</a> <span>›</span>
+        <a onclick="App.navigate('process')">投资业务全过程监测</a> <span>›</span>
+        <span>${detail.stage} › ${detail.activity}</span>
+      </div>
+      <div class="card">
+        <div class="card-title">业务活动信息</div>
+        <div class="info-grid">
+          <div class="info-item"><div class="info-label">业务环节</div><div class="info-value">${detail.stage}</div></div>
+          <div class="info-item"><div class="info-label">业务活动</div><div class="info-value">${detail.activity}</div></div>
+          <div class="info-item full"><div class="info-label">管理目标</div><div class="info-value">${detail.goal}</div></div>
+          <div class="info-item"><div class="info-label">责任部门</div><div class="info-value">${detail.department}</div></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">风险场景关联（国资委46号文）</div>
+        <div class="info-grid">
+          <div class="info-item"><div class="info-label">一级风险场景</div><div class="info-value">${detail.level1Risk}</div></div>
+          <div class="info-item"><div class="info-label">二级风险场景</div><div class="info-value">${detail.level2Risk}</div></div>
+          <div class="info-item full"><div class="info-label">风险描述</div><div class="info-value">${detail.riskDesc}</div></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">控制活动</div>
+        <table class="data-table">
+          <thead><tr><th>控制活动</th><th>控制要求</th><th>频率</th></tr></thead>
+          <tbody>
+            ${detail.controls.map(c => `<tr><td>${c.name}</td><td>${c.requirement}</td><td>${c.frequency}</td></tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+      <div class="card">
+        <div class="card-title">监测规则</div>
+        <div class="rules-section">
+          <div class="rules-group">
+            <div class="rules-title">事前</div>
+            <ul class="rules-list">${detail.rules.before.map(r => `<li>${r}</li>`).join('')}</ul>
+          </div>
+          <div class="rules-group">
+            <div class="rules-title">事中</div>
+            <ul class="rules-list">${detail.rules.during.map(r => `<li>${r}</li>`).join('')}</ul>
+          </div>
+          <div class="rules-group">
+            <div class="rules-title">事后</div>
+            <ul class="rules-list">${detail.rules.after.map(r => `<li>${r}</li>`).join('')}</ul>
+          </div>
+        </div>
+      </div>
+    `;
+  },
+
+  renderScenarios() {
+    const container = document.getElementById('scenarioList');
+    container.innerHTML = APP_DATA.riskScenarios.map((group, idx) => `
+      <div class="scenario-group">
+        <div class="scenario-level1">
+          <span class="num">${idx + 1}</span>
+          ${group.name}
+        </div>
+        <div class="scenario-children">
+          ${group.children.map(child => `
+            <div class="scenario-item" onclick="App.navigate('warnings')">
+              <div class="name">${child.name}</div>
+              <div class="desc">${child.desc}</div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `).join('');
+  },
+
+  renderWarnings() {
+    document.getElementById('warningSummary').innerHTML = `
+      <div class="warning-stat total"><div class="num">46</div><div class="label">风险事项</div></div>
+      <div class="warning-stat red"><div class="num">8</div><div class="label">红色预警</div></div>
+      <div class="warning-stat yellow"><div class="num">15</div><div class="label">黄色预警</div></div>
+      <div class="warning-stat blue"><div class="num">23</div><div class="label">蓝色关注</div></div>
+    `;
+    document.getElementById('warningFilters').innerHTML = `
+      <input type="search" placeholder="搜索风险名称、项目或所属单位" oninput="App.filterWarnings(this.value)">
+      <button class="filter-chip active" onclick="App.filterWarnings('', this)">全部</button>
+      <button class="filter-chip" onclick="App.filterWarnings('红色', this)">L4 重大</button>
+      <button class="filter-chip" onclick="App.filterWarnings('黄色', this)">L3 较大</button>
+      <button class="filter-chip" onclick="App.filterWarnings('蓝色', this)">L2 一般</button>
+      <select><option>全部所属企业</option><option>海油工程</option><option>新能源公司</option><option>国际公司</option></select>
+      <select><option>全部业务阶段</option><option>投后管理</option><option>立项论证</option><option>投资退出</option></select>`;
+
+    const tbody = document.querySelector('#warningsTable tbody');
+    tbody.innerHTML = APP_DATA.warnings.map(w => {
+      const badge = w.status === '红色' ? 'badge-danger' : w.status === '黄色' ? 'badge-warning' : 'badge-info';
+      return `<tr>
+        <td>${w.name}</td>
+        <td>${w.unit}</td>
+        <td>${w.project}</td>
+        <td>${w.indicator}</td>
+        <td><span class="badge ${badge}">${w.status}</span></td>
+        <td><button class="btn btn-primary" style="padding:4px 12px;font-size:12px;" onclick="App.navigate('penetration', { riskId: '${w.id}' })">穿透分析</button></td>
+      </tr>`;
+    }).join('');
+    document.getElementById('warningPagination').innerHTML = '<span>共 46 条风险事件</span><button class="active">1</button><button>2</button><button>3</button><button>›</button>';
+  },
+
+  filterWarnings(keyword, trigger) {
+    if (trigger) document.querySelectorAll('.filter-chip').forEach(x => x.classList.remove('active')), trigger.classList.add('active');
+    const rows = APP_DATA.warnings.filter(x => !keyword || Object.values(x).join(' ').includes(keyword));
+    const tbody = document.querySelector('#warningsTable tbody');
+    tbody.innerHTML = rows.map(w => `<tr class="clickable" onclick="App.navigate('penetration',{riskId:'${w.id}'})"><td>${w.name}</td><td>${w.unit}</td><td>${w.project}</td><td>${w.indicator}</td><td><span class="badge ${w.status === '红色' ? 'badge-danger' : w.status === '黄色' ? 'badge-warning' : 'badge-info'}">${w.status}</span></td><td><button class="btn btn-primary" onclick="event.stopPropagation();App.navigate('penetration',{riskId:'${w.id}'})">穿透分析</button></td></tr>`).join('');
+  },
+
+  renderPenetration(riskId) {
+    const data = APP_DATA.riskPenetration[riskId] || APP_DATA.riskPenetration['risk-1'];
+    const container = document.getElementById('penetrationContent');
+
+    const renderChain = (items) => items.map((item, i) =>
+      (i > 0 ? '<span class="chain-arrow">↓</span>' : '') + `<span class="chain-item">${item}</span>`
+    ).join('');
+
+    container.innerHTML = `
+      <div class="breadcrumb">
+        <a onclick="App.navigate('dashboard')">首页</a> <span>›</span>
+        <a onclick="App.navigate('warnings')">风险预警监测</a> <span>›</span>
+        <span>${data.name}</span>
+      </div>
+
+      <div class="card">
+        <div class="card-title">${data.name}</div>
+        <div class="info-grid">
+          <div class="info-item"><div class="info-label">风险等级</div><div class="info-value"><span class="badge badge-danger">${data.level}</span></div></div>
+          <div class="info-item"><div class="info-label">所属单位</div><div class="info-value">${data.unit}</div></div>
+          <div class="info-item"><div class="info-label">投资项目</div><div class="info-value">${data.project}</div></div>
+          <div class="info-item"><div class="info-label">投资金额</div><div class="info-value">${data.amount}</div></div>
+          <div class="info-item"><div class="info-label">风险敞口</div><div class="info-value" style="color:var(--danger);">${data.exposure}</div></div>
+          <div class="info-item"><div class="info-label">影响</div><div class="info-value" style="color:var(--danger);">${data.impact}</div></div>
+        </div>
+      </div>
+
+      <div class="penetration-grid">
+        <div class="penetration-card">
+          <h4>业务流程穿透</h4>
+          <div class="chain-flow">${renderChain(data.processChain)}</div>
+        </div>
+        <div class="penetration-card">
+          <h4>控制穿透</h4>
+          <div class="penetration-metric"><span class="label">控制活动</span><span class="value">${data.control.name}</span></div>
+          <div class="penetration-metric"><span class="label">控制要求</span><span class="value">${data.control.requirement}</span></div>
+          <div class="penetration-metric"><span class="label">执行状态</span><span class="value danger">${data.control.status}</span></div>
+        </div>
+        <div class="penetration-card">
+          <h4>指标穿透</h4>
+          <div class="penetration-metric"><span class="label">指标</span><span class="value">${data.indicator.name}</span></div>
+          <div class="penetration-metric"><span class="label">目标</span><span class="value">${data.indicator.target}</span></div>
+          <div class="penetration-metric"><span class="label">当前</span><span class="value danger">${data.indicator.current}</span></div>
+          <div class="penetration-metric"><span class="label">偏差</span><span class="value danger">${data.indicator.deviation}</span></div>
+        </div>
+        <div class="penetration-card">
+          <h4>权责穿透</h4>
+          <div class="chain-flow">${renderChain(data.responsibility)}</div>
+        </div>
+        <div class="penetration-card">
+          <h4>制度穿透</h4>
+          <div class="chain-flow">${renderChain(data.policy)}</div>
+        </div>
+        <div class="penetration-card">
+          <h4>业务触点穿透</h4>
+          <div class="chain-flow">${renderChain(data.systems)}</div>
+        </div>
+      </div>
+
+      <div class="emergency-box">
+        <h4>应急行动（${data.emergency.level}）</h4>
+        <ol>${data.emergency.measures.map(m => `<li>${m}</li>`).join('')}</ol>
+        <p style="margin-top:10px;font-size:13px;"><strong>责任部门：</strong>${data.emergency.department}</p>
+      </div>
+      <div class="card" style="margin-top:16px;">
+        <div class="card-title">数据证据链</div>
+        <div class="evidence-line"><span>2026-03<br><b>利润下降20%</b></span><i>↓</i><span>2026-05<br><b>触发黄色预警</b></span><i>↓</i><span>2026-06<br><b>升级${data.level}</b></span><i>↓</i><span>2026-07<br><b>制定整改措施</b></span></div>
+      </div>
+      <div class="card ai-insight">
+        <div class="card-title">Risk AI Assistant · 风险分析助手</div>
+        <p><strong>风险原因总结：</strong>被投资企业经营指标连续两个季度下滑，现有投后监测频率不足，经营异常未及时触发预警。</p>
+        <p><strong>控制优化建议：</strong>增加核心经营指标月度采集；建立自动预警规则；强化董事履职跟踪。</p>
+      </div>
+
+      <div style="margin-top:16px;display:flex;gap:10px;">
+        <button class="btn btn-primary" onclick="App.navigate('process', { activityId: 'post-track' })">查看关联业务流程</button>
+        <button class="btn btn-outline" onclick="App.navigate('process', { activityId: 'post-track' })">查看控制活动</button>
+        <button class="btn btn-outline" onclick="App.navigate('rectification')">查看整改闭环</button>
+      </div>
+    `;
+  },
+
+  renderControls() {
+    const total = 968, valid = 911, abnormal = 57;
+    document.getElementById('controlStats').innerHTML = `
+      <div class="control-stat-card"><div class="num">${total}</div><div class="label">控制活动数量</div></div>
+      <div class="control-stat-card"><div class="num">${valid}</div><div class="label">有效执行</div></div>
+      <div class="control-stat-card abnormal"><div class="num">${abnormal}</div><div class="label">异常</div></div>
+    `;
+
+    const tbody = document.querySelector('#controlsTable tbody');
+    tbody.innerHTML = APP_DATA.controls.map(c => {
+      const badge = c.status === '正常' ? 'badge-success' : 'badge-danger';
+      return `<tr>
+        <td>${c.stage}</td>
+        <td>${c.scenario}</td>
+        <td>${c.activity}</td>
+        <td>${c.requirement}</td>
+        <td>${c.frequency}</td>
+        <td>${c.department}</td>
+        <td><span class="badge ${badge}">${c.status}</span></td>
+      </tr>`;
+    }).join('');
+  },
+
+  renderMatters() {
+    document.getElementById('matterTypes').innerHTML = APP_DATA.matters.map(m => `
+      <div class="matter-card">
+        <div class="type">${m.type}</div>
+        <div class="count">${m.count}项</div>
+        <div class="pending">待跟踪 ${m.pending}项</div>
+      </div>
+    `).join('');
+  },
+
+  renderRectification() {
+    const r = APP_DATA.rectification;
+    document.getElementById('rectStats').innerHTML = `
+      <div class="warning-stat total"><div class="num">${r.total}</div><div class="label">风险发现</div></div>
+      <div class="warning-stat yellow"><div class="num">${r.inProgress}</div><div class="label">整改中</div></div>
+      <div class="warning-stat" style=""><div class="num" style="color:var(--success)">${r.completed}</div><div class="label">已完成</div></div>
+      <div class="warning-stat red"><div class="num">${r.overdue}</div><div class="label">超期事项</div></div>
+    `;
+
+    document.getElementById('rectFlow').innerHTML = r.steps.map((step, i) =>
+      (i > 0 ? '<span class="rect-arrow">↓</span>' : '') + `<div class="rect-step">${step}</div>`
+    ).join('');
+  },
+
+  renderPortfolio() {
+    document.getElementById('portfolioByUnit').innerHTML = APP_DATA.portfolio.byUnit.map(u => `
+      <div class="portfolio-item">
+        <div class="name">${u.name}</div>
+        <div class="stat">投资项目：<strong>${u.projects}个</strong></div>
+        <div class="stat">风险项目：<strong style="color:var(--danger)">${u.riskProjects}个</strong></div>
+      </div>
+    `).join('');
+
+    document.getElementById('portfolioByIndustry').innerHTML = APP_DATA.portfolio.byIndustry.map(i => `
+      <div class="portfolio-item">
+        <div class="name">${i.name}</div>
+        <div class="stat">项目：<strong>${i.projects}个</strong></div>
+      </div>
+    `).join('');
+
+    document.getElementById('portfolioByRegion').innerHTML = APP_DATA.portfolio.byRegion.map(r => `
+      <div class="portfolio-item">
+        <div class="name">${r.name}</div>
+        <div class="stat">项目：<strong>${r.projects}个</strong></div>
+      </div>
+    `).join('');
+    const kpis = document.getElementById('portfolioKpis');
+    if (kpis) kpis.innerHTML = APP_DATA.portfolioSummary.map(item => `
+      <div class="metric-card"><div class="label">${item[0]}</div><div class="value">${item[1]}<span>${item[0].includes('收益') ? '%' : item[0].includes('余额') ? '亿元' : ''}</span></div><div class="sub-items">${item[2]}</div></div>
+    `).join('');
+    document.getElementById('portfolioAnalysis').innerHTML = `
+      <div class="analysis-card"><h4>行业集中度（CR5）</h4><strong>72%</strong><p>前五大行业投资金额占比，风险等级：<span class="badge badge-warning">中等</span></p></div>
+      <div class="analysis-card"><h4>投资收益分析</h4><strong>8.6%</strong><p>优秀项目45个 · 正常220个 · 关注68个 · 亏损23个</p></div>
+      <div class="analysis-card"><h4>组合风险评分</h4><strong>78 分</strong><p>行业、区域、收益、经营四维综合评分：<span class="badge badge-warning">关注</span></p></div>`;
+    document.getElementById('portfolioAi').innerHTML = `<div class="card-title">Investment AI Advisor · 投资组合洞察</div><p><strong>当前判断：</strong>集团投资组合整体稳定，但新能源领域投资集中度较高，部分项目收益低于目标。</p><p><strong>优化建议：</strong>加强低收益项目退出评估；优化新能源投资比例；提高海外投资风险监测频率。</p>`;
+  },
+
+  renderDashboardHeatmap() {
+    const node = document.getElementById('dashboardHeatmap');
+    if (!node) return;
+    node.innerHTML = `<div class="dashboard-heatmap">${APP_DATA.dashboardHeatmap.map((item, i) =>
+      `<button class="heatmap-stage ${item.level}" onclick="App.navigate('process',{stageId:'${APP_DATA.processStages[i].id}'})"><span>${item.stage}</span><b>${item.risks}</b><small>项风险 · ${item.label}</small></button>`
+    ).join('')}</div>`;
+  },
+
+  renderValueChainOverview() {
+    const node = document.getElementById('valueChainOverview');
+    if (!node) return;
+    node.innerHTML = APP_DATA.processStages.map(stage => `<button class="value-chain-card" onclick="App.navigate('process',{stageId:'${stage.id}'})"><strong>${stage.name}</strong><span>${stage.projects} 个项目</span><span>风险 ${stage.risks} 项</span><em class="${stage.warnings > 2 ? 'risk-high' : stage.warnings ? 'risk-mid' : 'risk-low'}">${stage.warnings > 2 ? '存在预警' : stage.warnings ? '存在关注' : '正常运行'}</em></button>`).join('');
+  },
+
+  renderRiskMatrix() {
+    const node = document.getElementById('riskMatrix');
+    if (!node) return;
+    const columns = APP_DATA.processStages.map(x => x.name);
+    const rows = ['战略风险', '投资决策风险', '财务风险', '经营风险', '退出风险'];
+    node.innerHTML = `<table class="matrix-table"><thead><tr><th>风险类型 / 阶段</th>${columns.map(x => `<th>${x}</th>`).join('')}</tr></thead><tbody>${rows.map((row, ri) => `<tr><th>${row}</th>${columns.map((_, ci) => { const score = (ri * 3 + ci * 2) % 5; return `<td><button class="matrix-dot l${score}" title="${row} · ${columns[ci]}" onclick="App.navigate('warnings')">${score ? '●' : ''}</button></td>`; }).join('')}</tr>`).join('')}</tbody></table><p class="matrix-note">点击风险点可进入风险预警中心，悬停查看所属阶段与风险等级。</p>`;
+  },
+
+  renderWarningCharts() {
+    const node = document.getElementById('warningCharts');
+    if (!node) return;
+    const bars = APP_DATA.warningTrend.map(x => `<i style="height:${x[1] * 1.5}px" title="${x[0]}：${x[1]}项"></i>`).join('');
+    node.innerHTML = `<div class="chart-card"><h4>风险等级分布</h4><div class="donut"><b>46</b><span>风险事项</span></div><p><span class="badge badge-danger">L4 8</span> <span class="badge badge-warning">L3 15</span> <span class="badge badge-info">L2 23</span></p></div><div class="chart-card trend"><h4>近12个月风险趋势</h4><div class="bar-chart">${bars}</div><p>本月新增 <strong>12</strong> 项 · 已关闭 <strong>8</strong> 项</p></div><div class="chart-card"><h4>所属企业 × 风险等级</h4>${APP_DATA.warningEnterpriseHeatmap.map(x => `<div class="enterprise-line"><span>${x.unit}</span><b class="badge-danger">L4 ${x.l4}</b><b class="badge-warning">L3 ${x.l3}</b><b class="badge-info">L2 ${x.l2}</b></div>`).join('')}</div>`;
+  },
+
+  renderRectKanban() {
+    const node = document.getElementById('rectKanban');
+    if (!node) return;
+    const cols = ['整改制定', '整改执行', '整改验证', '已关闭'];
+    node.innerHTML = cols.map(col => `<div class="kanban-column"><h4>${col}<span>${APP_DATA.rectificationTasks.filter(x => x.status === col).length}</span></h4>${APP_DATA.rectificationTasks.filter(x => x.status === col).map(x => `<button class="kanban-card" onclick="App.openDrawer('rect','${x.id}')"><span class="badge ${x.level === 'L4' ? 'badge-danger' : 'badge-warning'}">${x.level}</span><strong>${x.title}</strong><small>${x.company} · 截止 ${x.deadline}</small><div class="progress"><i style="width:${x.progress}%"></i></div><em>完成 ${x.progress}%</em></button>`).join('')}</div>`).join('');
+  },
+
+  openDrawer(type, id) {
+    const overlay = document.getElementById('drawerOverlay');
+    const panel = document.getElementById('drawerPanel');
+    const task = type === 'rect' ? APP_DATA.rectificationTasks.find(x => x.id === id) : null;
+    panel.innerHTML = task ? `<div class="drawer-header"><h3>整改任务详情</h3><button onclick="App.closeDrawer()">×</button></div><span class="badge badge-danger">${task.level}</span><h3>${task.title}</h3><div class="drawer-section"><label>责任链</label><p>集团投资管理部 ↓ ${task.company}${task.owner} ↓ 项目负责人</p></div><div class="drawer-section"><label>整改措施</label><p>${task.measure}</p></div><div class="drawer-section"><label>整改进度</label><div class="progress"><i style="width:${task.progress}%"></i></div><p>${task.progress}% · 计划完成：${task.deadline}</p></div><div class="drawer-section"><label>过程记录</label><p>2026-06-15 风险发现<br>2026-06-20 下发整改通知<br>2026-07-05 提交整改方案<br>2026-08-01 完成控制优化</p></div>` : '';
+    overlay.classList.add('show');
+  },
+
+  closeDrawer(event) {
+    if (!event || event.target === document.getElementById('drawerOverlay')) document.getElementById('drawerOverlay').classList.remove('show');
+  }
+};
+
+document.addEventListener('DOMContentLoaded', () => {
+  ensureOfflineStyles();
+  App.init();
+});
+
+</script>
+</body>
+</html>

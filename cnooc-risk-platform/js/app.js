@@ -22,20 +22,18 @@ const App = {
 
   menuItems: [
     { id: 'dashboard', icon: '📊', label: '首页驾驶舱' },
-    { id: 'process', icon: '🔄', label: '投资业务全过程监测' },
-    { id: 'scenarios', icon: '⚠️', label: '风险场景管理' },
-    { id: 'warnings', icon: '🔔', label: '风险预警监测' },
-    { id: 'controls', icon: '🛡️', label: '控制活动管理' },
-    { id: 'matters', icon: '📋', label: '投资事项及股东权利管理' },
+    { id: 'process', icon: '🔄', label: '投资价值链监测' },
+    { id: 'warnings', icon: '🔔', label: '风险预警中心' },
+    { id: 'penetration', icon: '🔎', label: '风险穿透分析' },
     { id: 'rectification', icon: '✅', label: '整改闭环管理' },
     { id: 'portfolio', icon: '📈', label: '投资组合分析' }
   ],
 
   pageTitles: {
     dashboard: '集团股权投资风险态势驾驶舱',
-    process: '投资业务全过程监测',
+    process: '投资价值链监测',
     scenarios: '风险场景管理',
-    warnings: '风险预警监测',
+    warnings: '风险预警中心',
     penetration: '风险穿透分析',
     controls: '控制活动管理',
     matters: '投资事项及股东权利管理',
@@ -47,14 +45,19 @@ const App = {
     this.renderNav();
     this.renderCoreChain();
     this.renderDashboardMetrics();
+    this.renderDashboardHeatmap();
     this.renderProcessMap();
     this.renderTopRisks();
     this.renderProcessTree();
+    this.renderValueChainOverview();
+    this.renderRiskMatrix();
     this.renderScenarios();
     this.renderWarnings();
+    this.renderWarningCharts();
     this.renderControls();
     this.renderMatters();
     this.renderRectification();
+    this.renderRectKanban();
     this.renderPortfolio();
   },
 
@@ -331,6 +334,14 @@ const App = {
       <div class="warning-stat yellow"><div class="num">15</div><div class="label">黄色预警</div></div>
       <div class="warning-stat blue"><div class="num">23</div><div class="label">蓝色关注</div></div>
     `;
+    document.getElementById('warningFilters').innerHTML = `
+      <input type="search" placeholder="搜索风险名称、项目或所属单位" oninput="App.filterWarnings(this.value)">
+      <button class="filter-chip active" onclick="App.filterWarnings('', this)">全部</button>
+      <button class="filter-chip" onclick="App.filterWarnings('红色', this)">L4 重大</button>
+      <button class="filter-chip" onclick="App.filterWarnings('黄色', this)">L3 较大</button>
+      <button class="filter-chip" onclick="App.filterWarnings('蓝色', this)">L2 一般</button>
+      <select><option>全部所属企业</option><option>海油工程</option><option>新能源公司</option><option>国际公司</option></select>
+      <select><option>全部业务阶段</option><option>投后管理</option><option>立项论证</option><option>投资退出</option></select>`;
 
     const tbody = document.querySelector('#warningsTable tbody');
     tbody.innerHTML = APP_DATA.warnings.map(w => {
@@ -344,6 +355,14 @@ const App = {
         <td><button class="btn btn-primary" style="padding:4px 12px;font-size:12px;" onclick="App.navigate('penetration', { riskId: '${w.id}' })">穿透分析</button></td>
       </tr>`;
     }).join('');
+    document.getElementById('warningPagination').innerHTML = '<span>共 46 条风险事件</span><button class="active">1</button><button>2</button><button>3</button><button>›</button>';
+  },
+
+  filterWarnings(keyword, trigger) {
+    if (trigger) document.querySelectorAll('.filter-chip').forEach(x => x.classList.remove('active')), trigger.classList.add('active');
+    const rows = APP_DATA.warnings.filter(x => !keyword || Object.values(x).join(' ').includes(keyword));
+    const tbody = document.querySelector('#warningsTable tbody');
+    tbody.innerHTML = rows.map(w => `<tr class="clickable" onclick="App.navigate('penetration',{riskId:'${w.id}'})"><td>${w.name}</td><td>${w.unit}</td><td>${w.project}</td><td>${w.indicator}</td><td><span class="badge ${w.status === '红色' ? 'badge-danger' : w.status === '黄色' ? 'badge-warning' : 'badge-info'}">${w.status}</span></td><td><button class="btn btn-primary" onclick="event.stopPropagation();App.navigate('penetration',{riskId:'${w.id}'})">穿透分析</button></td></tr>`).join('');
   },
 
   renderPenetration(riskId) {
@@ -410,10 +429,19 @@ const App = {
         <ol>${data.emergency.measures.map(m => `<li>${m}</li>`).join('')}</ol>
         <p style="margin-top:10px;font-size:13px;"><strong>责任部门：</strong>${data.emergency.department}</p>
       </div>
+      <div class="card" style="margin-top:16px;">
+        <div class="card-title">数据证据链</div>
+        <div class="evidence-line"><span>2026-03<br><b>利润下降20%</b></span><i>↓</i><span>2026-05<br><b>触发黄色预警</b></span><i>↓</i><span>2026-06<br><b>升级${data.level}</b></span><i>↓</i><span>2026-07<br><b>制定整改措施</b></span></div>
+      </div>
+      <div class="card ai-insight">
+        <div class="card-title">Risk AI Assistant · 风险分析助手</div>
+        <p><strong>风险原因总结：</strong>被投资企业经营指标连续两个季度下滑，现有投后监测频率不足，经营异常未及时触发预警。</p>
+        <p><strong>控制优化建议：</strong>增加核心经营指标月度采集；建立自动预警规则；强化董事履职跟踪。</p>
+      </div>
 
       <div style="margin-top:16px;display:flex;gap:10px;">
         <button class="btn btn-primary" onclick="App.navigate('process', { activityId: 'post-track' })">查看关联业务流程</button>
-        <button class="btn btn-outline" onclick="App.navigate('controls')">查看控制活动</button>
+        <button class="btn btn-outline" onclick="App.navigate('process', { activityId: 'post-track' })">查看控制活动</button>
         <button class="btn btn-outline" onclick="App.navigate('rectification')">查看整改闭环</button>
       </div>
     `;
@@ -488,6 +516,63 @@ const App = {
         <div class="stat">项目：<strong>${r.projects}个</strong></div>
       </div>
     `).join('');
+    const kpis = document.getElementById('portfolioKpis');
+    if (kpis) kpis.innerHTML = APP_DATA.portfolioSummary.map(item => `
+      <div class="metric-card"><div class="label">${item[0]}</div><div class="value">${item[1]}<span>${item[0].includes('收益') ? '%' : item[0].includes('余额') ? '亿元' : ''}</span></div><div class="sub-items">${item[2]}</div></div>
+    `).join('');
+    document.getElementById('portfolioAnalysis').innerHTML = `
+      <div class="analysis-card"><h4>行业集中度（CR5）</h4><strong>72%</strong><p>前五大行业投资金额占比，风险等级：<span class="badge badge-warning">中等</span></p></div>
+      <div class="analysis-card"><h4>投资收益分析</h4><strong>8.6%</strong><p>优秀项目45个 · 正常220个 · 关注68个 · 亏损23个</p></div>
+      <div class="analysis-card"><h4>组合风险评分</h4><strong>78 分</strong><p>行业、区域、收益、经营四维综合评分：<span class="badge badge-warning">关注</span></p></div>`;
+    document.getElementById('portfolioAi').innerHTML = `<div class="card-title">Investment AI Advisor · 投资组合洞察</div><p><strong>当前判断：</strong>集团投资组合整体稳定，但新能源领域投资集中度较高，部分项目收益低于目标。</p><p><strong>优化建议：</strong>加强低收益项目退出评估；优化新能源投资比例；提高海外投资风险监测频率。</p>`;
+  },
+
+  renderDashboardHeatmap() {
+    const node = document.getElementById('dashboardHeatmap');
+    if (!node) return;
+    node.innerHTML = `<div class="dashboard-heatmap">${APP_DATA.dashboardHeatmap.map((item, i) =>
+      `<button class="heatmap-stage ${item.level}" onclick="App.navigate('process',{stageId:'${APP_DATA.processStages[i].id}'})"><span>${item.stage}</span><b>${item.risks}</b><small>项风险 · ${item.label}</small></button>`
+    ).join('')}</div>`;
+  },
+
+  renderValueChainOverview() {
+    const node = document.getElementById('valueChainOverview');
+    if (!node) return;
+    node.innerHTML = APP_DATA.processStages.map(stage => `<button class="value-chain-card" onclick="App.navigate('process',{stageId:'${stage.id}'})"><strong>${stage.name}</strong><span>${stage.projects} 个项目</span><span>风险 ${stage.risks} 项</span><em class="${stage.warnings > 2 ? 'risk-high' : stage.warnings ? 'risk-mid' : 'risk-low'}">${stage.warnings > 2 ? '存在预警' : stage.warnings ? '存在关注' : '正常运行'}</em></button>`).join('');
+  },
+
+  renderRiskMatrix() {
+    const node = document.getElementById('riskMatrix');
+    if (!node) return;
+    const columns = APP_DATA.processStages.map(x => x.name);
+    const rows = ['战略风险', '投资决策风险', '财务风险', '经营风险', '退出风险'];
+    node.innerHTML = `<table class="matrix-table"><thead><tr><th>风险类型 / 阶段</th>${columns.map(x => `<th>${x}</th>`).join('')}</tr></thead><tbody>${rows.map((row, ri) => `<tr><th>${row}</th>${columns.map((_, ci) => { const score = (ri * 3 + ci * 2) % 5; return `<td><button class="matrix-dot l${score}" title="${row} · ${columns[ci]}" onclick="App.navigate('warnings')">${score ? '●' : ''}</button></td>`; }).join('')}</tr>`).join('')}</tbody></table><p class="matrix-note">点击风险点可进入风险预警中心，悬停查看所属阶段与风险等级。</p>`;
+  },
+
+  renderWarningCharts() {
+    const node = document.getElementById('warningCharts');
+    if (!node) return;
+    const bars = APP_DATA.warningTrend.map(x => `<i style="height:${x[1] * 1.5}px" title="${x[0]}：${x[1]}项"></i>`).join('');
+    node.innerHTML = `<div class="chart-card"><h4>风险等级分布</h4><div class="donut"><b>46</b><span>风险事项</span></div><p><span class="badge badge-danger">L4 8</span> <span class="badge badge-warning">L3 15</span> <span class="badge badge-info">L2 23</span></p></div><div class="chart-card trend"><h4>近12个月风险趋势</h4><div class="bar-chart">${bars}</div><p>本月新增 <strong>12</strong> 项 · 已关闭 <strong>8</strong> 项</p></div><div class="chart-card"><h4>所属企业 × 风险等级</h4>${APP_DATA.warningEnterpriseHeatmap.map(x => `<div class="enterprise-line"><span>${x.unit}</span><b class="badge-danger">L4 ${x.l4}</b><b class="badge-warning">L3 ${x.l3}</b><b class="badge-info">L2 ${x.l2}</b></div>`).join('')}</div>`;
+  },
+
+  renderRectKanban() {
+    const node = document.getElementById('rectKanban');
+    if (!node) return;
+    const cols = ['整改制定', '整改执行', '整改验证', '已关闭'];
+    node.innerHTML = cols.map(col => `<div class="kanban-column"><h4>${col}<span>${APP_DATA.rectificationTasks.filter(x => x.status === col).length}</span></h4>${APP_DATA.rectificationTasks.filter(x => x.status === col).map(x => `<button class="kanban-card" onclick="App.openDrawer('rect','${x.id}')"><span class="badge ${x.level === 'L4' ? 'badge-danger' : 'badge-warning'}">${x.level}</span><strong>${x.title}</strong><small>${x.company} · 截止 ${x.deadline}</small><div class="progress"><i style="width:${x.progress}%"></i></div><em>完成 ${x.progress}%</em></button>`).join('')}</div>`).join('');
+  },
+
+  openDrawer(type, id) {
+    const overlay = document.getElementById('drawerOverlay');
+    const panel = document.getElementById('drawerPanel');
+    const task = type === 'rect' ? APP_DATA.rectificationTasks.find(x => x.id === id) : null;
+    panel.innerHTML = task ? `<div class="drawer-header"><h3>整改任务详情</h3><button onclick="App.closeDrawer()">×</button></div><span class="badge badge-danger">${task.level}</span><h3>${task.title}</h3><div class="drawer-section"><label>责任链</label><p>集团投资管理部 ↓ ${task.company}${task.owner} ↓ 项目负责人</p></div><div class="drawer-section"><label>整改措施</label><p>${task.measure}</p></div><div class="drawer-section"><label>整改进度</label><div class="progress"><i style="width:${task.progress}%"></i></div><p>${task.progress}% · 计划完成：${task.deadline}</p></div><div class="drawer-section"><label>过程记录</label><p>2026-06-15 风险发现<br>2026-06-20 下发整改通知<br>2026-07-05 提交整改方案<br>2026-08-01 完成控制优化</p></div>` : '';
+    overlay.classList.add('show');
+  },
+
+  closeDrawer(event) {
+    if (!event || event.target === document.getElementById('drawerOverlay')) document.getElementById('drawerOverlay').classList.remove('show');
   }
 };
 
