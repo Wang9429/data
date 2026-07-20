@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>海油集团股权投资全生命周期风险穿透监测平台</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <div class="app-container">
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="sidebar-logo">
+          <div class="logo-icon">CNOOC</div>
+          <div class="sidebar-title">海油集团股权投资全生命周期<br>风险穿透监测平台</div>
+        </div>
+        <div class="sidebar-subtitle">基于风险场景、控制活动与业务流程融合的股权投资穿透监管平台</div>
+      </div>
+      <nav class="nav-menu" id="navMenu"></nav>
+    </aside>
+
+    <main class="main-content">
+      <header class="top-header">
+        <div class="header-title" id="pageTitle">集团股权投资风险态势驾驶舱</div>
+        <div class="header-meta">
+          <span>数据更新时间：2026-07-20</span>
+          <span>|</span>
+          <span>模拟数据演示版</span>
+        </div>
+      </header>
+
+      <div class="page-content">
+        <!-- 首页驾驶舱 -->
+        <div class="page active" id="page-dashboard">
+          <div class="core-chain" id="coreChain"></div>
+          <div class="metrics-grid" id="dashboardMetrics"></div>
+          <div class="card">
+            <div class="card-title">股权投资全过程风险地图</div>
+            <div class="process-map" id="processMap"></div>
+          </div>
+          <div class="card">
+            <div class="card-title">重点风险 TOP10</div>
+            <table class="data-table" id="topRisksTable">
+              <thead>
+                <tr>
+                  <th>排名</th>
+                  <th>风险事项</th>
+                  <th>所属业务环节</th>
+                  <th>涉及项目</th>
+                  <th>风险等级</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- 投资业务全过程监测 -->
+        <div class="page" id="page-process">
+          <div class="two-col">
+            <div class="process-tree" id="processTree"></div>
+            <div class="detail-panel" id="processDetail">
+              <div class="card">
+                <p style="color: var(--text-secondary); text-align: center; padding: 60px 20px;">
+                  请在左侧业务流程树中选择业务环节和活动节点<br>
+                  <span style="font-size: 12px;">推荐：投后管理 → 经营情况跟踪</span>
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 风险场景管理 -->
+        <div class="page" id="page-scenarios">
+          <div class="card" style="margin-bottom: 16px; padding: 14px 20px;">
+            <p style="font-size: 13px; color: var(--text-secondary);">
+              <strong style="color: var(--primary);">依据国资委46号文</strong> — 一级风险场景覆盖投资决策、投资实施、投资管理、投资收益、投资退出及境外投资风险六大领域，下设二级风险场景实现精细化穿透管理。
+            </p>
+          </div>
+          <div id="scenarioList"></div>
+        </div>
+
+        <!-- 风险预警监测 -->
+        <div class="page" id="page-warnings">
+          <div class="warning-summary" id="warningSummary"></div>
+          <div class="card">
+            <div class="card-title">风险预警列表</div>
+            <table class="data-table" id="warningsTable">
+              <thead>
+                <tr>
+                  <th>风险事项</th>
+                  <th>所属单位</th>
+                  <th>投资项目</th>
+                  <th>指标异常</th>
+                  <th>状态</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- 风险穿透分析 -->
+        <div class="page" id="page-penetration">
+          <div class="page-actions" id="penetrationBack" style="display:none;">
+            <button class="btn btn-outline" onclick="App.navigate('warnings')">← 返回风险预警列表</button>
+          </div>
+          <div id="penetrationContent">
+            <div class="card">
+              <p style="color: var(--text-secondary); text-align: center; padding: 40px;">
+                请从风险预警列表或重点风险 TOP10 点击风险事项，查看穿透分析详情
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- 控制活动管理 -->
+        <div class="page" id="page-controls">
+          <div class="control-stats" id="controlStats"></div>
+          <div class="card">
+            <div class="card-title">控制活动清单</div>
+            <table class="data-table" id="controlsTable">
+              <thead>
+                <tr>
+                  <th>业务环节</th>
+                  <th>风险场景</th>
+                  <th>控制活动</th>
+                  <th>控制要求</th>
+                  <th>执行频率</th>
+                  <th>责任部门</th>
+                  <th>监测状态</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- 投资事项及股东权利管理 -->
+        <div class="page" id="page-matters">
+          <div class="metrics-grid" style="grid-template-columns: repeat(2, 1fr); margin-bottom: 20px;">
+            <div class="metric-card">
+              <div class="label">重大事项</div>
+              <div class="value">128<span>项</span></div>
+            </div>
+            <div class="metric-card">
+              <div class="label">待跟踪</div>
+              <div class="value" style="color: var(--warning);">12<span>项</span></div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-title">事项类型分布</div>
+            <div class="matter-types" id="matterTypes"></div>
+          </div>
+        </div>
+
+        <!-- 整改闭环管理 -->
+        <div class="page" id="page-rectification">
+          <div class="rect-stats" id="rectStats"></div>
+          <div class="card">
+            <div class="card-title">整改闭环流程</div>
+            <div class="rect-flow" id="rectFlow"></div>
+          </div>
+          <div class="card">
+            <div class="card-title">近期整改事项</div>
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>风险事项</th>
+                  <th>责任部门</th>
+                  <th>整改措施</th>
+                  <th>状态</th>
+                  <th>完成期限</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>投资收益未达到预期风险</td>
+                  <td>投资管理部</td>
+                  <td>开展专项投资评价，制定收益提升方案</td>
+                  <td><span class="badge badge-warning">整改中</span></td>
+                  <td>2026-08-30</td>
+                </tr>
+                <tr>
+                  <td>重大事项报告滞后风险</td>
+                  <td>海油发展</td>
+                  <td>完善重大事项报告机制，明确报送时限</td>
+                  <td><span class="badge badge-success">已完成</span></td>
+                  <td>2026-06-15</td>
+                </tr>
+                <tr>
+                  <td>经营指标偏离风险</td>
+                  <td>新能源公司</td>
+                  <td>加强经营跟踪，每月提交经营分析报告</td>
+                  <td><span class="badge badge-warning">整改中</span></td>
+                  <td>2026-09-15</td>
+                </tr>
+                <tr>
+                  <td>投资决策论证不足风险</td>
+                  <td>战略发展部</td>
+                  <td>补充完善可研报告，组织专家评审</td>
+                  <td><span class="badge badge-success">已完成</span></td>
+                  <td>2026-05-20</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- 投资组合分析 -->
+        <div class="page" id="page-portfolio">
+          <div class="portfolio-section">
+            <div class="card">
+              <div class="card-title">按所属单位</div>
+              <div class="portfolio-grid" id="portfolioByUnit"></div>
+            </div>
+          </div>
+          <div class="portfolio-section">
+            <div class="card">
+              <div class="card-title">按产业领域</div>
+              <div class="portfolio-grid" id="portfolioByIndustry"></div>
+            </div>
+          </div>
+          <div class="portfolio-section">
+            <div class="card">
+              <div class="card-title">按区域</div>
+              <div class="portfolio-grid" id="portfolioByRegion"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="js/data.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
