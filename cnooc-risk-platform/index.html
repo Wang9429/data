@@ -11,7 +11,7 @@
     <aside class="sidebar">
       <div class="sidebar-header">
         <div class="sidebar-logo">
-          <div class="logo-icon">CNOOC</div>
+          <div class="logo-icon">海油</div>
           <div class="sidebar-title">海油集团股权投资全生命周期<br>风险穿透监测平台</div>
         </div>
         <div class="sidebar-subtitle">基于风险场景、控制活动与业务流程融合的股权投资穿透监管平台</div>
@@ -32,19 +32,19 @@
       <div class="page-content">
         <!-- 首页驾驶舱 -->
         <div class="page active" id="page-dashboard">
-          <div class="core-chain" id="coreChain"></div>
           <div class="metrics-grid" id="dashboardMetrics"></div>
+          <div class="dashboard-insights" id="dashboardInsights"></div>
           <div class="card">
             <div class="card-title">投资价值链风险热力地图</div>
             <div class="heatmap-legend"><span class="legend-normal">正常</span><span class="legend-watch">关注</span><span class="legend-warning">预警</span><span class="legend-critical">重大风险</span></div>
             <div id="dashboardHeatmap"></div>
           </div>
           <div class="card">
-            <div class="card-title">股权投资全过程风险地图</div>
-            <div class="process-map" id="processMap"></div>
+            <div class="card-title">投资组合与整改闭环概览</div>
+            <div class="dashboard-bottom" id="dashboardBottom"></div>
           </div>
           <div class="card">
-            <div class="card-title">重点风险 TOP10</div>
+            <div class="card-title">重大风险前十</div>
             <table class="data-table" id="topRisksTable">
               <thead>
                 <tr>
@@ -125,7 +125,7 @@
           <div id="penetrationContent">
             <div class="card">
               <p style="color: var(--text-secondary); text-align: center; padding: 40px;">
-                请从风险预警列表或重点风险 TOP10 点击风险事项，查看穿透分析详情
+                请从风险预警中心或重大风险前十点击风险事项，查看穿透分析详情
               </p>
             </div>
           </div>

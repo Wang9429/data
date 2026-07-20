@@ -876,6 +876,8 @@ body {
 .drawer-overlay { position:fixed; inset:0; background:rgba(0,25,55,.35); z-index:200; visibility:hidden; opacity:0; transition:.2s; }.drawer-overlay.show { visibility:visible; opacity:1; }.drawer { height:100%; width:min(460px,94vw); background:#fff; margin-left:auto; padding:24px; overflow-y:auto; transform:translateX(100%); transition:.25s; box-shadow:-6px 0 24px rgba(0,0,0,.2); }.drawer-overlay.show .drawer { transform:translateX(0); }.drawer-header { display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); margin-bottom:18px; padding-bottom:12px; color:var(--primary); }.drawer-header button { border:0; background:transparent; font-size:28px; cursor:pointer; }.drawer-section { margin-top:20px; padding:12px; background:#f6f9fc; border-radius:6px; }.drawer-section label { color:var(--text-secondary); font-size:12px; }.drawer-section p { font-size:13px; margin-top:6px; line-height:1.8; }
 .portfolio-kpis { grid-template-columns:repeat(6,1fr); }.analysis-card strong { display:block; font-size:30px; color:var(--primary); margin:18px 0 8px; }.analysis-card p,.ai-insight p { font-size:13px; color:var(--text-secondary); line-height:1.8; }.ai-insight { border-left:4px solid var(--accent); }
 .evidence-line { display:flex; align-items:center; justify-content:center; gap:12px; flex-wrap:wrap; }.evidence-line span { padding:10px 15px; background:#f5f8fc; border:1px solid var(--border); border-radius:6px; font-size:12px; text-align:center; }.evidence-line b { color:var(--primary); }.evidence-line i { color:var(--accent); font-style:normal; font-size:18px; }
+.dashboard-insights { display:grid; grid-template-columns:1.15fr 1.35fr 1fr; gap:16px; margin-bottom:20px; }.insight-card { background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius); padding:16px; box-shadow:var(--shadow); }.insight-head { display:flex; align-items:center; justify-content:space-between; font-weight:600; color:var(--primary); border-bottom:1px solid var(--border); padding-bottom:10px; margin-bottom:8px; }.insight-head button { border:0; background:transparent; color:var(--accent); cursor:pointer; font-size:12px; }.unit-risk { display:grid; grid-template-columns:85px 85px 1fr; gap:6px; align-items:center; padding:7px 0; border-bottom:1px dashed var(--border); font-size:12px; }.unit-risk:last-child { border:0; }.unit-risk small { color:var(--text-secondary); }.supervision-list p { margin:9px 0; font-size:12px; color:var(--text-secondary); line-height:1.6; }.supervision-list b { display:inline-flex; align-items:center; justify-content:center; width:20px; height:20px; border-radius:50%; background:var(--primary); color:#fff; margin-right:7px; }.rect-overview { display:grid; grid-template-columns:auto 1fr; gap:3px 10px; align-items:center; margin-top:14px; }.rect-overview strong { font-size:26px; color:var(--danger); }.rect-overview strong:nth-of-type(2) { color:var(--success); }.rect-overview span,.insight-note { font-size:12px; color:var(--text-secondary); }.insight-note { border-top:1px dashed var(--border); padding-top:8px; margin-top:10px; }.dashboard-bottom { display:grid; grid-template-columns:repeat(3,1fr); gap:0; }.bottom-item { padding:8px 20px; border-right:1px solid var(--border); }.bottom-item:last-child { border:0; }.bottom-item span,.bottom-item p { display:block; font-size:12px; color:var(--text-secondary); }.bottom-item strong { display:block; color:var(--primary); font-size:22px; margin:6px 0; }.bottom-item em { color:#e65100; background:#fff8e1; font-size:12px; font-style:normal; padding:2px 8px; border-radius:10px; }
+@media(max-width:1200px){.dashboard-insights{grid-template-columns:1fr}.dashboard-bottom{grid-template-columns:1fr}.bottom-item{border-right:0;border-bottom:1px solid var(--border);padding:12px 0}.bottom-item:last-child{border:0}}@media(max-width:768px){.unit-risk{grid-template-columns:1fr}.unit-risk small{padding-bottom:4px}}
 @media(max-width:1200px){.dashboard-heatmap{grid-template-columns:repeat(3,1fr)}.warning-charts,.portfolio-analysis-row{grid-template-columns:1fr}.portfolio-kpis{grid-template-columns:repeat(3,1fr)}}@media(max-width:768px){.dashboard-heatmap{grid-template-columns:1fr}.heatmap-legend{margin:0 0 12px;justify-content:flex-start;flex-wrap:wrap}.portfolio-kpis{grid-template-columns:1fr}.kanban-board{grid-template-columns:repeat(4,210px)}}
 
 </style>
@@ -885,7 +887,7 @@ body {
     <aside class="sidebar">
       <div class="sidebar-header">
         <div class="sidebar-logo">
-          <div class="logo-icon">CNOOC</div>
+          <div class="logo-icon">海油</div>
           <div class="sidebar-title">海油集团股权投资全生命周期<br>风险穿透监测平台</div>
         </div>
         <div class="sidebar-subtitle">基于风险场景、控制活动与业务流程融合的股权投资穿透监管平台</div>
@@ -906,19 +908,19 @@ body {
       <div class="page-content">
         <!-- 首页驾驶舱 -->
         <div class="page active" id="page-dashboard">
-          <div class="core-chain" id="coreChain"></div>
           <div class="metrics-grid" id="dashboardMetrics"></div>
+          <div class="dashboard-insights" id="dashboardInsights"></div>
           <div class="card">
             <div class="card-title">投资价值链风险热力地图</div>
             <div class="heatmap-legend"><span class="legend-normal">正常</span><span class="legend-watch">关注</span><span class="legend-warning">预警</span><span class="legend-critical">重大风险</span></div>
             <div id="dashboardHeatmap"></div>
           </div>
           <div class="card">
-            <div class="card-title">股权投资全过程风险地图</div>
-            <div class="process-map" id="processMap"></div>
+            <div class="card-title">投资组合与整改闭环概览</div>
+            <div class="dashboard-bottom" id="dashboardBottom"></div>
           </div>
           <div class="card">
-            <div class="card-title">重点风险 TOP10</div>
+            <div class="card-title">重大风险前十</div>
             <table class="data-table" id="topRisksTable">
               <thead>
                 <tr>
@@ -999,7 +1001,7 @@ body {
           <div id="penetrationContent">
             <div class="card">
               <p style="color: var(--text-secondary); text-align: center; padding: 40px;">
-                请从风险预警列表或重点风险 TOP10 点击风险事项，查看穿透分析详情
+                请从风险预警中心或重大风险前十点击风险事项，查看穿透分析详情
               </p>
             </div>
           </div>
@@ -1379,6 +1381,17 @@ const APP_DATA = {
 };
 
 Object.assign(APP_DATA, {
+  valueChainDetails: {
+    strategy: { stage:'投资战略规划', objective:'确保年度股权投资方向、规模和资本配置与集团主责主业及战略布局一致。', department:'集团投资管理部', activities:'投资规划制定、年度投资计划编制、投资规模统筹', risk:'投资方向偏离集团战略风险', scenario:'投资战略管理风险', control:'战略符合性审查、年度投资计划审批、投资规模限额管理', before:'项目所属行业与集团战略布局匹配校验', during:'年度投资完成率超过120%触发超计划预警', after:'开展战略投资项目占比与贡献度评价' },
+    opportunity: { stage:'项目机会识别', objective:'提升投资机会来源质量和项目初筛有效性，防止不符合准入条件项目进入后续流程。', department:'所属企业投资管理部门', activities:'投资机会发现、项目初步筛选、项目入库管理', risk:'项目筛选标准执行不到位风险', scenario:'投资机会管理风险', control:'项目基础信息真实性审核、投资准入标准校验、项目风险初筛', before:'行业、区域及负面清单准入校验', during:'项目停留超过90天未更新触发提示', after:'开展投资机会转化率评价' },
+    approval: { stage:'立项论证', objective:'确保项目必要性、可行性、收益测算和风险边界论证充分，做到看得清、算得准、评得实。', department:'战略发展部', activities:'项目立项申请、投资可行性研究、投资收益测算、风险专项评估', risk:'项目可行性论证不足风险', scenario:'投资决策管理风险', control:'可研报告审核、收益敏感性分析、投资风险专项评估', before:'未完成可研报告禁止进入决策阶段', during:'IRR下降超过20%触发收益风险预警', after:'评价预测收益达成率' },
+    'due-diligence': { stage:'尽职调查', objective:'全面识别目标企业财务、经营、合规和或有事项风险，为投资决策提供可靠依据。', department:'财务部、法律合规部', activities:'财务尽调、业务尽调、法律合规尽调、管理团队评价', risk:'被投资企业财务信息真实性风险', scenario:'投资前风险识别风险', control:'财务专项尽调、债权债务核查、法律合规审查', before:'尽调清单和报告完整性检查', during:'重大风险事项数量及整改完成情况监测', after:'复盘因尽调遗漏导致的风险事件' },
+    plan: { stage:'投资方案制定', objective:'确保交易结构、投资金额、资金安排和退出路径设计合理可控。', department:'投资管理部', activities:'交易结构设计、投资金额确定、退出路径设计', risk:'投资结构设计不合理风险', scenario:'投资方案设计风险', control:'投资方案审查、资金来源审核、退出机制评估', before:'交易结构和资金来源合规性审查', during:'投资金额变动超过方案20%预警', after:'评价退出路径可实现性' },
+    decision: { stage:'投资决策审批', objective:'实现投资权限、审批程序和决策意见落实情况的全过程穿透监督。', department:'集团投资管理部', activities:'投资审批、投资委员会审议、集团授权管理', risk:'超权限投资决策风险', scenario:'投资决策执行风险', control:'投资授权矩阵、审批流程控制、决策事项跟踪', before:'投资金额及事项权限自动校验', during:'审批周期、跳过审批节点等异常监控', after:'开展决策执行与意见落实评价' },
+    signing: { stage:'协议签署与交割', objective:'确保协议条款有效保护集团权益，资金支付与产权交割符合审批及合同约定。', department:'法律合规部、财务部', activities:'协议谈判、合同签署、资金支付、工商变更', risk:'投资协议条款风险', scenario:'投资交易执行风险', control:'协议法律审查、支付条件复核、股权交割清单管理', before:'合同文本及交割条件完整性核验', during:'协议签署及时率、资金支付匹配率监测', after:'股权登记完成率及交割复盘评价' },
+    'post-invest': { stage:'投后管理', objective:'持续跟踪被投资企业经营、财务、重大事项及董事履职，及时识别投资价值变化。', department:'投资管理部', activities:'经营情况跟踪、财务指标监测、重大事项管理、董事履职管理、投资评价', risk:'被投资企业经营持续下滑风险', scenario:'投资运营管理风险', control:'经营指标月度监测、投资收益评价、重大事项报告、年度投后评价', before:'设置收入、利润、资产负债率等风险阈值', during:'净利润下降率、连续亏损季度、现金流实时监测', after:'开展年度投资评价和董事履职评价' },
+    exit: { stage:'投资退出', objective:'把握退出时机、退出收益和退出审批，推动低效无效投资有序退出。', department:'投资管理部', activities:'退出方案制定、退出时机评估、退出实施', risk:'退出收益未达预期风险', scenario:'投资退出管理风险', control:'退出方案论证、退出收益测算、退出审批管理', before:'退出方案和授权事项完整性审核', during:'退出周期超期、收益偏差率监测', after:'评价退出收益及项目损失率' }
+  },
   dashboardHeatmap: [
     { stage: '战略规划', level: 'normal', risks: 1, label: '正常' },
     { stage: '项目获取', level: 'watch', risks: 2, label: '关注' },
@@ -1442,7 +1455,7 @@ const App = {
   selectedRiskId: null,
 
   menuItems: [
-    { id: 'dashboard', icon: '📊', label: '首页驾驶舱' },
+    { id: 'dashboard', icon: '📊', label: '驾驶舱' },
     { id: 'process', icon: '🔄', label: '投资价值链监测' },
     { id: 'warnings', icon: '🔔', label: '风险预警中心' },
     { id: 'penetration', icon: '🔎', label: '风险穿透分析' },
@@ -1451,7 +1464,7 @@ const App = {
   ],
 
   pageTitles: {
-    dashboard: '集团股权投资风险态势驾驶舱',
+    dashboard: '集团股权投资风险监管驾驶舱',
     process: '投资价值链监测',
     scenarios: '风险场景管理',
     warnings: '风险预警中心',
@@ -1464,10 +1477,9 @@ const App = {
 
   init() {
     this.renderNav();
-    this.renderCoreChain();
     this.renderDashboardMetrics();
     this.renderDashboardHeatmap();
-    this.renderProcessMap();
+    this.renderDashboardInsights();
     this.renderTopRisks();
     this.renderProcessTree();
     this.renderValueChainOverview();
@@ -1654,6 +1666,31 @@ const App = {
       const children = parent.nextElementSibling;
       if (children) children.classList.add('show');
     }
+    this.renderStageDetail(stageId);
+  },
+
+  renderStageDetail(stageId, activityName) {
+    const detail = APP_DATA.valueChainDetails[stageId];
+    const panel = document.getElementById('processDetail');
+    if (!detail || !panel) return;
+    panel.innerHTML = `
+      <div class="breadcrumb"><a onclick="App.navigate('dashboard')">驾驶舱</a><span>›</span><span>投资价值链监测 › ${detail.stage}${activityName ? ' › ' + activityName : ''}</span></div>
+      <div class="card"><div class="card-title">${detail.stage}${activityName ? '：' + activityName : '阶段监管要点'}</div>
+        <div class="info-grid">
+          <div class="info-item"><div class="info-label">责任部门</div><div class="info-value">${detail.department}</div></div>
+          <div class="info-item"><div class="info-label">主要业务活动</div><div class="info-value">${detail.activities}</div></div>
+          <div class="info-item full"><div class="info-label">监管目标</div><div class="info-value">${detail.objective}</div></div>
+        </div>
+      </div>
+      <div class="card"><div class="card-title">风险场景与控制活动</div>
+        <div class="info-grid"><div class="info-item"><div class="info-label">一级风险场景</div><div class="info-value">${detail.scenario}</div></div><div class="info-item"><div class="info-label">重点风险</div><div class="info-value" style="color:var(--danger)">${detail.risk}</div></div><div class="info-item full"><div class="info-label">关键控制活动</div><div class="info-value">${detail.control}</div></div></div>
+      </div>
+      <div class="card"><div class="card-title">三层监测环</div><div class="rules-section">
+        <div class="rules-group"><div class="rules-title">事前准入</div><ul class="rules-list"><li>${detail.before}</li></ul></div>
+        <div class="rules-group"><div class="rules-title">事中监测</div><ul class="rules-list"><li>${detail.during}</li></ul></div>
+        <div class="rules-group"><div class="rules-title">事后评价</div><ul class="rules-list"><li>${detail.after}</li></ul></div>
+      </div></div>
+      <div class="card"><div class="card-title">监管提示</div><p style="font-size:13px;color:var(--text-secondary)">该阶段风险、控制活动和监测规则均已纳入集团股权投资穿透监管范围。点击下方按钮可查看关联风险预警。</p><button class="btn btn-primary" style="margin-top:12px" onclick="App.navigate('warnings')">查看关联风险预警</button></div>`;
   },
 
   selectActivity(activityId) {
@@ -1672,7 +1709,8 @@ const App = {
     const panel = document.getElementById('processDetail');
 
     if (!detail) {
-      panel.innerHTML = `<div class="card"><p style="color:var(--text-secondary);padding:40px;text-align:center;">该业务活动详情正在完善中，请选择"经营情况跟踪"查看完整示例。</p></div>`;
+      const stage = APP_DATA.processTree.children.find(x => x.children.some(y => y.id === activityId));
+      if (stage) this.renderStageDetail(stage.id, child ? child.textContent.trim() : '业务活动');
       return;
     }
 
@@ -1855,7 +1893,7 @@ const App = {
         <div class="evidence-line"><span>2026-03<br><b>利润下降20%</b></span><i>↓</i><span>2026-05<br><b>触发黄色预警</b></span><i>↓</i><span>2026-06<br><b>升级${data.level}</b></span><i>↓</i><span>2026-07<br><b>制定整改措施</b></span></div>
       </div>
       <div class="card ai-insight">
-        <div class="card-title">Risk AI Assistant · 风险分析助手</div>
+        <div class="card-title">风险智能分析助手</div>
         <p><strong>风险原因总结：</strong>被投资企业经营指标连续两个季度下滑，现有投后监测频率不足，经营异常未及时触发预警。</p>
         <p><strong>控制优化建议：</strong>增加核心经营指标月度采集；建立自动预警规则；强化董事履职跟踪。</p>
       </div>
@@ -1945,7 +1983,17 @@ const App = {
       <div class="analysis-card"><h4>行业集中度（CR5）</h4><strong>72%</strong><p>前五大行业投资金额占比，风险等级：<span class="badge badge-warning">中等</span></p></div>
       <div class="analysis-card"><h4>投资收益分析</h4><strong>8.6%</strong><p>优秀项目45个 · 正常220个 · 关注68个 · 亏损23个</p></div>
       <div class="analysis-card"><h4>组合风险评分</h4><strong>78 分</strong><p>行业、区域、收益、经营四维综合评分：<span class="badge badge-warning">关注</span></p></div>`;
-    document.getElementById('portfolioAi').innerHTML = `<div class="card-title">Investment AI Advisor · 投资组合洞察</div><p><strong>当前判断：</strong>集团投资组合整体稳定，但新能源领域投资集中度较高，部分项目收益低于目标。</p><p><strong>优化建议：</strong>加强低收益项目退出评估；优化新能源投资比例；提高海外投资风险监测频率。</p>`;
+    document.getElementById('portfolioAi').innerHTML = `<div class="card-title">投资组合智能洞察</div><p><strong>当前判断：</strong>集团投资组合整体稳定，但新能源领域投资集中度较高，部分项目收益低于目标。</p><p><strong>优化建议：</strong>加强低收益项目退出评估；优化新能源投资比例；提高海外投资风险监测频率。</p>`;
+  },
+
+  renderDashboardInsights() {
+    const insights = document.getElementById('dashboardInsights');
+    if (insights) insights.innerHTML = `
+      <div class="insight-card"><div class="insight-head"><span>重点监管单位</span><button onclick="App.navigate('warnings')">查看风险清单 ›</button></div><div class="unit-risk"><b>海油工程</b><span class="badge badge-danger">L4 风险 5项</span><small>经营持续下滑、海外装备项目收益偏离</small></div><div class="unit-risk"><b>国际公司</b><span class="badge badge-warning">L3 风险 5项</span><small>境外运营、东道国政策变化</small></div><div class="unit-risk"><b>新能源公司</b><span class="badge badge-warning">L3 风险 2项</span><small>收益未达预期、利润完成偏低</small></div></div>
+      <div class="insight-card"><div class="insight-head"><span>总部监管重点</span><button onclick="App.navigate('process',{stageId:'post-invest'})">进入投后管理 ›</button></div><div class="supervision-list"><p><b>01</b> 投后管理：18项风险，5项重大风险，需强化月度经营监测</p><p><b>02</b> 投资退出：10项风险，重点关注退出收益偏差和退出周期</p><p><b>03</b> 立项论证：5项风险，关注收益测算及可研论证质量</p></div></div>
+      <div class="insight-card"><div class="insight-head"><span>整改督办提示</span><button onclick="App.navigate('rectification')">进入整改闭环 ›</button></div><div class="rect-overview"><strong>6</strong><span>项超期整改</span><strong>92%</strong><span>验证通过率</span></div><p class="insight-note">重大风险整改周期不超过90天；本月已完成8项风险关闭验证。</p></div>`;
+    const bottom = document.getElementById('dashboardBottom');
+    if (bottom) bottom.innerHTML = `<div class="bottom-item"><span>投资组合风险评分</span><strong>78 分</strong><em>关注</em><p>行业、区域、收益、经营四维综合测算</p></div><div class="bottom-item"><span>资本配置结构</span><strong>864 亿元</strong><p>油气产业链 37% · 海洋工程 25% · 新能源 18%</p></div><div class="bottom-item"><span>本月监管动态</span><strong>新增预警 12 项</strong><p>自动识别 9 项 · 人工上报 3 项 · 已关闭 8 项</p></div>`;
   },
 
   renderDashboardHeatmap() {
