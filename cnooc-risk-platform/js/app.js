@@ -793,10 +793,10 @@ const App = {
   renderRectification() {
     const r = APP_DATA.rectification;
     document.getElementById('rectStats').innerHTML = `
-      <div class="warning-stat total"><div class="num">${r.total}</div><div class="label">风险发现</div></div>
-      <div class="warning-stat yellow"><div class="num">${r.inProgress}</div><div class="label">整改中</div></div>
-      <div class="warning-stat" style=""><div class="num" style="color:var(--success)">${r.completed}</div><div class="label">已完成</div></div>
-      <div class="warning-stat red"><div class="num">${r.overdue}</div><div class="label">超期事项</div></div>
+      <div class="warning-stat total"><div class="num">86</div><div class="label">投资整改事项</div></div>
+      <div class="warning-stat yellow"><div class="num">25</div><div class="label">整改中事项</div></div>
+      <div class="warning-stat"><div class="num" style="color:var(--success)">43</div><div class="label">已闭环事项</div></div>
+      <div class="warning-stat red"><div class="num">12</div><div class="label">逾期整改事项</div></div>
     `;
 
     document.getElementById('rectFlow').innerHTML = r.steps.map((step, i) =>
@@ -825,6 +825,8 @@ const App = {
   },
 
   renderPortfolio() {
+    const title = document.getElementById('portfolioTitle');
+    if (title) title.textContent = '投资结构与组合';
     document.getElementById('portfolioByUnit').innerHTML = APP_DATA.portfolio.byUnit.map(u => `
       <div class="portfolio-item">
         <div class="name">${u.name}</div>
@@ -851,10 +853,10 @@ const App = {
       <div class="metric-card"><div class="label">${item[0]}</div><div class="value">${item[1]}<span>${item[0].includes('收益') ? '%' : item[0].includes('余额') ? '亿元' : ''}</span></div><div class="sub-items">${item[2]}</div></div>
     `).join('');
     document.getElementById('portfolioAnalysis').innerHTML = `
-      <div class="analysis-card"><h4>行业集中度（CR5）</h4><strong>72%</strong><p>前五大行业投资金额占比，风险等级：<span class="badge badge-warning">中等</span></p></div>
-      <div class="analysis-card"><h4>投资收益分析</h4><strong>8.6%</strong><p>优秀项目45个 · 正常220个 · 关注68个 · 亏损23个</p></div>
-      <div class="analysis-card"><h4>组合风险评分</h4><strong>78 分</strong><p>行业、区域、收益、经营四维综合评分：<span class="badge badge-warning">关注</span></p></div>`;
-    document.getElementById('portfolioAi').innerHTML = `<div class="card-title">投资组合智能洞察</div><p><strong>当前判断：</strong>集团投资组合整体稳定，但新能源领域投资集中度较高，部分项目收益低于目标。</p><p><strong>优化建议：</strong>加强低收益项目退出评估；优化新能源投资比例；提高海外投资风险监测频率。</p>`;
+      <div class="analysis-card"><h4>投资主体集中度</h4><strong>38.6%</strong><p>A公司投资金额占比最高；前五大投资主体占集团投资总额 72%，需持续关注集中度变化。</p></div>
+      <div class="analysis-card"><h4>区域与类型集中度</h4><strong>26.4%</strong><p>境外投资占比 26.4%；固定资产投资、股权投资、并购投资按类型穿透查看。</p></div>
+      <div class="analysis-card"><h4>项目健康度</h4><strong>47 项</strong><p>风险项目47项，其中收益偏离项目31项、整改未闭环项目18项。</p></div>`;
+    document.getElementById('portfolioAi').innerHTML = `<div class="card-title">投资项目穿透入口</div><p><strong>项目总数穿透：</strong>集团 → 法人层级 → 具体法人 → 投资项目 → 风险场景。</p><p><strong>组合监管结论：</strong>可按法人层级、业务板块、区域、投资类型四个维度识别投资集中度和风险项目分布。</p><button class="btn btn-primary" onclick="App.navigate('penetration',{riskId:'risk-2'})">查看风险项目穿透示例</button>`;
   },
 
   renderDashboardInsights() {
