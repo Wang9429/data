@@ -881,6 +881,7 @@ body {
 .value-chain-card strong,.value-chain-card span,.value-chain-card em { display:block; font-size:12px; margin-bottom:5px; }.value-chain-card strong { color:var(--primary); font-size:13px; }.value-chain-card em { font-style:normal; font-weight:600; }.risk-high { color:var(--danger); }.risk-mid { color:#e65100; }.risk-low { color:var(--success); }
 .risk-matrix-wrap { overflow-x:auto; }.matrix-table { width:100%; border-collapse:collapse; font-size:12px; text-align:center; }.matrix-table th,.matrix-table td { padding:8px; border:1px solid var(--border); white-space:nowrap; }.matrix-table th { color:var(--primary); background:#f5f8fc; }.matrix-dot { border:0; background:transparent; cursor:pointer; font-size:18px; min-width:28px; }.matrix-dot.l1 { color:#f9a825; }.matrix-dot.l2 { color:#f57c00; }.matrix-dot.l3,.matrix-dot.l4 { color:#e53935; }.matrix-note { font-size:12px; color:var(--text-secondary); margin-top:10px; }
 .warning-charts,.portfolio-analysis-row { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin-bottom:20px; }.chart-card,.analysis-card { background:#fff; border:1px solid var(--border); border-radius:var(--radius); box-shadow:var(--shadow); padding:16px; min-height:170px; }.chart-card h4,.analysis-card h4 { color:var(--primary); margin-bottom:10px; }.donut { width:82px; height:82px; border:14px solid #e3f2fd; border-top-color:var(--danger); border-right-color:var(--warning); border-radius:50%; margin:8px auto; text-align:center; padding-top:14px; }.donut b,.donut span { display:block; }.donut span { font-size:10px; color:var(--text-secondary); }.bar-chart { height:100px; display:flex; align-items:end; gap:6px; border-bottom:1px solid var(--border); }.bar-chart i { flex:1; background:linear-gradient(#00a0e9,#003d7a); min-width:8px; border-radius:3px 3px 0 0; }.enterprise-line { display:grid; grid-template-columns:1fr 52px 52px 52px; gap:5px; font-size:11px; align-items:center; margin:8px 0; }.enterprise-line b { text-align:center; border-radius:3px; padding:3px; }
+.alert-focus { display:flex; align-items:center; gap:12px; background:#fff6f6; border-left:3px solid var(--danger); padding:12px; }.alert-focus>b { font-size:34px; color:var(--danger); }.alert-focus strong,.alert-focus span { display:block; }.alert-focus strong { font-size:13px; }.alert-focus span,.chart-card small { font-size:11px; color:var(--text-secondary); }.warning-progress p { display:flex; justify-content:space-between; margin:8px 0; padding-bottom:5px; border-bottom:1px dashed var(--border); font-size:12px; color:var(--text-secondary); }.warning-progress b { color:var(--primary); }
 .filter-bar { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px; }.filter-bar input,.filter-bar select { border:1px solid var(--border); border-radius:5px; padding:7px 10px; font-size:12px; }.filter-bar input { min-width:230px; }.filter-chip,.pagination button { background:#fff; border:1px solid var(--border); color:var(--text-secondary); padding:6px 11px; border-radius:5px; cursor:pointer; }.filter-chip.active,.pagination button.active { color:#fff; background:var(--primary); border-color:var(--primary); }.pagination { margin-top:16px; display:flex; gap:6px; align-items:center; justify-content:flex-end; font-size:12px; color:var(--text-secondary); }
 .kanban-board { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; overflow-x:auto; }.kanban-column { min-width:210px; background:#f5f8fc; border-radius:8px; padding:10px; }.kanban-column h4 { color:var(--primary); display:flex; justify-content:space-between; margin-bottom:10px; }.kanban-column h4 span { background:#dce8f4; border-radius:12px; padding:0 7px; font-size:12px; }.kanban-card { width:100%; background:#fff; border:1px solid var(--border); border-radius:6px; text-align:left; padding:11px; margin-bottom:8px; cursor:pointer; box-shadow:0 1px 4px rgba(0,45,98,.08); }.kanban-card strong,.kanban-card small,.kanban-card em { display:block; margin-top:6px; font-size:12px; }.kanban-card em { color:var(--text-secondary); font-style:normal; }.progress { height:6px; background:#e7edf4; border-radius:8px; overflow:hidden; margin-top:8px; }.progress i { display:block; height:100%; background:linear-gradient(90deg,var(--accent),var(--primary)); border-radius:8px; }
 .drawer-overlay { position:fixed; inset:0; background:rgba(0,25,55,.35); z-index:200; visibility:hidden; opacity:0; transition:.2s; }.drawer-overlay.show { visibility:visible; opacity:1; }.drawer { height:100%; width:min(460px,94vw); background:#fff; margin-left:auto; padding:24px; overflow-y:auto; transform:translateX(100%); transition:.25s; box-shadow:-6px 0 24px rgba(0,0,0,.2); }.drawer-overlay.show .drawer { transform:translateX(0); }.drawer-header { display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); margin-bottom:18px; padding-bottom:12px; color:var(--primary); }.drawer-header button { border:0; background:transparent; font-size:28px; cursor:pointer; }.drawer-section { margin-top:20px; padding:12px; background:#f6f9fc; border-radius:6px; }.drawer-section label { color:var(--text-secondary); font-size:12px; }.drawer-section p { font-size:13px; margin-top:6px; line-height:1.8; }
@@ -894,6 +895,7 @@ body {
 .dashboard-drilldown-row { display:grid; grid-template-columns:1.35fr 1fr; gap:20px; }.kri-board { display:grid; grid-template-columns:repeat(3,1fr); gap:9px; }.kri-card { text-align:left; border:1px solid var(--border); background:#f8fafc; border-radius:7px; padding:10px; cursor:pointer; }.kri-card:hover,.scenario-drill-card:hover { border-color:var(--accent); box-shadow:var(--shadow); transform:translateY(-1px); }.kri-card span,.kri-card b,.kri-card strong,.kri-card em,.kri-card small { display:block; }.kri-card span,.kri-card small { color:var(--text-secondary); font-size:10px; }.kri-card b { color:var(--primary); font-size:12px; line-height:1.45; min-height:35px; }.kri-card strong { color:var(--danger); font-size:20px; margin-top:3px; }.kri-card em { font-style:normal; font-size:11px; color:#e65100; }.kri-card em.critical { color:var(--danger); }.scenario-board { display:grid; grid-template-columns:repeat(2,1fr); gap:9px; }.scenario-drill-card { text-align:left; border:1px solid var(--border); background:#fff; border-radius:7px; padding:10px; cursor:pointer; }.scenario-drill-card b,.scenario-drill-card small,.scenario-drill-card em { display:block; }.scenario-drill-card b { color:var(--primary); font-size:12px; margin:6px 0 2px; }.scenario-drill-card p { margin:0; color:var(--text-secondary); font-size:11px; line-height:1.5; min-height:33px; }.scenario-drill-card small { color:var(--text-secondary); font-size:10px; margin-top:5px; }.scenario-drill-card em { color:var(--accent); font-size:11px; font-style:normal; margin-top:4px; }
 .domain-context-card { min-height:155px; padding:16px; border:1px dashed #9cc8e8; background:#f4faff; border-radius:7px; color:var(--text-secondary); }.domain-context-card b,.domain-context-card span,.domain-context-card small { display:block; }.domain-context-card b { color:var(--primary); font-size:14px; }.domain-context-card p { font-size:12px; line-height:1.7; }.domain-context-card span { color:var(--danger); font-weight:600; }.domain-context-card small { font-size:11px; margin-top:8px; }.domain-context-card .btn { margin-top:10px; }
 .domain-module-page { padding-top:2px; }.domain-module-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; }.domain-module-grid>div { border:1px solid var(--border); border-top:3px solid var(--primary); padding:14px; background:#f8fafc; }.domain-module-grid b { color:var(--primary); font-size:13px; }.domain-module-grid p,.domain-module-note { color:var(--text-secondary); font-size:13px; line-height:1.8; }
+.domain-cockpit-metrics { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:20px; }.domain-cockpit-metrics>div { background:#fff; border:1px solid var(--border); border-top:3px solid var(--accent); border-radius:6px; padding:18px; box-shadow:var(--shadow); }.domain-cockpit-metrics b,.domain-cockpit-metrics span { display:block; }.domain-cockpit-metrics b { font-size:28px; color:var(--primary); }.domain-cockpit-metrics span { font-size:12px; color:var(--text-secondary); margin-top:5px; }
 .entity-penetration { text-align:center; }.entity-root,.entity-node,.entity-child { display:inline-block; border:1px solid #bfd5e7; background:#f6fbff; border-radius:6px; padding:9px 16px; min-width:150px; }.entity-root { color:#fff; background:var(--primary); border-color:var(--primary); }.entity-root b,.entity-root span,.entity-node b,.entity-node span,.entity-child b,.entity-child span { display:block; }.entity-root span,.entity-node span,.entity-child span { font-size:11px; margin-top:2px; color:var(--text-secondary); }.entity-root span { color:#d7efff; }.entity-branches { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-top:12px; }.entity-branches>div>i { display:block; color:var(--accent); font-style:normal; margin:4px; }.entity-node { color:var(--primary); background:#edf7fd; }.entity-child { display:block; margin:8px auto; background:#fff; font-size:12px; }.chain-description { margin-top:14px; background:#f5f8fc; border-left:3px solid var(--accent); padding:10px; text-align:left; color:var(--text-secondary); font-size:12px; line-height:1.7; }
 .kri-detail-hero { background:linear-gradient(110deg,var(--primary-dark),var(--primary)); color:#fff; border-radius:var(--radius); padding:22px; display:flex; justify-content:space-between; margin-bottom:20px; }.kri-detail-hero span,.kri-detail-hero p,.kri-detail-hero small { font-size:12px; opacity:.82; }.kri-detail-hero h2 { margin:4px 0; font-size:22px; }.kri-detail-hero>div:last-child { text-align:right; }.kri-detail-hero b { display:block; font-size:34px; }.kri-detail-hero em { display:block; font-style:normal; color:#ffdb77; font-size:13px; }.kri-detail-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:20px; }.detail-list p { font-size:13px; color:var(--text-secondary); line-height:1.7; margin:8px 0; }.detail-list b { color:var(--text-primary); }.kri-lineage { display:flex; gap:8px; align-items:center; justify-content:center; flex-wrap:wrap; }.kri-lineage span { text-align:center; border:1px solid var(--border); background:#f8fafc; padding:9px; border-radius:6px; font-size:11px; color:var(--text-secondary); }.kri-lineage span b { display:block; color:var(--primary); font-size:12px; margin-top:2px; }.kri-lineage i { color:var(--accent); font-style:normal; font-size:20px; }
 .risk-analysis-banner { display:grid; grid-template-columns:180px 1fr 1.1fr; gap:16px; padding:18px; border:1px solid #f1d4d4; background:linear-gradient(120deg,#fff9f9,#fff); border-radius:var(--radius); margin-bottom:20px; }.risk-score { border-right:1px solid #f0dede; }.risk-score span,.risk-score em { display:block; font-size:12px; color:var(--text-secondary); font-style:normal; }.risk-score strong { display:block; color:var(--danger); font-size:44px; line-height:1.2; }.risk-score strong small { font-size:14px; }.risk-score em { color:var(--danger); font-weight:600; }.score-breakdown { display:grid; grid-template-columns:repeat(2,1fr); gap:9px 18px; align-content:center; }.score-breakdown div { display:grid; grid-template-columns:1fr auto; gap:4px; font-size:12px; color:var(--text-secondary); }.score-breakdown b { color:var(--text-primary); }.score-breakdown i { grid-column:1/-1; height:5px; background:linear-gradient(90deg,var(--warning),var(--danger)); border-radius:6px; }.risk-rule { align-self:center; border-left:3px solid var(--danger); padding-left:14px; }.risk-rule span,.risk-rule strong,.risk-rule small { display:block; }.risk-rule span,.risk-rule small { font-size:12px; color:var(--text-secondary); }.risk-rule strong { font-size:14px; color:var(--text-primary); margin:5px 0; }
@@ -909,6 +911,7 @@ body {
 @media(max-width:800px){.topic-banner{align-items:flex-start;flex-direction:column}.topic-dimensions{padding-left:0;border-left:0;border-top:1px solid rgba(255,255,255,.25);padding-top:10px}}
 @media(max-width:1100px){.dashboard-drilldown-row,.kri-detail-grid{grid-template-columns:1fr}.kri-board{grid-template-columns:repeat(2,1fr)}}@media(max-width:600px){.kri-board,.scenario-board{grid-template-columns:1fr}.kri-detail-hero{display:block}.kri-detail-hero>div:last-child{text-align:left;margin-top:12px}.domain-tabs-bar{padding:0 12px}.kri-lineage{justify-content:flex-start}.kri-lineage i{transform:rotate(90deg);width:100%;text-align:center}}
 @media(max-width:900px){.domain-module-grid{grid-template-columns:repeat(2,1fr)}}@media(max-width:600px){.domain-module-grid{grid-template-columns:1fr}}
+@media(max-width:800px){.domain-cockpit-metrics{grid-template-columns:repeat(2,1fr)}}@media(max-width:500px){.domain-cockpit-metrics{grid-template-columns:1fr}}
 @media(max-width:900px){.entity-branches{grid-template-columns:repeat(2,1fr)}}@media(max-width:600px){.entity-branches{grid-template-columns:1fr}}
 @media(max-width:900px){.gateway-domains{grid-template-columns:repeat(2,1fr)}}@media(max-width:600px){.domain-gateway{padding:28px 20px}.gateway-header{margin-bottom:30px}.gateway-intro h2{font-size:24px}.gateway-domains{grid-template-columns:1fr}}
 /* 集团监管门户风格：深蓝标题栏与白色领域卡片 */
@@ -1089,10 +1092,10 @@ body {
                   <th>指标类型</th>
                   <th>对应风险场景</th>
                   <th>集团KRI</th>
-                  <th>阈值 / 触发条件</th>
-                  <th>监测频率</th>
-                  <th>数据来源</th>
-                  <th>控制方式</th>
+                  <th>最近执行</th>
+                  <th>执行状态</th>
+                  <th>异常命中</th>
+                  <th>控制结果</th>
                 </tr>
               </thead>
               <tbody></tbody>
@@ -1608,7 +1611,7 @@ const App = {
     const page = document.getElementById('page-' + pageId);
     if (page) page.classList.add('active');
 
-    if (this.currentDomain !== 'investment' && ['process', 'scenarios', 'controls', 'warnings', 'rectification', 'portfolio'].includes(pageId)) {
+    if (this.currentDomain !== 'investment' && ['dashboard', 'process', 'scenarios', 'controls', 'warnings', 'rectification', 'portfolio'].includes(pageId)) {
       this.renderNonInvestmentDomainPage(pageId);
     }
 
@@ -1745,6 +1748,11 @@ const App = {
       if (page) page.innerHTML = this.domainPageTemplates[id];
     });
     this.domainPageTemplates = {};
+    this.renderDashboardMetrics();
+    this.renderGroupKriBoard();
+    this.renderDashboardInsights();
+    this.renderDashboardHeatmap();
+    this.renderTopRisks();
     this.renderProcessTree();
     this.renderValueChainOverview();
     this.renderRiskMatrix();
@@ -1763,7 +1771,21 @@ const App = {
     const domain = APP_DATA.regulationDomains.find(x => x.id === this.currentDomain);
     if (!page || !domain) return;
     if (!this.domainPageTemplates[pageId]) this.domainPageTemplates[pageId] = page.innerHTML;
-    const moduleNames = { process:'监管对象与关键流程', scenarios:'风险场景', controls:'KRI与控制规则', warnings:'预警中心', rectification:'整改闭环', portfolio:'监管分析台账' };
+    const moduleNames = { dashboard:'驾驶舱', process:'监管对象与关键流程', scenarios:'风险场景', controls:'KRI与控制规则', warnings:'预警中心', rectification:'整改闭环', portfolio:'监管分析台账' };
+    if (pageId === 'dashboard') {
+      const metrics = {
+        finance:[['资金与预算异常','12项'],['重点法人主体','4家'],['重大预警','2项'],['整改完成率','91%']],
+        equity:[['产权登记事项','38项'],['股权变动事项','9项'],['重大预警','1项'],['登记完整率','97%']],
+        contract:[['重大合同事项','126项'],['履约异常事项','9项'],['重大预警','2项'],['审核及时率','96%']],
+        supply:[['重点采购事项','154项'],['供应风险预警','14项'],['重大预警','3项'],['准入覆盖率','98%']],
+        compensation:[['薪酬分配事项','32项'],['异常事项','5项'],['重大预警','0项'],['合规覆盖率','99%']],
+        overseas:[['境外法人主体','6家'],['重点事项','48项'],['重大预警','3项'],['合规完成率','94%']],
+        financial:[['金融业务事项','56项'],['风险预警','7项'],['重大预警','1项'],['规则覆盖率','96%']],
+        technology:[['科技项目','86项'],['成果转化事项','21项'],['重大预警','1项'],['目标达成率','89%']]
+      }[domain.id] || [];
+      page.innerHTML = `<div class="domain-module-page"><div class="topic-banner"><div><strong>${domain.name} · 集团监管驾驶舱</strong><span>面向集团领导和归口管理部门，展示${domain.name}领域核心监管数据、重点法人主体与重大事项。</span></div></div><div class="domain-cockpit-metrics">${metrics.map(x => `<div><b>${x[1]}</b><span>${x[0]}</span></div>`).join('')}</div><div class="dashboard-insights"><div class="insight-card"><div class="insight-head"><span>国资监管关注</span></div><p class="domain-module-note">聚焦${domain.name}领域重大事项合规性、监管程序履行、风险预警与整改闭环情况。</p></div><div class="insight-card"><div class="insight-head"><span>集团监管重点</span></div><p class="domain-module-note">按 A、B、C、D 公司汇总关键指标、异常事项和责任落实，识别高风险法人主体。</p></div><div class="insight-card"><div class="insight-head"><span>领域特色关注</span></div><p class="domain-module-note">${domain.desc}。按领域规则识别异常并形成预警、督办、整改闭环。</p></div></div></div>`;
+      return;
+    }
     page.innerHTML = `<div class="domain-module-page"><div class="topic-banner"><div><strong>${domain.name} · ${moduleNames[pageId]}</strong><span>当前内容仅展示${domain.name}领域的集团监管口径，不混入投资管理专题数据。</span></div></div><div class="card"><div class="card-title">${domain.name}领域集团监管视图</div><div class="domain-module-grid"><div><b>监管对象</b><p>A、B、C、D公司及纳入集团监管范围的相关法人主体。</p></div><div><b>关键事项</b><p>${domain.desc}相关的重大事项、异常事件、控制规则执行与整改状态。</p></div><div><b>集团KRI</b><p>按法人主体、事项类型和风险等级汇总，形成预警、督办和整改闭环。</p></div><div><b>穿透方式</b><p>领域 → 法人主体 → 事项 / KRI → 控制规则 → 预警 → 整改。</p></div></div></div><div class="card"><div class="card-title">当前监管提示</div><p class="domain-module-note">本演示对${domain.name}领域提供集团级模块框架。投资管理领域已配置完整的业务价值链、KRI、控制规则和风险详情示例，可通过顶部领域 Tab 切换查看。</p></div></div>`;
   },
 
@@ -1987,7 +2009,7 @@ const App = {
       <div class="scenario-group">
         <div class="scenario-level1"><span class="num">${idx + 1}</span>${group.name}<small>集团级风险场景分类</small></div>
         <div class="scenario-children">
-          ${group.children.map((child, ci) => `<div class="scenario-item"><div><div class="name">${child.name}</div><div class="desc">${child.desc}</div></div><div class="scenario-meta"><span>适用：${idx < 2 ? '固定资产投资、股权投资' : idx === 5 ? '境外投资' : '股权投资、固定资产投资'}</span><span>主体：A、B、C、D公司</span><button class="btn btn-outline" onclick="App.navigate('controls')">查看规则配置</button></div></div>`).join('')}
+          ${group.children.map((child, ci) => `<div class="scenario-item"><div><div class="name">${child.name}</div><div class="desc">${child.desc}</div></div><div class="scenario-meta"><span>适用：${idx < 2 ? '固定资产投资、股权投资' : idx === 5 ? '境外投资' : '股权投资、固定资产投资'}</span><span>配置规则：${ci % 2 ? '预警阈值 + 人工复核' : '前置校验 + 流程阻断'}</span><span>主体：A、B、C、D公司</span><button class="btn btn-outline" onclick="App.navigate('controls')">查看规则执行</button></div></div>`).join('')}
         </div>
       </div>`).join('');
   },
@@ -2208,10 +2230,10 @@ const App = {
         <td>${kri.category}</td>
         <td>${kri.scenario}</td>
         <td>${kri.name}</td>
-        <td>${kri.threshold}</td>
-        <td>关键节点实时 / 月度汇总</td>
-        <td>${kri.source}</td>
-        <td><span class="badge ${badge}">${ruleType}</span></td>
+        <td>2026-07-20 08:30</td>
+        <td><span class="badge badge-success">已执行</span></td>
+        <td>${index % 2 === 0 ? '<span class="badge badge-danger">命中 1 项</span>' : '<span class="badge badge-success">未命中</span>'}</td>
+        <td><span class="badge ${badge}">${ruleType} · ${index % 2 === 0 ? '已派单' : '正常放行'}</span></td>
       </tr>`;
     }).join('');
   },
@@ -2314,7 +2336,16 @@ const App = {
   renderValueChainOverview() {
     const node = document.getElementById('valueChainOverview');
     if (!node) return;
-    node.innerHTML = APP_DATA.processStages.map(stage => `<button class="value-chain-card" onclick="App.navigate('process',{stageId:'${stage.id}'})"><strong>${stage.name}</strong><span>${stage.projects} 项监管对象</span><span>关键事项：${stage.controls} 项</span><em class="${stage.warnings > 2 ? 'risk-high' : stage.warnings ? 'risk-mid' : 'risk-low'}">${stage.warnings > 2 ? '重点关注' : stage.warnings ? '持续跟踪' : '过程受控'}</em></button>`).join('') + `<div class="chain-description">全链条穿透围绕股权投资与固定资产投资，从战略规划、决策审批、合同交割、项目建设 / 投后管理到退出后评价，逐节点关联法人主体、审批事项、合同资金、实施进度和责任主体。</div>`;
+    node.innerHTML = APP_DATA.processStages.map(stage => `<button class="value-chain-card" onclick="App.openStageDrawer('${stage.id}')"><strong>${stage.name}</strong><span>${stage.projects} 项监管对象</span><span>关键事项：${stage.controls} 项</span><em class="${stage.warnings > 2 ? 'risk-high' : stage.warnings ? 'risk-mid' : 'risk-low'}">${stage.warnings > 2 ? '重点关注' : stage.warnings ? '持续跟踪' : '过程受控'}</em></button>`).join('') + `<div class="chain-description">全链条穿透围绕股权投资与固定资产投资，从战略规划、决策审批、合同交割、项目建设 / 投后管理到退出后评价，逐节点关联法人主体、审批事项、合同资金、实施进度和责任主体。点击任一环节可查看该环节的监管对象、关键事项与责任链。</div>`;
+  },
+
+  openStageDrawer(stageId) {
+    const detail = APP_DATA.valueChainDetails[stageId];
+    const overlay = document.getElementById('drawerOverlay');
+    const panel = document.getElementById('drawerPanel');
+    if (!detail || !overlay || !panel) return;
+    panel.innerHTML = `<div class="drawer-header"><h3>${detail.stage} · 环节监管详情</h3><button onclick="App.closeDrawer()">×</button></div><div class="drawer-section"><label>监管对象与事项</label><p><b>适用法人主体：</b>A、B、C、D公司及相关项目公司<br><b>关键业务活动：</b>${detail.activities}<br><b>监管目标：</b>${detail.objective}</p></div><div class="drawer-section"><label>关键流程资料</label><p>立项/审批材料、投资方案、合同及付款资料、实施或投后经营数据、责任落实记录。</p></div><div class="drawer-section"><label>权责链</label><p>集团投资管理部（规则与督办） → 所属企业投资管理部门（审核与跟踪） → 项目负责人（执行与报送） → 相关业务部门（资料与数据）。</p></div><div class="drawer-section"><label>环节状态</label><p>当前重点事项：${detail.risk}<br>涉及控制点：${detail.controls} 类<br>可在 KRI 与控制规则模块查看对应监测规则，在预警中心查看已触发事件。</p></div>`;
+    overlay.classList.add('show');
   },
 
   renderRiskMatrix() {
@@ -2327,7 +2358,7 @@ const App = {
     const node = document.getElementById('warningCharts');
     if (!node) return;
     const bars = APP_DATA.warningTrend.map(x => `<i style="height:${x[1] * 1.5}px" title="${x[0]}：${x[1]}项"></i>`).join('');
-    node.innerHTML = `<div class="chart-card"><h4>预警事件分级结构</h4><div class="donut"><b>46</b><span>当前预警</span></div><p><span class="badge badge-danger">L4 8</span> <span class="badge badge-warning">L3 15</span> <span class="badge badge-info">L2 23</span></p></div><div class="chart-card trend"><h4>预警事件生成与关闭趋势</h4><div class="bar-chart">${bars}</div><p>按月统计新生成预警、已关闭预警及存量变化，用于评价风险处置闭环效率。</p></div><div class="chart-card"><h4>法人主体预警分布</h4>${APP_DATA.warningEnterpriseHeatmap.map(x => `<div class="enterprise-line"><span>${x.unit}</span><b class="badge-danger">L4 ${x.l4}</b><b class="badge-warning">L3 ${x.l3}</b><b class="badge-info">L2 ${x.l2}</b></div>`).join('')}</div>`;
+    node.innerHTML = `<div class="chart-card"><h4>重大预警处置态势</h4><div class="alert-focus"><b>8</b><div><strong>L4重大预警</strong><span>涉及 A、B、D 公司</span></div></div><p><span class="badge badge-danger">需立即处置 3项</span> <span class="badge badge-warning">临期督办 2项</span></p><small>优先关注：未批先实施、投后经营异常、固定资产追加投资。</small></div><div class="chart-card trend"><h4>预警闭环进度</h4><div class="warning-progress"><p><span>新生成预警</span><b>12项</b></p><p><span>处理中</span><b>18项</b></p><p><span>超期未关闭</span><b class="danger-text">6项</b></p><p><span>本月已关闭</span><b>8项</b></p></div><p>反映预警从规则命中到派单、整改、关闭的处置效率。</p></div><div class="chart-card"><h4>法人主体预警分布</h4>${APP_DATA.warningEnterpriseHeatmap.map(x => `<div class="enterprise-line"><span>${x.unit}</span><b class="badge-danger">L4 ${x.l4}</b><b class="badge-warning">L3 ${x.l3}</b><b class="badge-info">L2 ${x.l2}</b></div>`).join('')}<small>点击下方事件池查看具体预警及责任主体。</small></div>`;
   },
 
   renderRectKanban() {
