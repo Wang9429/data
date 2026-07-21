@@ -1030,6 +1030,13 @@ body {
             <div class="card-title">投资阶段运行状态矩阵</div>
             <div class="risk-matrix-wrap" id="riskMatrix"></div>
           </div>
+          <div class="card">
+            <div class="card-title">阶段异常事项监测</div>
+            <table class="data-table" id="stageExceptions">
+              <thead><tr><th>异常事项</th><th>投资阶段</th><th>投资法人</th><th>法人层级</th><th>投资项目</th><th>异常指标</th><th>风险场景</th><th>责任主体</th><th>状态</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
           <div class="two-col">
             <div class="process-tree" id="processTree"></div>
             <div class="detail-panel" id="processDetail">
@@ -1620,6 +1627,7 @@ const App = {
     this.renderValueChainOverview();
     this.renderInvestmentKriControls();
     this.renderRiskMatrix();
+    this.renderStageExceptions();
     this.renderScenarios();
     this.renderWarnings();
     this.renderWarningCharts();
@@ -1853,6 +1861,7 @@ const App = {
     this.renderProcessTree();
     this.renderValueChainOverview();
     this.renderRiskMatrix();
+    this.renderStageExceptions();
     this.renderScenarios();
     this.renderWarnings();
     this.renderWarningCharts();
@@ -2452,6 +2461,17 @@ const App = {
     if (!node) return;
     const stages=[['投资规划',126,118,5,3,2,'A、C公司'],['项目筛选',148,136,7,4,1,'A、B公司'],['立项论证',186,162,13,8,3,'A、B、C公司'],['投资决策',128,119,6,4,2,'A、C公司'],['投资实施',212,184,18,11,7,'A、C、D公司'],['投后运营',356,298,32,18,8,'A、B、D公司'],['投资评价',112,95,17,9,5,'A、B公司'],['退出处置',18,12,6,4,3,'C、D公司']];
     node.innerHTML=`<table class="data-table lifecycle-matrix"><thead><tr><th>投资阶段</th><th>事项总数</th><th>正常事项</th><th>异常事项</th><th>风险事项</th><th>超期事项</th><th>涉及法人</th></tr></thead><tbody>${stages.map(s=>`<tr class="clickable" onclick="App.openStageDrawer('${APP_DATA.processStages[stages.indexOf(s)].id}')"><td><strong>${s[0]}</strong></td><td>${s[1]}</td><td><span class="badge badge-success">${s[2]}</span></td><td><span class="badge badge-warning">${s[3]}</span></td><td><span class="badge badge-danger">${s[4]}</span></td><td>${s[5]}</td><td>${s[6]}</td></tr>`).join('')}</tbody></table><div class="stage-results"><div><b>阶段异常</b><span>异常事项 86 · 超期事项 31 · 程序异常 14</span></div><div><b>风险触发</b><span>KRI异常 46 · 控制规则触发 28 · 重大风险 12</span></div><div><b>整改状态</b><span>待整改 18 · 整改中 25 · 待验证 6 · 已闭环 43</span></div></div>`;
+  },
+
+  renderStageExceptions() {
+    const tbody=document.querySelector('#stageExceptions tbody'); if(!tbody)return;
+    const rows=[
+      ['投资决策程序缺失','投资决策','A公司','一级子企业','某装备制造项目','授权边界超限金额','超越授权审批','集团投资管理部','待补充决策程序'],
+      ['项目进度偏差','投资实施','C公司','二级子企业','某固定资产建设项目','关键里程碑偏差45天','关键里程碑严重拖期','项目管理部','整改中'],
+      ['收益目标偏离','投后运营','B公司','二级子企业','某境外能源项目','投资收益率3.2%','投资收益未达预期','境外事业部','集团督办'],
+      ['后评价未完成','投资评价','D公司','三级子企业','某产业协同项目','后评价逾期90天','投资后评价缺失','投资管理部','待验证']
+    ];
+    tbody.innerHTML=rows.map(r=>`<tr class="clickable" onclick="App.navigate('penetration',{riskId:'risk-2',detail:true})">${r.map((v,i)=>`<td>${i===8?`<span class="badge ${v==='集团督办'?'badge-danger':'badge-warning'}">${v}</span>`:v}</td>`).join('')}</tr>`).join('');
   },
 
   renderWarningCharts() {
