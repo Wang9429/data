@@ -1,4 +1,4 @@
-// 海油集团股权投资全生命周期风险穿透监测平台 - 模拟数据
+// 集团穿透式监管平台（投资管理专题）- 模拟数据
 
 const APP_DATA = {
   processStages: [
@@ -137,7 +137,7 @@ const APP_DATA = {
     ]
   },
   {
-    id: 'overseas', name: '境外投资风险（海油特色）', level: 1,
+    id: 'overseas', name: '境外投资风险', level: 1,
     children: [
       { name: '东道国政策变化风险', desc: '东道国投资政策、税收政策发生变化。' },
       { name: '境外合规风险', desc: '境外投资未满足当地合规要求。' },
@@ -148,22 +148,22 @@ const APP_DATA = {
   ],
 
   warnings: [
-  { id: 'risk-1', name: '投资收益未达到预期风险', unit: '海油工程', project: '海外装备项目', indicator: '收益率下降35%', status: '红色', level: '重大' },
-  { id: 'risk-2', name: '经营指标偏离风险', unit: '新能源公司', project: 'XX新能源项目', indicator: '利润完成率62%', status: '红色', level: '重大' },
+  { id: 'risk-1', name: '投资收益未达到预期风险', unit: 'A公司', project: '境外装备项目', indicator: '收益率下降35%', status: '红色', level: '重大' },
+  { id: 'risk-2', name: '经营指标偏离风险', unit: 'B公司', project: '清洁能源项目', indicator: '利润完成率62%', status: '红色', level: '重大' },
   { id: 'risk-3', name: '重大事项报告滞后风险', unit: '某所属企业', project: 'XX产业项目', indicator: '超过5日未报送', status: '黄色', level: '较大' },
-  { id: 'risk-4', name: '投资决策论证不足风险', unit: '海油发展', project: 'XX项目', indicator: '可研报告缺失2项', status: '黄色', level: '较大' },
-  { id: 'risk-5', name: '境外投资运营风险', unit: '海油国际', project: 'XX海外项目', indicator: '运营亏损扩大', status: '黄色', level: '较大' },
-  { id: 'risk-6', name: '投资方向偏离战略风险', unit: '海油化学', project: 'XX战略项目', indicator: '主业匹配度偏低', status: '蓝色', level: '一般' },
-  { id: 'risk-7', name: '交割条件落实不到位', unit: '海油工程', project: 'XX装备项目', indicator: '2项条件未落实', status: '蓝色', level: '一般' },
-  { id: 'risk-8', name: '股东权利行使不到位', unit: '海油发展', project: 'XX产业项目', indicator: '股东大会未出席', status: '蓝色', level: '一般' }
+  { id: 'risk-4', name: '投资决策论证不足风险', unit: 'C公司', project: '产业升级项目', indicator: '可研报告缺失2项', status: '黄色', level: '较大' },
+  { id: 'risk-5', name: '境外投资运营风险', unit: 'D公司', project: '境外合作项目', indicator: '运营亏损扩大', status: '黄色', level: '较大' },
+  { id: 'risk-6', name: '投资方向偏离战略风险', unit: 'C公司', project: '战略投资项目', indicator: '主业匹配度偏低', status: '蓝色', level: '一般' },
+  { id: 'risk-7', name: '交割条件落实不到位', unit: 'A公司', project: '装备制造项目', indicator: '2项条件未落实', status: '蓝色', level: '一般' },
+  { id: 'risk-8', name: '股东权利行使不到位', unit: 'C公司', project: '产业协同项目', indicator: '股东大会未出席', status: '蓝色', level: '一般' }
   ],
 
   riskPenetration: {
   'risk-1': {
     name: '投资收益未达到预期风险',
     level: '重大风险',
-    unit: '海油工程',
-    project: 'XX新能源装备项目',
+    unit: 'A公司',
+    project: '装备制造项目',
     amount: '18亿元',
     exposure: '2.6亿元',
     impact: '预计投资收益下降22%',
@@ -171,23 +171,23 @@ const APP_DATA = {
     control: { name: '年度投资评价', requirement: '评价投资目标实现情况', status: '异常' },
     indicator: { name: '投资收益率', target: '8%', current: '5.2%', deviation: '-35%' },
     responsibility: ['集团投资管理部', '所属企业投资管理部门', '项目负责人', '委派董事'],
-  policy: ['国资委投资监管要求', '中国海油投资管理制度', '所属企业投资管理办法', '项目投资协议'],
+  policy: ['国资监管投资管理要求', '集团投资管理制度', '所属企业投资管理办法', '项目投资协议'],
     systems: ['投资管理系统', '财务管理系统', '合同管理系统', '经营分析报告'],
     emergency: { level: 'L3', measures: ['开展专项经营分析', '提交投资管理委员会审议', '制定风险化解方案'], department: '投资管理部门' }
   },
   'risk-2': {
     name: '经营指标偏离风险',
     level: '重大风险',
-    unit: '新能源公司',
-    project: 'XX新能源项目',
+    unit: 'B公司',
+    project: '清洁能源项目',
     amount: '12亿元',
     exposure: '1.8亿元',
     impact: '利润完成率仅62%',
     processChain: ['投资管理', '投后管理', '经营情况跟踪'],
     control: { name: '经营情况定期分析', requirement: '获取经营数据并形成分析报告', status: '异常' },
     indicator: { name: '利润完成率', target: '100%', current: '62%', deviation: '-38%' },
-    responsibility: ['集团投资管理部', '新能源公司', '项目负责人'],
-    policy: ['国资委投资监管要求', '中国海油投资管理制度', '新能源公司投资管理办法'],
+    responsibility: ['集团投资管理部', 'B公司投资管理部门', '项目负责人'],
+    policy: ['国资监管投资管理要求', '集团投资管理制度', 'B公司投资管理办法'],
     systems: ['投资管理系统', '财务管理系统', '经营分析报告'],
     emergency: { level: 'L2', measures: ['启动经营指标专项分析', '要求被投企业提交整改方案'], department: '投资管理部门' }
   }
@@ -222,15 +222,14 @@ const APP_DATA = {
 
   portfolio: {
   byUnit: [
-    { name: '海油工程', projects: 42, riskProjects: 5 },
-    { name: '海油发展', projects: 38, riskProjects: 4 },
-    { name: '新能源公司', projects: 48, riskProjects: 6 },
-    { name: '海油化学', projects: 35, riskProjects: 3 },
-    { name: '海油国际', projects: 58, riskProjects: 8 }
+    { name: 'A公司', projects: 42, riskProjects: 5 },
+    { name: 'B公司', projects: 38, riskProjects: 4 },
+    { name: 'C公司', projects: 48, riskProjects: 6 },
+    { name: 'D公司', projects: 35, riskProjects: 3 }
   ],
   byIndustry: [
-    { name: '油气产业链', projects: 156 },
-    { name: '新能源', projects: 48 },
+    { name: '传统能源', projects: 156 },
+    { name: '清洁能源', projects: 48 },
     { name: '装备制造', projects: 36 },
     { name: '海洋工程', projects: 42 },
     { name: '战略新兴产业', projects: 74 }
@@ -243,6 +242,17 @@ const APP_DATA = {
 };
 
 Object.assign(APP_DATA, {
+  regulationDomains: [
+    { id:'investment', name:'投资管理', desc:'投资决策、投后管理、退出管理', risks:46, status:'重点监管', active:true },
+    { id:'finance', name:'财务管理', desc:'资金、预算、经营指标', risks:12, status:'持续监测' },
+    { id:'equity', name:'产权管理', desc:'产权登记、股权变动、资产处置', risks:8, status:'持续监测' },
+    { id:'contract', name:'合同管理', desc:'合同审查、履约、重大协议', risks:9, status:'持续监测' },
+    { id:'supply', name:'供应链管理', desc:'采购、供应商、履约风险', risks:14, status:'持续监测' },
+    { id:'compensation', name:'薪酬分配', desc:'薪酬总额、激励约束、分配合规', risks:5, status:'持续监测' },
+    { id:'overseas', name:'境外业务', desc:'境外运营、合规、汇率与政策', risks:11, status:'重点关注' },
+    { id:'financial', name:'金融业务', desc:'融资、担保、金融资产风险', risks:7, status:'持续监测' },
+    { id:'technology', name:'科技创新', desc:'研发投入、成果转化、创新项目', risks:6, status:'持续监测' }
+  ],
   valueChainDetails: {
     strategy: { stage:'投资战略规划', objective:'确保年度股权投资方向、规模和资本配置与集团主责主业及战略布局一致。', department:'集团投资管理部', activities:'投资规划制定、年度投资计划编制、投资规模统筹', risk:'投资方向偏离集团战略风险', scenario:'投资战略管理风险', control:'战略符合性审查、年度投资计划审批、投资规模限额管理', before:'项目所属行业与集团战略布局匹配校验', during:'年度投资完成率超过120%触发超计划预警', after:'开展战略投资项目占比与贡献度评价' },
     opportunity: { stage:'项目机会识别', objective:'提升投资机会来源质量和项目初筛有效性，防止不符合准入条件项目进入后续流程。', department:'所属企业投资管理部门', activities:'投资机会发现、项目初步筛选、项目入库管理', risk:'项目筛选标准执行不到位风险', scenario:'投资机会管理风险', control:'项目基础信息真实性审核、投资准入标准校验、项目风险初筛', before:'行业、区域及负面清单准入校验', during:'项目停留超过90天未更新触发提示', after:'开展投资机会转化率评价' },
@@ -271,16 +281,16 @@ Object.assign(APP_DATA, {
     ['04', 43, 6], ['05', 42, 9], ['06', 46, 12], ['07', 46, 8]
   ],
   warningEnterpriseHeatmap: [
-    { unit: '海油工程', l4: 5, l3: 8, l2: 12 },
-    { unit: '国际公司', l4: 2, l3: 5, l2: 6 },
-    { unit: '新能源公司', l4: 1, l3: 2, l2: 4 },
-    { unit: '海油发展', l4: 0, l3: 3, l2: 5 }
+    { unit: 'A公司', l4: 5, l3: 8, l2: 12 },
+    { unit: 'D公司', l4: 2, l3: 5, l2: 6 },
+    { unit: 'B公司', l4: 1, l3: 2, l2: 4 },
+    { unit: 'C公司', l4: 0, l3: 3, l2: 5 }
   ],
   rectificationTasks: [
-    { id: 'RECT-202601001', riskId: 'risk-2', title: '被投资企业经营持续下滑风险', company: '海油工程', owner: '投资管理部', level: 'L4', status: '整改执行', deadline: '2026-09-30', progress: 60, measure: '建立月度经营指标监测机制；完善董事履职报告机制。' },
-    { id: 'RECT-202601002', riskId: 'risk-1', title: '投资收益未达到预期风险', company: '新能源公司', owner: '投资管理部', level: 'L4', status: '整改制定', deadline: '2026-08-30', progress: 30, measure: '开展专项经营分析，制定收益提升方案。' },
-    { id: 'RECT-202601003', riskId: 'risk-3', title: '重大事项报告不及时风险', company: '海油发展', owner: '投资管理部', level: 'L3', status: '整改验证', deadline: '2026-07-30', progress: 90, measure: '完善重大事项报告机制并验证执行效果。' },
-    { id: 'RECT-202601004', riskId: 'risk-4', title: '投资决策论证不足风险', company: '海油发展', owner: '战略发展部', level: 'L3', status: '已关闭', deadline: '2026-05-20', progress: 100, measure: '补充可研报告并完成专家评审。' }
+    { id: 'RECT-202601001', riskId: 'risk-2', title: '被投资企业经营持续下滑风险', company: 'A公司', owner: '投资管理部', level: 'L4', status: '整改执行', deadline: '2026-09-30', progress: 60, measure: '建立月度经营指标监测机制；完善董事履职报告机制。' },
+    { id: 'RECT-202601002', riskId: 'risk-1', title: '投资收益未达到预期风险', company: 'B公司', owner: '投资管理部', level: 'L4', status: '整改制定', deadline: '2026-08-30', progress: 30, measure: '开展专项经营分析，制定收益提升方案。' },
+    { id: 'RECT-202601003', riskId: 'risk-3', title: '重大事项报告不及时风险', company: 'C公司', owner: '投资管理部', level: 'L3', status: '整改验证', deadline: '2026-07-30', progress: 90, measure: '完善重大事项报告机制并验证执行效果。' },
+    { id: 'RECT-202601004', riskId: 'risk-4', title: '投资决策论证不足风险', company: 'C公司', owner: '战略发展部', level: 'L3', status: '已关闭', deadline: '2026-05-20', progress: 100, measure: '补充可研报告并完成专家评审。' }
   ],
   portfolioSummary: [
     ['投资项目总数', '356', '个项目 · 覆盖18家企业'],

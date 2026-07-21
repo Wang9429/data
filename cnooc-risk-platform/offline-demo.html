@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>海油集团股权投资全生命周期风险穿透监测平台（离线演示版）</title>
+  <title>集团穿透式监管平台（离线演示版）</title>
   <style>
 :root {
   --primary: #003d7a;
@@ -877,6 +877,8 @@ body {
 .portfolio-kpis { grid-template-columns:repeat(6,1fr); }.analysis-card strong { display:block; font-size:30px; color:var(--primary); margin:18px 0 8px; }.analysis-card p,.ai-insight p { font-size:13px; color:var(--text-secondary); line-height:1.8; }.ai-insight { border-left:4px solid var(--accent); }
 .evidence-line { display:flex; align-items:center; justify-content:center; gap:12px; flex-wrap:wrap; }.evidence-line span { padding:10px 15px; background:#f5f8fc; border:1px solid var(--border); border-radius:6px; font-size:12px; text-align:center; }.evidence-line b { color:var(--primary); }.evidence-line i { color:var(--accent); font-style:normal; font-size:18px; }
 .dashboard-insights { display:grid; grid-template-columns:1.15fr 1.35fr 1fr; gap:16px; margin-bottom:20px; }.insight-card { background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius); padding:16px; box-shadow:var(--shadow); }.insight-head { display:flex; align-items:center; justify-content:space-between; font-weight:600; color:var(--primary); border-bottom:1px solid var(--border); padding-bottom:10px; margin-bottom:8px; }.insight-head button { border:0; background:transparent; color:var(--accent); cursor:pointer; font-size:12px; }.unit-risk { display:grid; grid-template-columns:85px 85px 1fr; gap:6px; align-items:center; padding:7px 0; border-bottom:1px dashed var(--border); font-size:12px; }.unit-risk:last-child { border:0; }.unit-risk small { color:var(--text-secondary); }.supervision-list p { margin:9px 0; font-size:12px; color:var(--text-secondary); line-height:1.6; }.supervision-list b { display:inline-flex; align-items:center; justify-content:center; width:20px; height:20px; border-radius:50%; background:var(--primary); color:#fff; margin-right:7px; }.rect-overview { display:grid; grid-template-columns:auto 1fr; gap:3px 10px; align-items:center; margin-top:14px; }.rect-overview strong { font-size:26px; color:var(--danger); }.rect-overview strong:nth-of-type(2) { color:var(--success); }.rect-overview span,.insight-note { font-size:12px; color:var(--text-secondary); }.insight-note { border-top:1px dashed var(--border); padding-top:8px; margin-top:10px; }.dashboard-bottom { display:grid; grid-template-columns:repeat(3,1fr); gap:0; }.bottom-item { padding:8px 20px; border-right:1px solid var(--border); }.bottom-item:last-child { border:0; }.bottom-item span,.bottom-item p { display:block; font-size:12px; color:var(--text-secondary); }.bottom-item strong { display:block; color:var(--primary); font-size:22px; margin:6px 0; }.bottom-item em { color:#e65100; background:#fff8e1; font-size:12px; font-style:normal; padding:2px 8px; border-radius:10px; }
+.domain-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }.domain-card { position:relative; border:1px solid var(--border); background:#f8fafc; border-radius:7px; padding:12px; text-align:left; cursor:pointer; min-height:104px; }.domain-card:hover,.domain-card.active { border-color:var(--accent); background:#eef8fe; box-shadow:0 2px 8px rgba(0,160,233,.12); }.domain-card.active::before { content:"重点专题"; position:absolute; top:8px; right:8px; color:#fff; background:var(--primary); font-size:10px; padding:2px 6px; border-radius:8px; }.domain-card strong,.domain-card span,.domain-card em,.domain-card small { display:block; }.domain-card strong { color:var(--primary); font-size:14px; }.domain-card span { color:var(--text-secondary); font-size:11px; margin:5px 0; }.domain-card em { color:var(--danger); font-size:12px; font-style:normal; }.domain-card small { color:var(--success); font-size:11px; margin-top:2px; }.domain-focus { display:flex; align-items:center; gap:12px; background:#f1f7fc; border-left:3px solid var(--accent); padding:12px; margin-top:14px; font-size:12px; color:var(--text-secondary); }.domain-focus b { color:var(--primary); white-space:nowrap; }.domain-focus .btn { margin-left:auto; white-space:nowrap; }
+.topic-banner { display:flex; align-items:center; justify-content:space-between; gap:16px; border-radius:var(--radius); padding:16px 20px; margin-bottom:20px; background:linear-gradient(110deg,var(--primary-dark),var(--primary)); color:#fff; }.topic-banner strong,.topic-banner span { display:block; }.topic-banner strong { font-size:17px; }.topic-banner>div>span { font-size:12px; opacity:.8; margin-top:3px; }.topic-dimensions { display:grid; grid-template-columns:auto auto; gap:3px 8px; font-size:11px; padding:6px 0 6px 16px; border-left:1px solid rgba(255,255,255,.25); }.topic-dimensions b { opacity:.75; font-weight:400; }.topic-dimensions span { font-size:11px !important; opacity:1 !important; margin:0 !important; }
 .risk-analysis-banner { display:grid; grid-template-columns:180px 1fr 1.1fr; gap:16px; padding:18px; border:1px solid #f1d4d4; background:linear-gradient(120deg,#fff9f9,#fff); border-radius:var(--radius); margin-bottom:20px; }.risk-score { border-right:1px solid #f0dede; }.risk-score span,.risk-score em { display:block; font-size:12px; color:var(--text-secondary); font-style:normal; }.risk-score strong { display:block; color:var(--danger); font-size:44px; line-height:1.2; }.risk-score strong small { font-size:14px; }.risk-score em { color:var(--danger); font-weight:600; }.score-breakdown { display:grid; grid-template-columns:repeat(2,1fr); gap:9px 18px; align-content:center; }.score-breakdown div { display:grid; grid-template-columns:1fr auto; gap:4px; font-size:12px; color:var(--text-secondary); }.score-breakdown b { color:var(--text-primary); }.score-breakdown i { grid-column:1/-1; height:5px; background:linear-gradient(90deg,var(--warning),var(--danger)); border-radius:6px; }.risk-rule { align-self:center; border-left:3px solid var(--danger); padding-left:14px; }.risk-rule span,.risk-rule strong,.risk-rule small { display:block; }.risk-rule span,.risk-rule small { font-size:12px; color:var(--text-secondary); }.risk-rule strong { font-size:14px; color:var(--text-primary); margin:5px 0; }
 .process-trace { margin-top:16px; border-left:2px solid #dce8f4; padding-left:16px; }.trace-node { position:relative; display:grid; grid-template-columns:32px 1fr auto; gap:9px; padding:0 0 17px; }.trace-node::before { content:""; position:absolute; width:10px; height:10px; border-radius:50%; left:-22px; top:10px; background:#1e88e5; border:3px solid #e3f2fd; }.trace-node.abnormal::before { background:var(--danger); border-color:#ffebee; }.trace-node.active::before { background:var(--warning); border-color:#fff8e1; }.trace-no { height:25px; border-radius:50%; background:#e8f0fe; color:var(--primary); display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; }.trace-node b,.trace-node p,.trace-node small { display:block; }.trace-node b { color:var(--primary); font-size:13px; }.trace-node p { color:var(--text-primary); font-size:12px; margin:2px 0; }.trace-node small { color:var(--text-secondary); font-size:11px; line-height:1.5; }.trace-node em { align-self:start; font-size:11px; font-style:normal; color:var(--success); background:#e8f5e9; padding:2px 6px; border-radius:10px; }.trace-node.abnormal em { color:var(--danger); background:#ffebee; }.trace-node.active em { color:#e65100; background:#fff8e1; }.process-kpi { display:flex; gap:10px; padding-top:9px; border-top:1px dashed var(--border); font-size:11px; color:var(--text-secondary); flex-wrap:wrap; }.process-kpi b { color:var(--primary); }.process-kpi .danger { color:var(--danger); }
 .accountability-table { width:100%; border-collapse:collapse; font-size:11px; margin-top:16px; }.accountability-table th { color:var(--primary); background:#f5f8fc; text-align:left; padding:7px; white-space:nowrap; }.accountability-table td { padding:7px; border-bottom:1px solid var(--border); line-height:1.5; }.accountability-table td:first-child { color:var(--primary); font-weight:600; }.accountability-evidence { border-top:1px dashed var(--border); margin-top:10px; padding-top:8px; font-size:11px; color:var(--text-secondary); line-height:1.6; }.accountability-evidence b { color:var(--primary); }
@@ -886,6 +888,8 @@ body {
 @media(max-width:1200px){.dashboard-insights{grid-template-columns:1fr}.dashboard-bottom{grid-template-columns:1fr}.bottom-item{border-right:0;border-bottom:1px solid var(--border);padding:12px 0}.bottom-item:last-child{border:0}}@media(max-width:768px){.unit-risk{grid-template-columns:1fr}.unit-risk small{padding-bottom:4px}}
 @media(max-width:1000px){.risk-analysis-banner,.analysis-two-col{grid-template-columns:1fr}.risk-score{border:0;border-bottom:1px solid #f0dede;padding-bottom:10px}.score-breakdown{grid-template-columns:1fr 1fr}.risk-rule{border-left:0;border-top:3px solid var(--danger);padding:10px 0 0}}@media(max-width:600px){.score-breakdown,.cause-map{grid-template-columns:1fr}.cause-center{grid-column:auto}.lineage-flow{justify-content:flex-start}.lineage-flow i{transform:rotate(90deg);width:100%;text-align:center}}
 @media(max-width:1100px){.closure-steps{overflow-x:auto;padding-bottom:5px}.closure-steps .closure-step{flex:0 0 230px}.closure-rules,.rectification-analysis{grid-template-columns:1fr}}@media(max-width:600px){.closure-arrow{display:none}}
+@media(max-width:900px){.domain-grid{grid-template-columns:repeat(2,1fr)}.domain-focus{align-items:flex-start;flex-direction:column}.domain-focus .btn{margin-left:0}}@media(max-width:600px){.domain-grid{grid-template-columns:1fr}}
+@media(max-width:800px){.topic-banner{align-items:flex-start;flex-direction:column}.topic-dimensions{padding-left:0;border-left:0;border-top:1px solid rgba(255,255,255,.25);padding-top:10px}}
 @media(max-width:1200px){.dashboard-heatmap{grid-template-columns:repeat(3,1fr)}.warning-charts,.portfolio-analysis-row{grid-template-columns:1fr}.portfolio-kpis{grid-template-columns:repeat(3,1fr)}}@media(max-width:768px){.dashboard-heatmap{grid-template-columns:1fr}.heatmap-legend{margin:0 0 12px;justify-content:flex-start;flex-wrap:wrap}.portfolio-kpis{grid-template-columns:1fr}.kanban-board{grid-template-columns:repeat(4,210px)}}
 
 </style>
@@ -895,17 +899,17 @@ body {
     <aside class="sidebar">
       <div class="sidebar-header">
         <div class="sidebar-logo">
-          <div class="logo-icon">海油</div>
-          <div class="sidebar-title">海油集团股权投资全生命周期<br>风险穿透监测平台</div>
+          <div class="logo-icon">集团</div>
+          <div class="sidebar-title">集团穿透式监管平台<br>投资管理专题监管</div>
         </div>
-        <div class="sidebar-subtitle">基于风险场景、控制活动与业务流程融合的股权投资穿透监管平台</div>
+        <div class="sidebar-subtitle">面向集团总部与出资人监管要求的分领域、分法人主体穿透监管演示平台</div>
       </div>
       <nav class="nav-menu" id="navMenu"></nav>
     </aside>
 
     <main class="main-content">
       <header class="top-header">
-        <div class="header-title" id="pageTitle">集团股权投资风险态势驾驶舱</div>
+        <div class="header-title" id="pageTitle">集团穿透式监管驾驶舱</div>
         <div class="header-meta">
           <span>数据更新时间：2026-07-20</span>
           <span>|</span>
@@ -917,6 +921,10 @@ body {
         <!-- 首页驾驶舱 -->
         <div class="page active" id="page-dashboard">
           <div class="metrics-grid" id="dashboardMetrics"></div>
+          <div class="card">
+            <div class="card-title">重点监管领域总览</div>
+            <div id="regulationDomains"></div>
+          </div>
           <div class="dashboard-insights" id="dashboardInsights"></div>
           <div class="card">
             <div class="card-title">投资价值链风险热力地图</div>
@@ -946,6 +954,10 @@ body {
 
         <!-- 投资业务全过程监测 -->
         <div class="page" id="page-process">
+          <div class="topic-banner">
+            <div><strong>投资管理专题监管</strong><span>集团总部围绕投资决策、实施、投后管理和退出开展穿透监管</span></div>
+            <div class="topic-dimensions"><b>按法人主体</b><span>A、B、C、D公司</span><b>按监管事项</b><span>重大投资、经营异常、收益偏差、退出安排</span></div>
+          </div>
           <div class="card">
             <div class="card-title">投资价值链总览</div>
             <div class="value-chain-overview" id="valueChainOverview"></div>
@@ -1093,14 +1105,14 @@ body {
                 </tr>
                 <tr>
                   <td>重大事项报告滞后风险</td>
-                  <td>海油发展</td>
+                  <td>C公司</td>
                   <td>完善重大事项报告机制，明确报送时限</td>
                   <td><span class="badge badge-success">已完成</span></td>
                   <td>2026-06-15</td>
                 </tr>
                 <tr>
                   <td>经营指标偏离风险</td>
-                  <td>新能源公司</td>
+                  <td>B公司</td>
                   <td>加强经营跟踪，每月提交经营分析报告</td>
                   <td><span class="badge badge-warning">整改中</span></td>
                   <td>2026-09-15</td>
@@ -1149,7 +1161,7 @@ body {
   </div>
 
   <script>
-// 海油集团股权投资全生命周期风险穿透监测平台 - 模拟数据
+// 集团穿透式监管平台（投资管理专题）- 模拟数据
 
 const APP_DATA = {
   processStages: [
@@ -1288,7 +1300,7 @@ const APP_DATA = {
     ]
   },
   {
-    id: 'overseas', name: '境外投资风险（海油特色）', level: 1,
+    id: 'overseas', name: '境外投资风险', level: 1,
     children: [
       { name: '东道国政策变化风险', desc: '东道国投资政策、税收政策发生变化。' },
       { name: '境外合规风险', desc: '境外投资未满足当地合规要求。' },
@@ -1299,22 +1311,22 @@ const APP_DATA = {
   ],
 
   warnings: [
-  { id: 'risk-1', name: '投资收益未达到预期风险', unit: '海油工程', project: '海外装备项目', indicator: '收益率下降35%', status: '红色', level: '重大' },
-  { id: 'risk-2', name: '经营指标偏离风险', unit: '新能源公司', project: 'XX新能源项目', indicator: '利润完成率62%', status: '红色', level: '重大' },
+  { id: 'risk-1', name: '投资收益未达到预期风险', unit: 'A公司', project: '境外装备项目', indicator: '收益率下降35%', status: '红色', level: '重大' },
+  { id: 'risk-2', name: '经营指标偏离风险', unit: 'B公司', project: '清洁能源项目', indicator: '利润完成率62%', status: '红色', level: '重大' },
   { id: 'risk-3', name: '重大事项报告滞后风险', unit: '某所属企业', project: 'XX产业项目', indicator: '超过5日未报送', status: '黄色', level: '较大' },
-  { id: 'risk-4', name: '投资决策论证不足风险', unit: '海油发展', project: 'XX项目', indicator: '可研报告缺失2项', status: '黄色', level: '较大' },
-  { id: 'risk-5', name: '境外投资运营风险', unit: '海油国际', project: 'XX海外项目', indicator: '运营亏损扩大', status: '黄色', level: '较大' },
-  { id: 'risk-6', name: '投资方向偏离战略风险', unit: '海油化学', project: 'XX战略项目', indicator: '主业匹配度偏低', status: '蓝色', level: '一般' },
-  { id: 'risk-7', name: '交割条件落实不到位', unit: '海油工程', project: 'XX装备项目', indicator: '2项条件未落实', status: '蓝色', level: '一般' },
-  { id: 'risk-8', name: '股东权利行使不到位', unit: '海油发展', project: 'XX产业项目', indicator: '股东大会未出席', status: '蓝色', level: '一般' }
+  { id: 'risk-4', name: '投资决策论证不足风险', unit: 'C公司', project: '产业升级项目', indicator: '可研报告缺失2项', status: '黄色', level: '较大' },
+  { id: 'risk-5', name: '境外投资运营风险', unit: 'D公司', project: '境外合作项目', indicator: '运营亏损扩大', status: '黄色', level: '较大' },
+  { id: 'risk-6', name: '投资方向偏离战略风险', unit: 'C公司', project: '战略投资项目', indicator: '主业匹配度偏低', status: '蓝色', level: '一般' },
+  { id: 'risk-7', name: '交割条件落实不到位', unit: 'A公司', project: '装备制造项目', indicator: '2项条件未落实', status: '蓝色', level: '一般' },
+  { id: 'risk-8', name: '股东权利行使不到位', unit: 'C公司', project: '产业协同项目', indicator: '股东大会未出席', status: '蓝色', level: '一般' }
   ],
 
   riskPenetration: {
   'risk-1': {
     name: '投资收益未达到预期风险',
     level: '重大风险',
-    unit: '海油工程',
-    project: 'XX新能源装备项目',
+    unit: 'A公司',
+    project: '装备制造项目',
     amount: '18亿元',
     exposure: '2.6亿元',
     impact: '预计投资收益下降22%',
@@ -1322,23 +1334,23 @@ const APP_DATA = {
     control: { name: '年度投资评价', requirement: '评价投资目标实现情况', status: '异常' },
     indicator: { name: '投资收益率', target: '8%', current: '5.2%', deviation: '-35%' },
     responsibility: ['集团投资管理部', '所属企业投资管理部门', '项目负责人', '委派董事'],
-  policy: ['国资委投资监管要求', '中国海油投资管理制度', '所属企业投资管理办法', '项目投资协议'],
+  policy: ['国资监管投资管理要求', '集团投资管理制度', '所属企业投资管理办法', '项目投资协议'],
     systems: ['投资管理系统', '财务管理系统', '合同管理系统', '经营分析报告'],
     emergency: { level: 'L3', measures: ['开展专项经营分析', '提交投资管理委员会审议', '制定风险化解方案'], department: '投资管理部门' }
   },
   'risk-2': {
     name: '经营指标偏离风险',
     level: '重大风险',
-    unit: '新能源公司',
-    project: 'XX新能源项目',
+    unit: 'B公司',
+    project: '清洁能源项目',
     amount: '12亿元',
     exposure: '1.8亿元',
     impact: '利润完成率仅62%',
     processChain: ['投资管理', '投后管理', '经营情况跟踪'],
     control: { name: '经营情况定期分析', requirement: '获取经营数据并形成分析报告', status: '异常' },
     indicator: { name: '利润完成率', target: '100%', current: '62%', deviation: '-38%' },
-    responsibility: ['集团投资管理部', '新能源公司', '项目负责人'],
-    policy: ['国资委投资监管要求', '中国海油投资管理制度', '新能源公司投资管理办法'],
+    responsibility: ['集团投资管理部', 'B公司投资管理部门', '项目负责人'],
+    policy: ['国资监管投资管理要求', '集团投资管理制度', 'B公司投资管理办法'],
     systems: ['投资管理系统', '财务管理系统', '经营分析报告'],
     emergency: { level: 'L2', measures: ['启动经营指标专项分析', '要求被投企业提交整改方案'], department: '投资管理部门' }
   }
@@ -1373,15 +1385,14 @@ const APP_DATA = {
 
   portfolio: {
   byUnit: [
-    { name: '海油工程', projects: 42, riskProjects: 5 },
-    { name: '海油发展', projects: 38, riskProjects: 4 },
-    { name: '新能源公司', projects: 48, riskProjects: 6 },
-    { name: '海油化学', projects: 35, riskProjects: 3 },
-    { name: '海油国际', projects: 58, riskProjects: 8 }
+    { name: 'A公司', projects: 42, riskProjects: 5 },
+    { name: 'B公司', projects: 38, riskProjects: 4 },
+    { name: 'C公司', projects: 48, riskProjects: 6 },
+    { name: 'D公司', projects: 35, riskProjects: 3 }
   ],
   byIndustry: [
-    { name: '油气产业链', projects: 156 },
-    { name: '新能源', projects: 48 },
+    { name: '传统能源', projects: 156 },
+    { name: '清洁能源', projects: 48 },
     { name: '装备制造', projects: 36 },
     { name: '海洋工程', projects: 42 },
     { name: '战略新兴产业', projects: 74 }
@@ -1394,6 +1405,17 @@ const APP_DATA = {
 };
 
 Object.assign(APP_DATA, {
+  regulationDomains: [
+    { id:'investment', name:'投资管理', desc:'投资决策、投后管理、退出管理', risks:46, status:'重点监管', active:true },
+    { id:'finance', name:'财务管理', desc:'资金、预算、经营指标', risks:12, status:'持续监测' },
+    { id:'equity', name:'产权管理', desc:'产权登记、股权变动、资产处置', risks:8, status:'持续监测' },
+    { id:'contract', name:'合同管理', desc:'合同审查、履约、重大协议', risks:9, status:'持续监测' },
+    { id:'supply', name:'供应链管理', desc:'采购、供应商、履约风险', risks:14, status:'持续监测' },
+    { id:'compensation', name:'薪酬分配', desc:'薪酬总额、激励约束、分配合规', risks:5, status:'持续监测' },
+    { id:'overseas', name:'境外业务', desc:'境外运营、合规、汇率与政策', risks:11, status:'重点关注' },
+    { id:'financial', name:'金融业务', desc:'融资、担保、金融资产风险', risks:7, status:'持续监测' },
+    { id:'technology', name:'科技创新', desc:'研发投入、成果转化、创新项目', risks:6, status:'持续监测' }
+  ],
   valueChainDetails: {
     strategy: { stage:'投资战略规划', objective:'确保年度股权投资方向、规模和资本配置与集团主责主业及战略布局一致。', department:'集团投资管理部', activities:'投资规划制定、年度投资计划编制、投资规模统筹', risk:'投资方向偏离集团战略风险', scenario:'投资战略管理风险', control:'战略符合性审查、年度投资计划审批、投资规模限额管理', before:'项目所属行业与集团战略布局匹配校验', during:'年度投资完成率超过120%触发超计划预警', after:'开展战略投资项目占比与贡献度评价' },
     opportunity: { stage:'项目机会识别', objective:'提升投资机会来源质量和项目初筛有效性，防止不符合准入条件项目进入后续流程。', department:'所属企业投资管理部门', activities:'投资机会发现、项目初步筛选、项目入库管理', risk:'项目筛选标准执行不到位风险', scenario:'投资机会管理风险', control:'项目基础信息真实性审核、投资准入标准校验、项目风险初筛', before:'行业、区域及负面清单准入校验', during:'项目停留超过90天未更新触发提示', after:'开展投资机会转化率评价' },
@@ -1422,16 +1444,16 @@ Object.assign(APP_DATA, {
     ['04', 43, 6], ['05', 42, 9], ['06', 46, 12], ['07', 46, 8]
   ],
   warningEnterpriseHeatmap: [
-    { unit: '海油工程', l4: 5, l3: 8, l2: 12 },
-    { unit: '国际公司', l4: 2, l3: 5, l2: 6 },
-    { unit: '新能源公司', l4: 1, l3: 2, l2: 4 },
-    { unit: '海油发展', l4: 0, l3: 3, l2: 5 }
+    { unit: 'A公司', l4: 5, l3: 8, l2: 12 },
+    { unit: 'D公司', l4: 2, l3: 5, l2: 6 },
+    { unit: 'B公司', l4: 1, l3: 2, l2: 4 },
+    { unit: 'C公司', l4: 0, l3: 3, l2: 5 }
   ],
   rectificationTasks: [
-    { id: 'RECT-202601001', riskId: 'risk-2', title: '被投资企业经营持续下滑风险', company: '海油工程', owner: '投资管理部', level: 'L4', status: '整改执行', deadline: '2026-09-30', progress: 60, measure: '建立月度经营指标监测机制；完善董事履职报告机制。' },
-    { id: 'RECT-202601002', riskId: 'risk-1', title: '投资收益未达到预期风险', company: '新能源公司', owner: '投资管理部', level: 'L4', status: '整改制定', deadline: '2026-08-30', progress: 30, measure: '开展专项经营分析，制定收益提升方案。' },
-    { id: 'RECT-202601003', riskId: 'risk-3', title: '重大事项报告不及时风险', company: '海油发展', owner: '投资管理部', level: 'L3', status: '整改验证', deadline: '2026-07-30', progress: 90, measure: '完善重大事项报告机制并验证执行效果。' },
-    { id: 'RECT-202601004', riskId: 'risk-4', title: '投资决策论证不足风险', company: '海油发展', owner: '战略发展部', level: 'L3', status: '已关闭', deadline: '2026-05-20', progress: 100, measure: '补充可研报告并完成专家评审。' }
+    { id: 'RECT-202601001', riskId: 'risk-2', title: '被投资企业经营持续下滑风险', company: 'A公司', owner: '投资管理部', level: 'L4', status: '整改执行', deadline: '2026-09-30', progress: 60, measure: '建立月度经营指标监测机制；完善董事履职报告机制。' },
+    { id: 'RECT-202601002', riskId: 'risk-1', title: '投资收益未达到预期风险', company: 'B公司', owner: '投资管理部', level: 'L4', status: '整改制定', deadline: '2026-08-30', progress: 30, measure: '开展专项经营分析，制定收益提升方案。' },
+    { id: 'RECT-202601003', riskId: 'risk-3', title: '重大事项报告不及时风险', company: 'C公司', owner: '投资管理部', level: 'L3', status: '整改验证', deadline: '2026-07-30', progress: 90, measure: '完善重大事项报告机制并验证执行效果。' },
+    { id: 'RECT-202601004', riskId: 'risk-4', title: '投资决策论证不足风险', company: 'C公司', owner: '战略发展部', level: 'L3', status: '已关闭', deadline: '2026-05-20', progress: 100, measure: '补充可研报告并完成专家评审。' }
   ],
   portfolioSummary: [
     ['投资项目总数', '356', '个项目 · 覆盖18家企业'],
@@ -1469,7 +1491,7 @@ const App = {
 
   menuItems: [
     { id: 'dashboard', icon: '📊', label: '驾驶舱' },
-    { id: 'process', icon: '🔄', label: '投资价值链监测' },
+    { id: 'process', icon: '🔄', label: '投资管理专题监管' },
     { id: 'warnings', icon: '🔔', label: '风险预警中心' },
     { id: 'penetration', icon: '🔎', label: '风险穿透分析' },
     { id: 'rectification', icon: '✅', label: '整改闭环管理' },
@@ -1477,8 +1499,8 @@ const App = {
   ],
 
   pageTitles: {
-    dashboard: '集团股权投资风险监管驾驶舱',
-    process: '投资价值链监测',
+    dashboard: '集团穿透式监管驾驶舱',
+    process: '投资管理专题监管',
     scenarios: '风险场景管理',
     warnings: '风险预警中心',
     penetration: '风险穿透分析',
@@ -1491,6 +1513,7 @@ const App = {
   init() {
     this.renderNav();
     this.renderDashboardMetrics();
+    this.renderRegulationDomains();
     this.renderDashboardHeatmap();
     this.renderDashboardInsights();
     this.renderTopRisks();
@@ -1548,7 +1571,7 @@ const App = {
   renderCoreChain() {
     const chain = [
       '国资委46号文一级风险场景',
-      '海油集团投资业务二级风险场景',
+      '集团投资管理二级风险场景',
       '投资业务环节',
       '控制活动',
       '监测指标',
@@ -1566,31 +1589,31 @@ const App = {
   renderDashboardMetrics() {
     document.getElementById('dashboardMetrics').innerHTML = `
       <div class="metric-card">
-        <div class="label">存量股权投资项目</div>
-        <div class="value">356<span>个</span></div>
+        <div class="label">纳入监管法人主体</div>
+        <div class="value">18<span>家</span></div>
         <div class="sub-items">
-          覆盖所属单位：<strong>18家</strong><br>
-          涉及行业：油气产业链、新能源、海洋工程、装备制造、战略新兴产业
+          集团级监管视角<br>
+          重点主体：<strong>A、B、C、D公司</strong>
         </div>
       </div>
       <div class="metric-card">
-        <div class="label">股权投资规模</div>
-        <div class="value" style="font-size:22px;">1,286<span>亿元</span></div>
+        <div class="label">重点监管领域</div>
+        <div class="value">9<span>个</span></div>
         <div class="sub-items">
-          累计投资金额：<strong>1,286亿元</strong><br>
-          当前投资余额：<strong>864亿元</strong>
+          投资、财务、产权、合同等<br>
+          当前专题：<strong>投资管理</strong>
         </div>
       </div>
       <div class="metric-card">
-        <div class="label">重点关注项目</div>
-        <div class="value">23<span>个</span></div>
+        <div class="label">重点监管法人主体</div>
+        <div class="value">4<span>家</span></div>
         <div class="sub-items">
-          涉及所属单位：<strong>7家</strong><br>
-          境外项目 <strong>6个</strong> · 产业投资 <strong>17个</strong>
+          A公司 · B公司 · C公司 · D公司<br>
+          穿透维度：<strong>领域、主体、事项</strong>
         </div>
       </div>
       <div class="metric-card">
-        <div class="label">风险预警情况</div>
+        <div class="label">投资管理风险预警</div>
         <div class="value" style="color:var(--danger);">46<span>项</span></div>
         <div class="sub-items">
           重大风险：<strong style="color:var(--danger)">8项</strong><br>
@@ -1606,6 +1629,29 @@ const App = {
         </div>
       </div>
     `;
+  },
+
+  renderRegulationDomains() {
+    const container = document.getElementById('regulationDomains');
+    if (!container) return;
+    container.innerHTML = `<div class="domain-grid">${APP_DATA.regulationDomains.map(domain => `
+      <button class="domain-card ${domain.active ? 'active' : ''}" onclick="App.selectRegulationDomain('${domain.id}')">
+        <strong>${domain.name}</strong><span>${domain.desc}</span><em>${domain.risks} 项风险</em><small>${domain.status}</small>
+      </button>`).join('')}</div>
+      <div class="domain-focus" id="domainFocus"><b>当前专题：投资管理</b><span>按照国资监管穿透式监管要求，围绕法人主体、投资事项、业务环节、控制活动和整改闭环开展集团级监管。点击“投资管理”可进入专题监管页面；其他领域展示集团级监管范围。</span><button class="btn btn-primary" onclick="App.navigate('process')">进入投资管理专题监管</button></div>`;
+  },
+
+  selectRegulationDomain(domainId) {
+    const domain = APP_DATA.regulationDomains.find(x => x.id === domainId);
+    if (!domain) return;
+    if (domainId === 'investment') {
+      this.navigate('process');
+      return;
+    }
+    document.querySelectorAll('.domain-card').forEach(x => x.classList.remove('active'));
+    const active = Array.from(document.querySelectorAll('.domain-card')).find(x => x.querySelector('strong').textContent === domain.name);
+    if (active) active.classList.add('active');
+    document.getElementById('domainFocus').innerHTML = `<b>${domain.name}监管范围</b><span>集团总部按照出资人监管要求，对${domain.desc}开展法人主体、重大事项、风险预警和整改闭环的分层监管。本演示当前以“投资管理”作为重点专题展示。</span><button class="btn btn-outline" onclick="App.selectRegulationDomain('investment')">查看投资管理专题示例</button>`;
   },
 
   renderProcessMap() {
@@ -1813,7 +1859,7 @@ const App = {
       <button class="filter-chip" onclick="App.filterWarnings('红色', this)">L4 重大</button>
       <button class="filter-chip" onclick="App.filterWarnings('黄色', this)">L3 较大</button>
       <button class="filter-chip" onclick="App.filterWarnings('蓝色', this)">L2 一般</button>
-      <select><option>全部所属企业</option><option>海油工程</option><option>新能源公司</option><option>国际公司</option></select>
+      <select><option>全部法人主体</option><option>A公司</option><option>B公司</option><option>C公司</option><option>D公司</option></select>
       <select><option>全部业务阶段</option><option>投后管理</option><option>立项论证</option><option>投资退出</option></select>`;
 
     const tbody = document.querySelector('#warningsTable tbody');
@@ -2103,11 +2149,11 @@ const App = {
   renderDashboardInsights() {
     const insights = document.getElementById('dashboardInsights');
     if (insights) insights.innerHTML = `
-      <div class="insight-card"><div class="insight-head"><span>重点监管单位</span><button onclick="App.navigate('warnings')">查看风险清单 ›</button></div><div class="unit-risk"><b>海油工程</b><span class="badge badge-danger">L4 风险 5项</span><small>经营持续下滑、海外装备项目收益偏离</small></div><div class="unit-risk"><b>国际公司</b><span class="badge badge-warning">L3 风险 5项</span><small>境外运营、东道国政策变化</small></div><div class="unit-risk"><b>新能源公司</b><span class="badge badge-warning">L3 风险 2项</span><small>收益未达预期、利润完成偏低</small></div></div>
-      <div class="insight-card"><div class="insight-head"><span>总部监管重点</span><button onclick="App.navigate('process',{stageId:'post-invest'})">进入投后管理 ›</button></div><div class="supervision-list"><p><b>01</b> 投后管理：18项风险，5项重大风险，需强化月度经营监测</p><p><b>02</b> 投资退出：10项风险，重点关注退出收益偏差和退出周期</p><p><b>03</b> 立项论证：5项风险，关注收益测算及可研论证质量</p></div></div>
+      <div class="insight-card"><div class="insight-head"><span>重点监管法人主体</span><button onclick="App.navigate('warnings')">查看风险清单 ›</button></div><div class="unit-risk"><b>A公司</b><span class="badge badge-danger">L4 风险 5项</span><small>经营持续下滑、境外装备项目收益偏离</small></div><div class="unit-risk"><b>D公司</b><span class="badge badge-warning">L3 风险 5项</span><small>境外运营、所在国政策变化</small></div><div class="unit-risk"><b>B公司</b><span class="badge badge-warning">L3 风险 2项</span><small>收益未达预期、利润完成偏低</small></div></div>
+      <div class="insight-card"><div class="insight-head"><span>集团投资管理监管重点</span><button onclick="App.navigate('process',{stageId:'post-invest'})">进入专题监管 ›</button></div><div class="supervision-list"><p><b>01</b> 投后管理：18项风险，5项重大风险，需强化月度经营监测</p><p><b>02</b> 投资退出：10项风险，重点关注退出收益偏差和退出周期</p><p><b>03</b> 立项论证：5项风险，关注收益测算及可研论证质量</p></div></div>
       <div class="insight-card"><div class="insight-head"><span>整改督办提示</span><button onclick="App.navigate('rectification')">进入整改闭环 ›</button></div><div class="rect-overview"><strong>6</strong><span>项超期整改</span><strong>92%</strong><span>验证通过率</span></div><p class="insight-note">重大风险整改周期不超过90天；本月已完成8项风险关闭验证。</p></div>`;
     const bottom = document.getElementById('dashboardBottom');
-    if (bottom) bottom.innerHTML = `<div class="bottom-item"><span>投资组合风险评分</span><strong>78 分</strong><em>关注</em><p>行业、区域、收益、经营四维综合测算</p></div><div class="bottom-item"><span>资本配置结构</span><strong>864 亿元</strong><p>油气产业链 37% · 海洋工程 25% · 新能源 18%</p></div><div class="bottom-item"><span>本月监管动态</span><strong>新增预警 12 项</strong><p>自动识别 9 项 · 人工上报 3 项 · 已关闭 8 项</p></div>`;
+    if (bottom) bottom.innerHTML = `<div class="bottom-item"><span>投资管理专题风险评分</span><strong>78 分</strong><em>关注</em><p>投资决策、经营、收益、退出四维综合测算</p></div><div class="bottom-item"><span>法人主体风险分布</span><strong>4 家重点主体</strong><p>A公司 · B公司 · C公司 · D公司</p></div><div class="bottom-item"><span>本月集团监管动态</span><strong>新增预警 12 项</strong><p>自动识别 9 项 · 人工上报 3 项 · 已关闭 8 项</p></div>`;
   },
 
   renderDashboardHeatmap() {

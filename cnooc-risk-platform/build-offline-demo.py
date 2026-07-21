@@ -17,8 +17,8 @@ html = html.replace(
     f"  <script>\n{data}\n</script>\n  <script>\n{app}\n</script>",
 )
 html = html.replace(
-    "<title>海油集团股权投资全生命周期风险穿透监测平台</title>",
-    "<title>海油集团股权投资全生命周期风险穿透监测平台（离线演示版）</title>",
+    "<title>集团穿透式监管平台</title>",
+    "<title>集团穿透式监管平台（离线演示版）</title>",
 )
 
 (ROOT / "offline-demo.html").write_text(html, encoding="utf-8")
