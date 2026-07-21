@@ -42,11 +42,13 @@ const App = {
     matters: '投资事项及股东权利管理',
     rectification: '整改闭环管理',
     portfolio: '投资组合分析',
-    kri: 'KRI与风险场景详情'
+    kri: 'KRI与风险场景详情',
+    group: '集团监管总览'
   },
 
   init() {
     this.renderNav();
+    this.renderGroupOverview();
     this.renderDashboardMetrics();
     this.renderRegulationDomains();
     this.renderGroupKriBoard();
@@ -106,12 +108,28 @@ const App = {
 
   renderNav() {
     const nav = document.getElementById('navMenu');
-    nav.innerHTML = this.menuItems.map(item => `
+    nav.innerHTML = this.getDomainMenu().map(item => `
       <div class="nav-item ${item.id === 'dashboard' ? 'active' : ''}" data-page="${item.id}" onclick="App.navigate('${item.id}')">
         <span class="nav-icon">${item.icon}</span>
         <span>${item.label}</span>
       </div>
     `).join('');
+  },
+
+  getDomainMenu() {
+    const base = [{ id:'group', icon:'◉', label:'集团监管总览' }];
+    const menus = {
+      investment:[['dashboard','投资管理驾驶舱'],['portfolio','投资结构与组合'],['process','投资价值链监测'],['warnings','投资风险监测'],['penetration','投资穿透分析'],['rectification','投资整改闭环']],
+      finance:[['dashboard','财务管理驾驶舱'],['process','财务运行监测'],['controls','资金风险监测'],['warnings','债务风险监测'],['penetration','财务风险穿透'],['rectification','整改闭环']],
+      equity:[['dashboard','产权管理驾驶舱'],['process','产权结构监测'],['controls','产权变动监测'],['warnings','资产运营监测'],['penetration','产权风险穿透'],['rectification','整改闭环']],
+      contract:[['dashboard','合同管理驾驶舱'],['process','合同结构分析'],['controls','合同履约监测'],['warnings','重大合同监测'],['penetration','合同风险穿透'],['rectification','整改闭环']],
+      supply:[['dashboard','供应链管理驾驶舱'],['process','供应商结构分析'],['controls','采购事项监测'],['warnings','供应商风险监测'],['penetration','供应链穿透分析'],['rectification','整改闭环']],
+      financial:[['dashboard','金融业务驾驶舱'],['process','金融业务结构'],['controls','风险敞口监测'],['warnings','资产质量监测'],['penetration','金融风险穿透'],['rectification','整改闭环']],
+      overseas:[['dashboard','境外业务驾驶舱'],['process','境外法人监管'],['controls','国别区域风险'],['warnings','境外重大事项'],['portfolio','境外资产监测'],['penetration','境外风险穿透'],['rectification','整改闭环']],
+      technology:[['dashboard','工程项目驾驶舱'],['portfolio','项目组合分析'],['process','工程进度监测'],['controls','工程成本监测'],['warnings','安全质量风险'],['penetration','工程风险穿透'],['rectification','整改闭环']]
+    };
+    const icons={dashboard:'📊',portfolio:'📈',process:'🔄',controls:'🛡️',warnings:'🔔',penetration:'🔎',rectification:'✅'};
+    return base.concat((menus[this.currentDomain]||menus.investment).map(x=>({id:x[0],icon:icons[x[0]],label:x[1]})));
   },
 
   renderCoreChain() {
@@ -177,6 +195,15 @@ const App = {
     `;
   },
 
+  renderGroupOverview() {
+    const node=document.getElementById('groupOverview'); if(!node)return;
+    const fields=APP_DATA.regulationDomains.slice(0,8);
+    node.innerHTML=`<div class="group-hero"><div><span>集团总部监管视角</span><h2>集团监管总览</h2><p>聚焦重点领域、重点法人、重大事项、重大风险和集团督办事项。</p></div><div>数据覆盖率 <b>92.6%</b></div></div>
+    <div class="group-metrics">${[['126','纳入监管法人'],['8','纳入监管领域'],['3,286','重点监管事项'],['28','当前重大风险'],['126','当前重点预警'],['43','整改未闭环'],['18','集团重点督办'],['92.6%','数据覆盖率']].map(x=>`<button class="metric-card" onclick="App.navigate('dashboard')"><div class="value">${x[0]}</div><div class="label">${x[1]}</div></button>`).join('')}</div>
+    <div class="card"><div class="card-title">分领域监管态势</div><div class="field-status-grid">${fields.map((f,i)=>`<button onclick="App.selectRegulationDomain('${f.id}')"><b>${f.name}</b><span>重点事项：${[1286,486,238,426,512,186,328,412][i]}项</span><em>重大风险：${[12,3,2,4,5,2,6,4][i]}项</em><small>整改中：${[18,6,4,8,9,3,11,7][i]}项</small></button>`).join('')}</div></div>
+    <div class="group-three"><div class="card"><div class="card-title">重点法人监管画像</div><table class="data-table"><thead><tr><th>法人</th><th>高风险领域</th><th>综合关注度</th></tr></thead><tbody><tr><td>A公司</td><td>投资、境外、合同</td><td><span class="badge badge-danger">高</span></td></tr><tr><td>B公司</td><td>投资、财务</td><td><span class="badge badge-warning">较高</span></td></tr><tr><td>D公司</td><td>境外、供应链</td><td><span class="badge badge-warning">较高</span></td></tr></tbody></table></div><div class="card"><div class="card-title">集团重点督办事项</div><div class="supervision-list"><p><b>01</b> 某境外投资项目收益持续偏离 <span class="badge badge-danger">L4</span></p><p><b>02</b> 固定资产项目追加投资接近审批边界 <span class="badge badge-warning">L3</span></p><p><b>03</b> 重大合同履约延期事项 <span class="badge badge-warning">L3</span></p></div></div></div>`;
+  },
+
   renderRegulationDomains() {
     const container = document.getElementById('domainTabs');
     if (!container) return;
@@ -197,6 +224,7 @@ const App = {
     const domain = APP_DATA.regulationDomains.find(x => x.id === domainId);
     if (!domain) return;
     this.currentDomain = domainId;
+    this.renderNav();
     this.renderRegulationDomains();
     this.renderGroupKriBoard();
     if (domainId === 'investment') this.restoreInvestmentPages();
