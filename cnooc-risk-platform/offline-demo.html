@@ -884,6 +884,9 @@ body {
 .domain-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }.domain-card { position:relative; border:1px solid var(--border); background:#f8fafc; border-radius:7px; padding:12px; text-align:left; cursor:pointer; min-height:104px; }.domain-card:hover,.domain-card.active { border-color:var(--accent); background:#eef8fe; box-shadow:0 2px 8px rgba(0,160,233,.12); }.domain-card.active::before { content:"重点专题"; position:absolute; top:8px; right:8px; color:#fff; background:var(--primary); font-size:10px; padding:2px 6px; border-radius:8px; }.domain-card strong,.domain-card span,.domain-card em,.domain-card small { display:block; }.domain-card strong { color:var(--primary); font-size:14px; }.domain-card span { color:var(--text-secondary); font-size:11px; margin:5px 0; }.domain-card em { color:var(--danger); font-size:12px; font-style:normal; }.domain-card small { color:var(--success); font-size:11px; margin-top:2px; }.domain-focus { display:flex; align-items:center; gap:12px; background:#f1f7fc; border-left:3px solid var(--accent); padding:12px; margin-top:14px; font-size:12px; color:var(--text-secondary); }.domain-focus b { color:var(--primary); white-space:nowrap; }.domain-focus .btn { margin-left:auto; white-space:nowrap; }
 .topic-banner { display:flex; align-items:center; justify-content:space-between; gap:16px; border-radius:var(--radius); padding:16px 20px; margin-bottom:20px; background:linear-gradient(110deg,var(--primary-dark),var(--primary)); color:#fff; }.topic-banner strong,.topic-banner span { display:block; }.topic-banner strong { font-size:17px; }.topic-banner>div>span { font-size:12px; opacity:.8; margin-top:3px; }.topic-dimensions { display:grid; grid-template-columns:auto auto; gap:3px 8px; font-size:11px; padding:6px 0 6px 16px; border-left:1px solid rgba(255,255,255,.25); }.topic-dimensions b { opacity:.75; font-weight:400; }.topic-dimensions span { font-size:11px !important; opacity:1 !important; margin:0 !important; }
 .kri-note { margin-bottom:12px; padding:10px 12px; border-left:3px solid var(--accent); background:#f1f7fc; color:var(--text-secondary); font-size:12px; line-height:1.7; }.kri-note b { color:var(--primary); }.kri-table { font-size:12px; }.kri-table td { vertical-align:top; line-height:1.6; }
+.dashboard-drilldown-row { display:grid; grid-template-columns:1.35fr 1fr; gap:20px; }.kri-board { display:grid; grid-template-columns:repeat(3,1fr); gap:9px; }.kri-card { text-align:left; border:1px solid var(--border); background:#f8fafc; border-radius:7px; padding:10px; cursor:pointer; }.kri-card:hover,.scenario-drill-card:hover { border-color:var(--accent); box-shadow:var(--shadow); transform:translateY(-1px); }.kri-card span,.kri-card b,.kri-card strong,.kri-card em,.kri-card small { display:block; }.kri-card span,.kri-card small { color:var(--text-secondary); font-size:10px; }.kri-card b { color:var(--primary); font-size:12px; line-height:1.45; min-height:35px; }.kri-card strong { color:var(--danger); font-size:20px; margin-top:3px; }.kri-card em { font-style:normal; font-size:11px; color:#e65100; }.kri-card em.critical { color:var(--danger); }.scenario-board { display:grid; grid-template-columns:repeat(2,1fr); gap:9px; }.scenario-drill-card { text-align:left; border:1px solid var(--border); background:#fff; border-radius:7px; padding:10px; cursor:pointer; }.scenario-drill-card b,.scenario-drill-card small,.scenario-drill-card em { display:block; }.scenario-drill-card b { color:var(--primary); font-size:12px; margin:6px 0 2px; }.scenario-drill-card p { margin:0; color:var(--text-secondary); font-size:11px; line-height:1.5; min-height:33px; }.scenario-drill-card small { color:var(--text-secondary); font-size:10px; margin-top:5px; }.scenario-drill-card em { color:var(--accent); font-size:11px; font-style:normal; margin-top:4px; }
+.domain-context-card { min-height:155px; padding:16px; border:1px dashed #9cc8e8; background:#f4faff; border-radius:7px; color:var(--text-secondary); }.domain-context-card b,.domain-context-card span,.domain-context-card small { display:block; }.domain-context-card b { color:var(--primary); font-size:14px; }.domain-context-card p { font-size:12px; line-height:1.7; }.domain-context-card span { color:var(--danger); font-weight:600; }.domain-context-card small { font-size:11px; margin-top:8px; }.domain-context-card .btn { margin-top:10px; }
+.kri-detail-hero { background:linear-gradient(110deg,var(--primary-dark),var(--primary)); color:#fff; border-radius:var(--radius); padding:22px; display:flex; justify-content:space-between; margin-bottom:20px; }.kri-detail-hero span,.kri-detail-hero p,.kri-detail-hero small { font-size:12px; opacity:.82; }.kri-detail-hero h2 { margin:4px 0; font-size:22px; }.kri-detail-hero>div:last-child { text-align:right; }.kri-detail-hero b { display:block; font-size:34px; }.kri-detail-hero em { display:block; font-style:normal; color:#ffdb77; font-size:13px; }.kri-detail-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:20px; }.detail-list p { font-size:13px; color:var(--text-secondary); line-height:1.7; margin:8px 0; }.detail-list b { color:var(--text-primary); }.kri-lineage { display:flex; gap:8px; align-items:center; justify-content:center; flex-wrap:wrap; }.kri-lineage span { text-align:center; border:1px solid var(--border); background:#f8fafc; padding:9px; border-radius:6px; font-size:11px; color:var(--text-secondary); }.kri-lineage span b { display:block; color:var(--primary); font-size:12px; margin-top:2px; }.kri-lineage i { color:var(--accent); font-style:normal; font-size:20px; }
 .risk-analysis-banner { display:grid; grid-template-columns:180px 1fr 1.1fr; gap:16px; padding:18px; border:1px solid #f1d4d4; background:linear-gradient(120deg,#fff9f9,#fff); border-radius:var(--radius); margin-bottom:20px; }.risk-score { border-right:1px solid #f0dede; }.risk-score span,.risk-score em { display:block; font-size:12px; color:var(--text-secondary); font-style:normal; }.risk-score strong { display:block; color:var(--danger); font-size:44px; line-height:1.2; }.risk-score strong small { font-size:14px; }.risk-score em { color:var(--danger); font-weight:600; }.score-breakdown { display:grid; grid-template-columns:repeat(2,1fr); gap:9px 18px; align-content:center; }.score-breakdown div { display:grid; grid-template-columns:1fr auto; gap:4px; font-size:12px; color:var(--text-secondary); }.score-breakdown b { color:var(--text-primary); }.score-breakdown i { grid-column:1/-1; height:5px; background:linear-gradient(90deg,var(--warning),var(--danger)); border-radius:6px; }.risk-rule { align-self:center; border-left:3px solid var(--danger); padding-left:14px; }.risk-rule span,.risk-rule strong,.risk-rule small { display:block; }.risk-rule span,.risk-rule small { font-size:12px; color:var(--text-secondary); }.risk-rule strong { font-size:14px; color:var(--text-primary); margin:5px 0; }
 .process-trace { margin-top:16px; border-left:2px solid #dce8f4; padding-left:16px; }.trace-node { position:relative; display:grid; grid-template-columns:32px 1fr auto; gap:9px; padding:0 0 17px; }.trace-node::before { content:""; position:absolute; width:10px; height:10px; border-radius:50%; left:-22px; top:10px; background:#1e88e5; border:3px solid #e3f2fd; }.trace-node.abnormal::before { background:var(--danger); border-color:#ffebee; }.trace-node.active::before { background:var(--warning); border-color:#fff8e1; }.trace-no { height:25px; border-radius:50%; background:#e8f0fe; color:var(--primary); display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; }.trace-node b,.trace-node p,.trace-node small { display:block; }.trace-node b { color:var(--primary); font-size:13px; }.trace-node p { color:var(--text-primary); font-size:12px; margin:2px 0; }.trace-node small { color:var(--text-secondary); font-size:11px; line-height:1.5; }.trace-node em { align-self:start; font-size:11px; font-style:normal; color:var(--success); background:#e8f5e9; padding:2px 6px; border-radius:10px; }.trace-node.abnormal em { color:var(--danger); background:#ffebee; }.trace-node.active em { color:#e65100; background:#fff8e1; }.process-kpi { display:flex; gap:10px; padding-top:9px; border-top:1px dashed var(--border); font-size:11px; color:var(--text-secondary); flex-wrap:wrap; }.process-kpi b { color:var(--primary); }.process-kpi .danger { color:var(--danger); }
 .accountability-table { width:100%; border-collapse:collapse; font-size:11px; margin-top:16px; }.accountability-table th { color:var(--primary); background:#f5f8fc; text-align:left; padding:7px; white-space:nowrap; }.accountability-table td { padding:7px; border-bottom:1px solid var(--border); line-height:1.5; }.accountability-table td:first-child { color:var(--primary); font-weight:600; }.accountability-evidence { border-top:1px dashed var(--border); margin-top:10px; padding-top:8px; font-size:11px; color:var(--text-secondary); line-height:1.6; }.accountability-evidence b { color:var(--primary); }
@@ -895,6 +898,7 @@ body {
 @media(max-width:1100px){.closure-steps{overflow-x:auto;padding-bottom:5px}.closure-steps .closure-step{flex:0 0 230px}.closure-rules,.rectification-analysis{grid-template-columns:1fr}}@media(max-width:600px){.closure-arrow{display:none}}
 @media(max-width:900px){.domain-grid{grid-template-columns:repeat(2,1fr)}.domain-focus{align-items:flex-start;flex-direction:column}.domain-focus .btn{margin-left:0}}@media(max-width:600px){.domain-grid{grid-template-columns:1fr}}
 @media(max-width:800px){.topic-banner{align-items:flex-start;flex-direction:column}.topic-dimensions{padding-left:0;border-left:0;border-top:1px solid rgba(255,255,255,.25);padding-top:10px}}
+@media(max-width:1100px){.dashboard-drilldown-row,.kri-detail-grid{grid-template-columns:1fr}.kri-board{grid-template-columns:repeat(2,1fr)}}@media(max-width:600px){.kri-board,.scenario-board{grid-template-columns:1fr}.kri-detail-hero{display:block}.kri-detail-hero>div:last-child{text-align:left;margin-top:12px}.domain-tabs-bar{padding:0 12px}.kri-lineage{justify-content:flex-start}.kri-lineage i{transform:rotate(90deg);width:100%;text-align:center}}
 @media(max-width:1200px){.dashboard-heatmap{grid-template-columns:repeat(3,1fr)}.warning-charts,.portfolio-analysis-row{grid-template-columns:1fr}.portfolio-kpis{grid-template-columns:repeat(3,1fr)}}@media(max-width:768px){.dashboard-heatmap{grid-template-columns:1fr}.heatmap-legend{margin:0 0 12px;justify-content:flex-start;flex-wrap:wrap}.portfolio-kpis{grid-template-columns:1fr}.kanban-board{grid-template-columns:repeat(4,210px)}}
 
 </style>
@@ -927,6 +931,16 @@ body {
         <!-- 首页驾驶舱 -->
         <div class="page active" id="page-dashboard">
           <div class="metrics-grid" id="dashboardMetrics"></div>
+          <div class="dashboard-drilldown-row">
+            <div class="card">
+              <div class="card-title">关键风险指标监测</div>
+              <div id="groupKriBoard"></div>
+            </div>
+            <div class="card">
+              <div class="card-title">重点风险场景</div>
+              <div id="riskScenarioBoard"></div>
+            </div>
+          </div>
           <div class="dashboard-insights" id="dashboardInsights"></div>
           <div class="card">
             <div class="card-title">投资价值链风险热力地图</div>
@@ -957,7 +971,7 @@ body {
         <!-- 投资业务全过程监测 -->
         <div class="page" id="page-process">
           <div class="topic-banner">
-            <div><strong>投资管理专题监管</strong><span>集团总部围绕投资决策、实施、投后管理和退出开展穿透监管</span></div>
+            <div><strong id="processContextTitle">业务流程与控制监测</strong><span id="processContextDesc">集团总部围绕投资决策、实施、投后管理和退出开展穿透监管</span></div>
             <div class="topic-dimensions"><b>按法人主体</b><span>A、B、C、D公司</span><b>按投资类型</b><span>股权投资、固定资产投资</span></div>
           </div>
           <div class="card">
@@ -1031,6 +1045,12 @@ body {
               </p>
             </div>
           </div>
+        </div>
+
+        <!-- KRI / 风险场景详情 -->
+        <div class="page" id="page-kri">
+          <div class="page-actions"><button class="btn btn-outline" onclick="App.navigate('dashboard')">← 返回驾驶舱</button></div>
+          <div id="kriDetailContent"></div>
         </div>
 
         <!-- 控制活动管理 -->
@@ -1411,6 +1431,20 @@ const APP_DATA = {
 };
 
 Object.assign(APP_DATA, {
+  groupKris: [
+    { id:'kri-approval', category:'合规准入类', name:'未批先实施暴露金额', value:'1.2亿元', status:'重大预警', scenario:'未按规定履行决策审批程序', formula:'有效投资批复完成前发生的采购、签约、付款、开工金额', threshold:'> 0 元', source:'投资管理、采购、合同、资金、项目系统', control:'阻断合同、付款或开工；升级审批', entities:'A公司、C公司' },
+    { id:'kri-authority', category:'授权合规类', name:'授权边界超限金额', value:'0.36亿元', status:'较大预警', scenario:'超越授权审批', formula:'事项金额或累计金额 − 对应审批层级授权上限', threshold:'> 0 元', source:'授权矩阵、投资、合同、资金系统', control:'系统阻断并要求升级审批', entities:'B公司' },
+    { id:'kri-post', category:'投后运营类', name:'投后经营异常命中项数', value:'6项', status:'重大预警', scenario:'经营异常未预警', formula:'收入、利润、现金流、订单、负债等触发异常的指标项数', threshold:'≥ 3 项', source:'投后、财务、订单、合规系统', control:'启动行权、减值测试或退出评估', entities:'A公司、B公司' },
+    { id:'kri-capex', category:'固定资产投资类', name:'累计追加投资接近审批边界比例', value:'86%', status:'预警', scenario:'追加投资审批不规范', formula:'同项目累计追加投资金额 ÷ 原批复金额 × 100%', threshold:'≥ 80%', source:'投资批复、变更台账、合同、资金系统', control:'提示重新报批并升级审批', entities:'C公司' },
+    { id:'kri-filing', category:'备案合规类', name:'未备案继续推进暴露金额', value:'0.48亿元', status:'较大预警', scenario:'应备案未备案', formula:'备案未完成期间新增合同、付款或实施金额', threshold:'> 0 元', source:'备案台账、合同、资金、项目实施资料', control:'补备案、重报或暂停推进', entities:'D公司' },
+    { id:'kri-schedule', category:'固定资产投资类', name:'关键里程碑预测偏差天数', value:'45天', status:'预警', scenario:'关键里程碑严重拖期', formula:'预测完成日期 − 基线计划日期', threshold:'> 30 天', source:'项目计划、实际进度、项目月报', control:'触发纠偏、资源调整和投资方案复核', entities:'C公司、D公司' }
+  ],
+  groupRiskScenarios: [
+    { id:'scenario-approval', name:'决策审批合规风险', desc:'识别未批先实施、超授权、拆分规避审批等事项。', kri:'kri-approval', level:'重大', entities:'A公司、C公司', control:'审批前置校验与流程阻断' },
+    { id:'scenario-capex', name:'固定资产投资实施风险', desc:'关注概算、变更、进度、建设范围和追加投资审批。', kri:'kri-capex', level:'较大', entities:'C公司、D公司', control:'变更审批与付款前校验' },
+    { id:'scenario-post', name:'投后运营与价值实现风险', desc:'关注经营异常、重大事项、减值和退出触发条件。', kri:'kri-post', level:'重大', entities:'A公司、B公司', control:'经营指标监测与行权处置' },
+    { id:'scenario-filing', name:'备案与监管程序风险', desc:'关注备案、重报、交割及境外前置程序完成情况。', kri:'kri-filing', level:'较大', entities:'D公司', control:'备案状态校验与推进阻断' }
+  ],
   regulationDomains: [
     { id:'investment', name:'投资管理', desc:'投资决策、投后管理、退出管理', risks:46, status:'重点监管', active:true },
     { id:'finance', name:'财务管理', desc:'资金、预算、经营指标', risks:12, status:'持续监测' },
@@ -1498,7 +1532,7 @@ const App = {
 
   menuItems: [
     { id: 'dashboard', icon: '📊', label: '驾驶舱' },
-    { id: 'process', icon: '🔄', label: '投资管理专题监管' },
+    { id: 'process', icon: '🔄', label: '业务流程监测' },
     { id: 'warnings', icon: '🔔', label: '风险预警中心' },
     { id: 'penetration', icon: '🔎', label: '风险穿透分析' },
     { id: 'rectification', icon: '✅', label: '整改闭环管理' },
@@ -1507,20 +1541,22 @@ const App = {
 
   pageTitles: {
     dashboard: '集团穿透式监管驾驶舱',
-    process: '投资管理专题监管',
+    process: '业务流程监测',
     scenarios: '风险场景管理',
     warnings: '风险预警中心',
     penetration: '风险穿透分析',
     controls: '控制活动管理',
     matters: '投资事项及股东权利管理',
     rectification: '整改闭环管理',
-    portfolio: '投资组合分析'
+    portfolio: '投资组合分析',
+    kri: 'KRI与风险场景详情'
   },
 
   init() {
     this.renderNav();
     this.renderDashboardMetrics();
     this.renderRegulationDomains();
+    this.renderGroupKriBoard();
     this.renderDashboardHeatmap();
     this.renderDashboardInsights();
     this.renderTopRisks();
@@ -1563,6 +1599,10 @@ const App = {
 
     if (pageId === 'process' && params.stageId) {
       setTimeout(() => this.expandStage(params.stageId), 100);
+    }
+
+    if (pageId === 'kri' && params.kriId) {
+      this.renderKriDetail(params.kriId, params.scenarioId);
     }
   },
 
@@ -1650,9 +1690,39 @@ const App = {
     if (!domain) return;
     this.currentDomain = domainId;
     this.renderRegulationDomains();
+    this.renderGroupKriBoard();
     if (domainId === 'investment') this.navigate('process');
     else this.navigate('dashboard');
-    document.getElementById('pageTitle').textContent = domainId === 'investment' ? '投资管理专题监管' : `集团穿透式监管驾驶舱 · ${domain.name}`;
+    document.getElementById('pageTitle').textContent = domainId === 'investment' ? '投资管理 · 业务流程监测' : `集团穿透式监管驾驶舱 · ${domain.name}`;
+  },
+
+  renderGroupKriBoard() {
+    const kriBoard = document.getElementById('groupKriBoard');
+    const scenarioBoard = document.getElementById('riskScenarioBoard');
+    if (this.currentDomain !== 'investment') {
+      const domain = APP_DATA.regulationDomains.find(x => x.id === this.currentDomain);
+      if (kriBoard) kriBoard.innerHTML = `<div class="domain-context-card"><b>${domain.name}领域集团监测</b><p>围绕${domain.desc}，按法人主体、重大事项、关键控制和整改状态开展集团级穿透监管。</p><span>当前关注：${domain.risks} 项</span><small>该领域暂展示集团总览，投资管理领域已配置详细 KRI 与控制规则示例。</small></div>`;
+      if (scenarioBoard) scenarioBoard.innerHTML = `<div class="domain-context-card"><b>集团监管穿透入口</b><p>点击预警、风险穿透、整改闭环等左侧模块，可从集团总览进一步查看该领域的法人主体、风险事项和闭环处置情况。</p><button class="btn btn-outline" onclick="App.selectRegulationDomain('investment')">查看投资管理完整示例</button></div>`;
+      return;
+    }
+    if (kriBoard) kriBoard.innerHTML = `<div class="kri-board">${APP_DATA.groupKris.map(kri => `<button class="kri-card" onclick="App.navigate('kri',{kriId:'${kri.id}'})"><span>${kri.category}</span><b>${kri.name}</b><strong>${kri.value}</strong><em class="${kri.status.includes('重大') ? 'critical' : 'warning'}">${kri.status}</em><small>涉及：${kri.entities}</small></button>`).join('')}</div>`;
+    if (scenarioBoard) scenarioBoard.innerHTML = `<div class="scenario-board">${APP_DATA.groupRiskScenarios.map(s => `<button class="scenario-drill-card" onclick="App.navigate('kri',{kriId:'${s.kri}',scenarioId:'${s.id}'})"><span class="badge ${s.level === '重大' ? 'badge-danger' : 'badge-warning'}">${s.level}</span><b>${s.name}</b><p>${s.desc}</p><small>主体：${s.entities}</small><em>查看场景穿透 ›</em></button>`).join('')}</div>`;
+  },
+
+  renderKriDetail(kriId, scenarioId) {
+    const kri = APP_DATA.groupKris.find(x => x.id === kriId) || APP_DATA.groupKris[0];
+    const scenario = APP_DATA.groupRiskScenarios.find(x => x.id === scenarioId) || APP_DATA.groupRiskScenarios.find(x => x.kri === kri.id);
+    const container = document.getElementById('kriDetailContent');
+    if (!container) return;
+    container.innerHTML = `
+      <div class="kri-detail-hero"><div><span>${kri.category}</span><h2>${kri.name}</h2><p>风险场景：${scenario ? scenario.name : kri.scenario}</p></div><div><b>${kri.value}</b><em>${kri.status}</em><small>集团口径 · 覆盖主体：${kri.entities}</small></div></div>
+      <div class="kri-detail-grid">
+        <div class="card"><div class="card-title">KRI定义与阈值</div><div class="detail-list"><p><b>计算口径：</b>${kri.formula}</p><p><b>触发阈值：</b><span class="badge badge-danger">${kri.threshold}</span></p><p><b>监测频率：</b>关键节点实时校验 + 月度集团汇总</p><p><b>适用范围：</b>集团纳入监管的法人主体及重大投资事项</p></div></div>
+        <div class="card"><div class="card-title">控制规则与处置</div><div class="detail-list"><p><b>控制规则：</b>在立项、审批、合同、付款、变更或投后监测节点自动校验。</p><p><b>处置动作：</b>${kri.control}</p><p><b>升级路径：</b>责任主体复核 → 所属企业管理部门 → 集团投资管理部督办。</p><p><b>规则依据：</b>国资监管投资管理要求、集团授权与投资管理制度。</p></div></div>
+        <div class="card"><div class="card-title">数据来源与法人主体穿透</div><div class="detail-list"><p><b>汇聚数据：</b>${kri.source}</p><p><b>主体维度：</b>${kri.entities}</p><p><b>事项维度：</b>项目编号、投资类型、审批层级、合同/付款/变更动作。</p><p><b>数据留痕：</b>规则命中记录、校验结果、例外审批、处置与关闭证据。</p></div></div>
+        <div class="card"><div class="card-title">风险场景与监管结论</div><div class="detail-list"><p><b>风险场景：</b>${scenario ? scenario.desc : kri.scenario}</p><p><b>关键控制：</b>${scenario ? scenario.control : kri.control}</p><p><b>当前集团结论：</b>存在${kri.status}，需对涉及法人主体开展专项复核并跟踪整改。</p><button class="btn btn-primary" onclick="App.navigate('penetration',{riskId:'risk-2'})">进入风险穿透分析</button></div></div>
+      </div>
+      <div class="card"><div class="card-title">集团穿透链路</div><div class="kri-lineage"><span>监管领域<br><b>投资管理</b></span><i>→</i><span>风险场景<br><b>${scenario ? scenario.name : kri.scenario}</b></span><i>→</i><span>集团KRI<br><b>${kri.name}</b></span><i>→</i><span>法人主体<br><b>${kri.entities}</b></span><i>→</i><span>控制处置<br><b>提示 / 阻断 / 升级 / 整改</b></span></div></div>`;
   },
 
   renderInvestmentKriControls() {
