@@ -778,10 +778,12 @@ const App = {
   renderRectification() {
     const r = APP_DATA.rectification;
     document.getElementById('rectStats').innerHTML = `
-      <div class="warning-stat total"><div class="num">86</div><div class="label">投资整改事项</div></div>
-      <div class="warning-stat yellow"><div class="num">25</div><div class="label">整改中事项</div></div>
-      <div class="warning-stat"><div class="num" style="color:var(--success)">43</div><div class="label">已闭环事项</div></div>
-      <div class="warning-stat red"><div class="num">12</div><div class="label">逾期整改事项</div></div>
+      <button class="warning-stat total" onclick="App.renderRectKanban()"><div class="num">86</div><div class="label">整改任务总数</div></button>
+      <button class="warning-stat yellow" onclick="App.renderRectKanban()"><div class="num">18</div><div class="label">待整改</div></button>
+      <button class="warning-stat yellow" onclick="App.renderRectKanban()"><div class="num">25</div><div class="label">整改中</div></button>
+      <button class="warning-stat blue" onclick="App.renderRectKanban()"><div class="num">6</div><div class="label">待验证</div></button>
+      <button class="warning-stat" onclick="App.renderRectKanban()"><div class="num" style="color:var(--success)">43</div><div class="label">已关闭</div></button>
+      <button class="warning-stat red" onclick="App.renderRectKanban()"><div class="num">12</div><div class="label">已逾期 / 重新整改</div></button>
     `;
 
     document.getElementById('rectFlow').innerHTML = r.steps.map((step, i) =>
@@ -793,6 +795,7 @@ const App = {
     const governance = document.getElementById('rectificationGovernance');
     const analysis = document.getElementById('rectificationAnalysis');
     if (governance) governance.innerHTML = `
+      <div class="kri-note"><b>整改来源分布：</b><button class="btn btn-outline" onclick="App.renderRectKanban()">风险事项 32项</button> <button class="btn btn-outline" onclick="App.renderRectKanban()">KRI异常 18项</button> <button class="btn btn-outline" onclick="App.renderRectKanban()">控制规则异常 12项</button> <button class="btn btn-outline" onclick="App.renderRectKanban()">重大事项 14项</button> <button class="btn btn-outline" onclick="App.renderRectKanban()">投后评价/检查 10项</button></div>
       <div class="closure-steps">
         <div class="closure-step critical"><span>01</span><div><b>风险发现与任务生成</b><p>风险等级达到 L3 及以上，系统自动生成整改任务并推送责任单位。</p><small>责任：集团投资管理部 · 时限：发现后 1 个工作日 · 输出：整改任务单</small></div></div>
         <div class="closure-arrow">→</div>
@@ -805,8 +808,8 @@ const App = {
       <div class="closure-rules"><div><b>自动督办规则</b><span>L4风险每周跟踪；L3风险每月跟踪；临近到期15日自动提醒。</span></div><div><b>超期升级规则</b><span>超过计划完成日自动升级红色督办，并推送责任单位负责人。</span></div><div><b>关闭准入规则</b><span>指标恢复、控制有效、验证通过且无同类风险复发，方可关闭。</span></div></div>`;
     if (analysis) analysis.innerHTML = `
       <div class="analysis-card"><h4>整改进度与时效</h4><div class="closure-progress"><div><span>整改制定</span><b>100%</b><i style="width:100%"></i></div><div><span>整改执行</span><b>68%</b><i style="width:68%"></i></div><div><span>整改验证</span><b>92%</b><i style="width:92%"></i></div></div><p>平均整改周期 <strong>45天</strong>，同比缩短 12%。</p></div>
-      <div class="analysis-card"><h4>整改效果评价</h4><div class="effect-compare"><span>整改前</span><b class="badge badge-danger">L4 · 利润下降36%</b><i>→</i><span>整改后</span><b class="badge badge-success">L2 · 利润恢复增长5%</b></div><p>验证维度：风险等级变化、控制有效性、指标恢复、同类风险复发。</p><p><strong>当前验证通过率：92%</strong></p></div>
-      <div class="analysis-card"><h4>长效机制沉淀</h4><ul class="mechanism-list"><li>新增“经营指标月度监测”自动预警规则</li><li>将重大事项报送纳入所属企业月度考核</li><li>优化投后管理制度中风险阈值及响应时限</li><li>对重复发生风险开展专项复盘</li></ul></div>`;
+      <div class="analysis-card"><h4>整改责任法人分布</h4><table class="mini-table"><tr><th>法人层级</th><th>事项</th><th>逾期</th><th>待验证</th><th>闭环</th></tr><tr><td>一级子企业</td><td>32</td><td>4</td><td>3</td><td>18</td></tr><tr><td>二级子企业</td><td>38</td><td>6</td><td>2</td><td>19</td></tr><tr><td>三级及以下</td><td>16</td><td>2</td><td>1</td><td>6</td></tr></table></div>
+      <div class="analysis-card"><h4>整改验证与关闭</h4><div class="effect-compare"><span>整改前</span><b class="badge badge-danger">L4 · 收益偏离</b><i>→</i><span>验证后</span><b class="badge badge-success">L2 · 持续跟踪</b></div><p>验证部门：集团投资管理部；验证内容：措施、证据、指标恢复、重复发生。</p><p><strong>当前验证通过率：92%</strong></p></div>`;
   },
 
   renderPortfolio() {
@@ -902,14 +905,14 @@ const App = {
     const node = document.getElementById('rectKanban');
     if (!node) return;
     const cols = ['整改制定', '整改执行', '整改验证', '已关闭'];
-    node.innerHTML = cols.map(col => `<div class="kanban-column"><h4>${col}<span>${APP_DATA.rectificationTasks.filter(x => x.status === col).length}</span></h4>${APP_DATA.rectificationTasks.filter(x => x.status === col).map(x => `<button class="kanban-card" onclick="App.openDrawer('rect','${x.id}')"><span class="badge ${x.level === 'L4' ? 'badge-danger' : 'badge-warning'}">${x.level}</span><strong>${x.title}</strong><small>${x.company} · 截止 ${x.deadline}</small><div class="progress"><i style="width:${x.progress}%"></i></div><em>完成 ${x.progress}%</em></button>`).join('')}</div>`).join('');
+    node.innerHTML = cols.map(col => `<div class="kanban-column"><h4>${col}<span>${APP_DATA.rectificationTasks.filter(x => x.status === col).length}</span></h4>${APP_DATA.rectificationTasks.filter(x => x.status === col).map(x => `<button class="kanban-card" onclick="App.openDrawer('rect','${x.id}')"><span class="badge ${x.level === 'L4' ? 'badge-danger' : 'badge-warning'}">${x.level}</span><strong>${x.title}</strong><small>来源：${x.id.includes('001')?'风险事项':'KRI异常'} · ${x.company} / ${x.owner}</small><small>法人层级：${x.company==='B公司'?'二级子企业':'一级子企业'} · 截止 ${x.deadline}</small><div class="progress"><i style="width:${x.progress}%"></i></div><em>完成 ${x.progress}% · ${x.progress<100?'需验证':'已闭环'}</em></button>`).join('')}</div>`).join('');
   },
 
   openDrawer(type, id) {
     const overlay = document.getElementById('drawerOverlay');
     const panel = document.getElementById('drawerPanel');
     const task = type === 'rect' ? APP_DATA.rectificationTasks.find(x => x.id === id) : null;
-    panel.innerHTML = task ? `<div class="drawer-header"><h3>整改任务详情</h3><button onclick="App.closeDrawer()">×</button></div><span class="badge badge-danger">${task.level}</span><h3>${task.title}</h3><div class="drawer-section"><label>责任链</label><p>集团投资管理部 ↓ ${task.company}${task.owner} ↓ 项目负责人</p></div><div class="drawer-section"><label>整改措施</label><p>${task.measure}</p></div><div class="drawer-section"><label>整改进度</label><div class="progress"><i style="width:${task.progress}%"></i></div><p>${task.progress}% · 计划完成：${task.deadline}</p></div><div class="drawer-section"><label>过程记录</label><p>2026-06-15 风险发现<br>2026-06-20 下发整改通知<br>2026-07-05 提交整改方案<br>2026-08-01 完成控制优化</p></div>` : '';
+    panel.innerHTML = task ? `<div class="drawer-header"><h3>投资整改任务详情</h3><button onclick="App.closeDrawer()">×</button></div><span class="badge badge-danger">${task.level}</span><h3>${task.title}</h3><div class="drawer-section"><label>问题来源</label><p>来源类型：${task.id.includes('001')?'投资风险事项':'KRI异常 / 控制规则触发'}<br>关联风险/问题：${task.title}<br>发现时间：2026-06-15 · 发现方式：规则监测</p></div><div class="drawer-section"><label>整改责任链</label><p>集团总部 → 集团投资管理部 → 一级子企业 → ${task.company} → ${task.owner} → 项目责任岗位</p></div><div class="drawer-section"><label>整改措施与材料</label><p>${task.measure}</p><p>支撑材料：专项分析报告、整改证明、复核意见（已上传）。</p></div><div class="drawer-section"><label>整改进度</label><div class="progress"><i style="width:${task.progress}%"></i></div><p>当前进度：${task.progress}% · 计划完成：${task.deadline} · 状态：${task.status}</p><p>任务创建 → 责任确认 → 措施制定 → 执行 → 材料提交 → 集团复核 → 验证通过 → 闭环归档</p></div><div class="drawer-section"><label>验证与关闭</label><p>验证部门：集团投资管理部；验证状态：${task.progress>=90?'待验证':'整改执行中'}；关闭标准：措施完成、证据齐全、风险指标改善、无重复发生。</p></div>` : '';
     overlay.classList.add('show');
   },
 
