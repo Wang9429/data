@@ -749,12 +749,14 @@ const App = {
   },
 
   renderControls() {
-    const total = 42, kriConfigured = 38, ruleConfigured = 36, abnormal = 13;
+    const total = 42, kriConfigured = 238, ruleConfigured = 126, abnormal = 42;
     document.getElementById('controlStats').innerHTML = `
-      <div class="control-stat-card"><div class="num">${total}</div><div class="label">投资风险场景</div></div>
-      <div class="control-stat-card"><div class="num">${kriConfigured}</div><div class="label">已配置KRI场景</div></div>
-      <div class="control-stat-card"><div class="num">${ruleConfigured}</div><div class="label">已配置控制规则场景</div></div>
-      <div class="control-stat-card abnormal"><div class="num">${abnormal}</div><div class="label">规则执行异常场景</div></div>
+      <div class="control-stat-card"><div class="num">${total}</div><div class="label">风险场景总数</div></div>
+      <div class="control-stat-card"><div class="num">${kriConfigured}</div><div class="label">KRI指标总数</div></div>
+      <div class="control-stat-card"><div class="num">${ruleConfigured}</div><div class="label">控制规则总数</div></div>
+      <div class="control-stat-card"><div class="num">1,286</div><div class="label">规则执行次数 · 环比+12.4%</div></div>
+      <div class="control-stat-card abnormal"><div class="num">186</div><div class="label">规则触发次数 · 触发率14.5%</div></div>
+      <div class="control-stat-card abnormal"><div class="num">${abnormal}</div><div class="label">异常规则 · 已处理30 / 待处理12</div></div>
     `;
 
     const tbody = document.querySelector('#controlsTable tbody');
@@ -762,13 +764,13 @@ const App = {
       const ruleType = index % 3 === 0 ? '阻断控制' : index % 3 === 1 ? '预警控制' : '复核控制';
       const badge = ruleType === '阻断控制' ? 'badge-danger' : ruleType === '预警控制' ? 'badge-warning' : 'badge-info';
       return `<tr class="clickable" onclick="App.navigate('kri',{kriId:'${kri.id}'})">
-        <td>${kri.scenario}</td>
-        <td>${kri.name}</td>
-        <td>${kri.value}</td>
-        <td>${kri.threshold}</td>
+        <td>${kri.scenario}<br><small>场景编码：SCN-INV-${String(index+1).padStart(3,'0')}</small></td>
+        <td>${kri.name}<br><small>当前值：${kri.value} / 阈值：${kri.threshold}</small></td>
         <td><span class="badge ${index % 2 === 0 ? 'badge-danger' : 'badge-success'}">${index % 2 === 0 ? '异常' : '正常'}</span></td>
-        <td><span class="badge ${badge}">${ruleType}</span></td>
-        <td>${index % 2 === 0 ? '已触发 · 已派单' : '正常放行'}</td>
+        <td><span class="badge ${badge}">${ruleType}</span><br><small>适用：${kri.entities} · 投后运营</small></td>
+        <td>执行 ${128-index*9}次 · 触发 ${index % 2 === 0 ? index+2 : 0}次<br><small>异常 ${index % 2 === 0 ? 1 : 0}次 · 最近 2026-07-20</small></td>
+        <td>${index % 2 === 0 ? '已触发 · 已派单' : '正常放行'}<br><small>证据：规则日志/审批记录 · 责任：投资管理部</small></td>
+        <td><span class="badge ${index % 2 === 0 ? 'badge-warning' : 'badge-success'}">${index % 2 === 0 ? '待处理' : '有效'}</span></td>
       </tr>`;
     }).join('');
   },
