@@ -43,12 +43,16 @@ const App = {
     rectification: '整改闭环管理',
     portfolio: '投资组合分析',
     kri: 'KRI与风险场景详情',
-    group: '集团监管总览'
+    group: '集团监管总览',
+    major: '重大事项监管',
+    foundation: '监管基础能力'
   },
 
   init() {
     this.renderNav();
     this.renderGroupOverview();
+    this.renderMajorMatters();
+    this.renderFoundationWorkbench();
     this.renderDashboardMetrics();
     this.renderRegulationDomains();
     this.renderGroupKriBoard();
@@ -120,10 +124,10 @@ const App = {
     const base = [
       { id:'group', icon:'◉', label:'集团监管总览' },
       { id:'dashboard', icon:'▦', label:'分领域监管' },
-      { id:'portfolio', icon:'◆', label:'重大事项监管' },
+      { id:'major', icon:'◆', label:'重大事项监管' },
       { id:'warnings', icon:'🔔', label:'集团风险预警' },
       { id:'rectification', icon:'✅', label:'整改督办' },
-      { id:'scenarios', icon:'◈', label:'监管基础能力' }
+      { id:'foundation', icon:'◈', label:'监管基础能力' }
     ];
     const menus = {
       investment:[['dashboard','投资管理驾驶舱'],['portfolio','投资结构与组合'],['process','投资价值链监测'],['warnings','投资风险监测'],['penetration','投资穿透分析'],['rectification','投资整改闭环']],
@@ -213,6 +217,18 @@ const App = {
     <div class="card"><div class="card-title">分领域监管态势</div><div class="field-status-grid">${fields.map((f,i)=>`<button onclick="App.selectRegulationDomain('${f.id}')"><b>${f.name}</b><span>重点事项：${[1286,486,238,426,512,186,328,412][i]}项</span><em>重大风险：${[12,3,2,4,5,2,6,4][i]}项</em><small>整改中：${[18,6,4,8,9,3,11,7][i]}项</small></button>`).join('')}</div></div>
     <div class="group-three"><div class="card"><div class="card-title">重点法人监管画像</div><table class="data-table"><thead><tr><th>法人</th><th>高风险领域</th><th>综合关注度</th></tr></thead><tbody><tr><td>A公司</td><td>投资、境外、合同</td><td><span class="badge badge-danger">高</span></td></tr><tr><td>B公司</td><td>投资、财务</td><td><span class="badge badge-warning">较高</span></td></tr><tr><td>D公司</td><td>境外、供应链</td><td><span class="badge badge-warning">较高</span></td></tr></tbody></table></div><div class="card"><div class="card-title">集团重点督办事项</div><div class="supervision-list"><p><b>01</b> 某境外投资项目收益持续偏离 <span class="badge badge-danger">L4</span></p><p><b>02</b> 固定资产项目追加投资接近审批边界 <span class="badge badge-warning">L3</span></p><p><b>03</b> 重大合同履约延期事项 <span class="badge badge-warning">L3</span></p></div></div></div>
     <div class="group-three"><div class="card"><div class="card-title">跨领域风险与重点区域</div><table class="data-table"><thead><tr><th>风险</th><th>涉及领域</th><th>区域 / 法人</th><th>趋势</th></tr></thead><tbody><tr><td>境外投资收益偏离</td><td>投资、财务、境外</td><td>中东 / B公司</td><td><span class="badge badge-danger">上升</span></td></tr><tr><td>重大合同履约延期</td><td>合同、供应链、工程</td><td>境内 / A公司</td><td><span class="badge badge-warning">关注</span></td></tr></tbody></table></div><div class="card"><div class="card-title">监管覆盖与盲区</div><div class="supervision-list"><p><b>92.6%</b> 重点事项已形成有效监测</p><p><b>8</b> 家法人存在数据更新滞后</p><p><b>14</b> 项重点事项待补充 KRI 或控制证据</p><p><b>6</b> 项整改待集团验证</p></div></div></div>`;
+  },
+
+  renderMajorMatters() {
+    const node=document.getElementById('majorMatters'); if(!node)return;
+    const types=[['重大投资','128','12','18'],['重大并购','24','4','5'],['重大资产处置','36','3','6'],['重大合同','426','8','14'],['重大资金事项','218','5','9'],['重大境外事项','48','6','11'],['重大工程事项','312','7','12'],['重大金融事项','56','3','4']];
+    node.innerHTML=`<div class="group-hero"><div><span>集团总部统一监管</span><h2>重大事项监管</h2><p>按事项类型识别重大事项状态、风险、KRI预警、控制规则执行和责任主体。</p></div><div>待集团关注 <b>18项</b></div></div><div class="field-status-grid">${types.map(t=>`<button onclick="App.navigate('penetration',{riskId:'risk-2',detail:true})"><b>${t[0]}</b><span>事项总数：${t[1]}项</span><em>风险事项：${t[2]}项</em><small>待集团关注：${t[3]}项</small></button>`).join('')}</div><div class="card"><div class="card-title">重点事项清单</div><table class="data-table"><thead><tr><th>事项名称</th><th>类型</th><th>领域</th><th>法人</th><th>金额</th><th>阶段</th><th>风险场景</th><th>集团动作</th></tr></thead><tbody><tr><td>某境外能源项目</td><td>重大投资</td><td>投资管理</td><td>B公司</td><td>30亿元</td><td>投后运营</td><td>投资收益未达预期</td><td><span class="badge badge-danger">专项督办</span></td></tr><tr><td>某固定资产建设项目</td><td>重大工程</td><td>工程项目</td><td>C公司</td><td>18亿元</td><td>投资实施</td><td>追加投资审批风险</td><td><span class="badge badge-warning">升级审批</span></td></tr></tbody></table></div>`;
+  },
+
+  renderFoundationWorkbench() {
+    const node=document.getElementById('foundationWorkbench'); if(!node)return;
+    const items=[['监管要求管理','42','关联场景 126个'],['风险场景管理','186','已关联KRI 172个'],['KRI指标管理','238','当前触发预警 46项'],['控制规则管理','126','执行异常 13项'],['控制证据管理','1,286','待补充证据 14项'],['监管对象管理','126','数据更新滞后 8家'],['监管关系管理','3,862','关系校验异常 6项']];
+    node.innerHTML=`<div class="group-hero"><div><span>集团监管体系配置工作台</span><h2>监管基础能力</h2><p>维护监管要求、风险场景、KRI、控制规则、控制证据、监管对象与监管关系，所有对象以风险场景关联。</p></div></div><div class="foundation-grid">${items.map(x=>`<button class="foundation-card" onclick="App.navigate('scenarios')"><b>${x[0]}</b><strong>${x[1]}</strong><span>${x[2]}</span><em>查看配置与关联关系 ›</em></button>`).join('')}</div><div class="card"><div class="card-title">风险场景驱动配置链</div><div class="kri-lineage"><span>监管要求</span><i>→</i><span>风险场景</span><i>→</i><span>管理要求 / 控制目标</span><i>→</i><span>KRI指标</span><i>→</i><span>控制规则</span><i>→</i><span>控制证据</span><i>→</i><span>责任主体</span></div></div>`;
   },
 
   renderRegulationDomains() {
