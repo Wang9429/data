@@ -19,6 +19,7 @@ function ensureOfflineStyles() {
 const App = {
   currentPage: 'dashboard',
   selectedRiskId: null,
+  currentDomain: 'investment',
 
   menuItems: [
     { id: 'dashboard', icon: '📊', label: '驾驶舱' },
@@ -50,6 +51,7 @@ const App = {
     this.renderTopRisks();
     this.renderProcessTree();
     this.renderValueChainOverview();
+    this.renderInvestmentKriControls();
     this.renderRiskMatrix();
     this.renderScenarios();
     this.renderWarnings();
@@ -163,26 +165,32 @@ const App = {
   },
 
   renderRegulationDomains() {
-    const container = document.getElementById('regulationDomains');
+    const container = document.getElementById('domainTabs');
     if (!container) return;
-    container.innerHTML = `<div class="domain-grid">${APP_DATA.regulationDomains.map(domain => `
-      <button class="domain-card ${domain.active ? 'active' : ''}" onclick="App.selectRegulationDomain('${domain.id}')">
-        <strong>${domain.name}</strong><span>${domain.desc}</span><em>${domain.risks} 项风险</em><small>${domain.status}</small>
-      </button>`).join('')}</div>
-      <div class="domain-focus" id="domainFocus"><b>当前专题：投资管理</b><span>按照国资监管穿透式监管要求，围绕法人主体、投资事项、业务环节、控制活动和整改闭环开展集团级监管。点击“投资管理”可进入专题监管页面；其他领域展示集团级监管范围。</span><button class="btn btn-primary" onclick="App.navigate('process')">进入投资管理专题监管</button></div>`;
+    container.innerHTML = APP_DATA.regulationDomains.map(domain => `<button class="domain-tab ${domain.id === this.currentDomain ? 'active' : ''}" onclick="App.selectRegulationDomain('${domain.id}')"><strong>${domain.name}</strong><span>${domain.risks}项关注</span></button>`).join('');
   },
 
   selectRegulationDomain(domainId) {
     const domain = APP_DATA.regulationDomains.find(x => x.id === domainId);
     if (!domain) return;
-    if (domainId === 'investment') {
-      this.navigate('process');
-      return;
-    }
-    document.querySelectorAll('.domain-card').forEach(x => x.classList.remove('active'));
-    const active = Array.from(document.querySelectorAll('.domain-card')).find(x => x.querySelector('strong').textContent === domain.name);
-    if (active) active.classList.add('active');
-    document.getElementById('domainFocus').innerHTML = `<b>${domain.name}监管范围</b><span>集团总部按照出资人监管要求，对${domain.desc}开展法人主体、重大事项、风险预警和整改闭环的分层监管。本演示当前以“投资管理”作为重点专题展示。</span><button class="btn btn-outline" onclick="App.selectRegulationDomain('investment')">查看投资管理专题示例</button>`;
+    this.currentDomain = domainId;
+    this.renderRegulationDomains();
+    if (domainId === 'investment') this.navigate('process');
+    else this.navigate('dashboard');
+    document.getElementById('pageTitle').textContent = domainId === 'investment' ? '投资管理专题监管' : `集团穿透式监管驾驶舱 · ${domain.name}`;
+  },
+
+  renderInvestmentKriControls() {
+    const node = document.getElementById('investmentKriControls');
+    if (!node) return;
+    const rows = [
+      ['股权投资', '投后经营异常命中项数', '收入、利润、现金流、订单等异常项 ≥ 3', '经营数据、财务报表、治理事项', '触发预警，启动行权 / 减值 / 退出评估'],
+      ['固定资产投资', '未批先实施暴露金额', '批复前发生采购、签约、付款或开工', '投资批复、合同、资金、项目系统', '阻断合同、付款或开工节点'],
+      ['固定资产投资', '累计追加投资接近审批边界比例', '累计追加金额 / 原批复金额 ≥ 80%', '投资批复、变更台账、合同、资金系统', '提示重新报批，升级审批'],
+      ['投资共性', '授权边界超限金额', '事项金额或累计金额超过授权上限', '授权矩阵、投资、合同、资金系统', '系统阻断并要求升级审批'],
+      ['投资共性', '未备案继续推进暴露金额', '备案未完成但发生合同、付款或实施', '备案台账、合同、资金、实施资料', '补备案 / 重报 / 暂停推进']
+    ];
+    node.innerHTML = `<div class="kri-note"><b>集团监控方式：</b>以法人主体为监管单元，汇聚投资、合同、资金、项目、财务等数据；KRI 达阈值后按“提示—阻断—升级—整改”形成闭环。制度仅作为控制规则配置与放行的依据。</div><table class="data-table kri-table"><thead><tr><th>投资类型</th><th>集团级KRI</th><th>触发规则</th><th>数据来源</th><th>控制处置</th></tr></thead><tbody>${rows.map(r => `<tr><td><span class="badge badge-primary">${r[0]}</span></td><td>${r[1]}</td><td>${r[2]}</td><td>${r[3]}</td><td>${r[4]}</td></tr>`).join('')}</tbody></table>`;
   },
 
   renderProcessMap() {
@@ -493,7 +501,7 @@ const App = {
           <div class="accountability-evidence"><b>权责留痕：</b>经营分析报告、预警签收记录、整改方案、董事履职报告已纳入监管证据链。</div>
         </div>
         <div class="penetration-card">
-          <h4>制度穿透</h4>
+          <h4>控制规则依据</h4>
           <div class="chain-flow">${renderChain(data.policy)}</div>
         </div>
         <div class="penetration-card">
