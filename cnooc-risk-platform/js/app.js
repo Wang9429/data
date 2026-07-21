@@ -715,6 +715,10 @@ const App = {
           <span>集团监管分析<br><small>整改督办</small></span>
         </div>
       </div>
+      <div class="analysis-two-col">
+        <div class="card"><div class="card-title">控制证据与执行验证</div><div class="detail-list"><p><b>证据名称：</b>月度经营分析报告、KRI计算快照、规则执行日志</p><p><b>证据来源：</b>财务系统、投资管理系统、经营分析系统</p><p><b>形成时间：</b>2026-07-20 08:30</p><p><b>当前有效性：</b><span class="badge badge-warning">部分有效</span></p></div></div>
+        <div class="card"><div class="card-title">验证状态</div><div class="detail-list"><p><b>控制验证：</b>已发起专项验证</p><p><b>验证部门：</b>集团投资管理部</p><p><b>验证时间：</b>2026-08-15</p><p><b>验证结论：</b>整改措施正在执行，风险等级尚未达到关闭标准。</p></div></div>
+      </div>
 
       <div class="analysis-two-col">
         <div class="card">
