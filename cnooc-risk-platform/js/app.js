@@ -44,6 +44,7 @@ const App = {
   },
 
   init() {
+    this.renderDomainGateway();
     this.renderNav();
     this.renderDashboardMetrics();
     this.renderRegulationDomains();
@@ -75,13 +76,14 @@ const App = {
     document.getElementById('pageTitle').textContent = this.pageTitles[pageId] || pageId;
 
     document.querySelectorAll('.nav-item').forEach(item => {
-      item.classList.toggle('active', item.dataset.page === pageId);
+      item.classList.toggle('active', !params.detail && item.dataset.page === pageId);
     });
 
     if (pageId === 'penetration') {
       this.selectedRiskId = params.riskId || this.selectedRiskId || 'risk-2';
       this.renderPenetration(this.selectedRiskId);
       document.getElementById('penetrationBack').style.display = 'block';
+      if (params.detail) document.getElementById('pageTitle').textContent = '风险事项详细穿透分析';
     }
 
     if (pageId === 'process' && params.activityId) {
@@ -177,14 +179,24 @@ const App = {
   },
 
   selectRegulationDomain(domainId) {
+    this.enterDomain(domainId, false);
+  },
+
+  renderDomainGateway() {
+    const container = document.getElementById('gatewayDomains');
+    if (!container) return;
+    container.innerHTML = APP_DATA.regulationDomains.map(domain => `<button class="gateway-domain ${domain.id === 'investment' ? 'active' : ''}" onclick="App.enterDomain('${domain.id}', true)"><strong>${domain.name}</strong><span>${domain.desc}</span><em>${domain.risks} 项集团关注事项</em><small>${domain.id === 'investment' ? '已配置完整监管示例' : '集团总览模式'}</small></button>`).join('');
+  },
+
+  enterDomain(domainId, fromGateway) {
     const domain = APP_DATA.regulationDomains.find(x => x.id === domainId);
     if (!domain) return;
     this.currentDomain = domainId;
     this.renderRegulationDomains();
     this.renderGroupKriBoard();
-    if (domainId === 'investment') this.navigate('process');
-    else this.navigate('dashboard');
-    document.getElementById('pageTitle').textContent = domainId === 'investment' ? '投资管理 · 业务流程监测' : `集团穿透式监管驾驶舱 · ${domain.name}`;
+    if (fromGateway) document.getElementById('domainGateway').style.display = 'none';
+    this.navigate('dashboard');
+    document.getElementById('pageTitle').textContent = `${domain.name} · 集团穿透式监管驾驶舱`;
   },
 
   renderGroupKriBoard() {
@@ -253,7 +265,7 @@ const App = {
     tbody.innerHTML = APP_DATA.topRisks.map(r => {
       const rankClass = r.rank <= 3 ? `rank-${r.rank}` : 'rank-other';
       const levelBadge = r.level === '重大' ? 'badge-danger' : r.level === '较大' ? 'badge-warning' : 'badge-info';
-      return `<tr class="clickable" onclick="App.navigate('penetration', { riskId: '${r.id}' })">
+      return `<tr class="clickable" onclick="App.navigate('penetration', { riskId: '${r.id}', detail: true })">
         <td><span class="rank-num ${rankClass}">${r.rank}</span></td>
         <td>${r.name}</td>
         <td>${r.stage}</td>
@@ -446,7 +458,7 @@ const App = {
         <td>${w.project}</td>
         <td>${w.indicator}</td>
         <td><span class="badge ${badge}">${w.status}</span></td>
-        <td><button class="btn btn-primary" style="padding:4px 12px;font-size:12px;" onclick="App.navigate('penetration', { riskId: '${w.id}' })">穿透分析</button></td>
+        <td><button class="btn btn-primary" style="padding:4px 12px;font-size:12px;" onclick="App.navigate('penetration', { riskId: '${w.id}', detail: true })">穿透分析</button></td>
       </tr>`;
     }).join('');
     document.getElementById('warningPagination').innerHTML = '<span>共 46 条风险事件</span><button class="active">1</button><button>2</button><button>3</button><button>›</button>';
@@ -456,7 +468,7 @@ const App = {
     if (trigger) document.querySelectorAll('.filter-chip').forEach(x => x.classList.remove('active')), trigger.classList.add('active');
     const rows = APP_DATA.warnings.filter(x => !keyword || Object.values(x).join(' ').includes(keyword));
     const tbody = document.querySelector('#warningsTable tbody');
-    tbody.innerHTML = rows.map(w => `<tr class="clickable" onclick="App.navigate('penetration',{riskId:'${w.id}'})"><td>${w.name}</td><td>${w.unit}</td><td>${w.project}</td><td>${w.indicator}</td><td><span class="badge ${w.status === '红色' ? 'badge-danger' : w.status === '黄色' ? 'badge-warning' : 'badge-info'}">${w.status}</span></td><td><button class="btn btn-primary" onclick="event.stopPropagation();App.navigate('penetration',{riskId:'${w.id}'})">穿透分析</button></td></tr>`).join('');
+    tbody.innerHTML = rows.map(w => `<tr class="clickable" onclick="App.navigate('penetration',{riskId:'${w.id}',detail:true})"><td>${w.name}</td><td>${w.unit}</td><td>${w.project}</td><td>${w.indicator}</td><td><span class="badge ${w.status === '红色' ? 'badge-danger' : w.status === '黄色' ? 'badge-warning' : 'badge-info'}">${w.status}</span></td><td><button class="btn btn-primary" onclick="event.stopPropagation();App.navigate('penetration',{riskId:'${w.id}',detail:true})">穿透分析</button></td></tr>`).join('');
   },
 
   renderPenetration(riskId) {

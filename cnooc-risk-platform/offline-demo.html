@@ -37,6 +37,9 @@ body {
   overflow-x: hidden;
 }
 
+.domain-gateway { position:fixed; inset:0; z-index:1000; overflow:auto; background:linear-gradient(135deg,#002a54 0%,#003d7a 45%,#0b5d9a 100%); color:#fff; padding:50px max(6vw,40px); }
+.gateway-header { display:flex; align-items:center; gap:16px; max-width:1280px; margin:0 auto 54px; }.gateway-mark { width:52px; height:52px; border-radius:10px; display:flex; align-items:center; justify-content:center; background:linear-gradient(135deg,#00a0e9,#0077c8); font-weight:700; }.gateway-header h1 { font-size:23px; margin:0; }.gateway-header p { margin:4px 0 0; color:#b8d8f0; font-size:13px; }.gateway-main { max-width:1280px; margin:auto; }.gateway-intro span { color:#61caff; font-size:13px; }.gateway-intro h2 { margin:8px 0; font-size:30px; }.gateway-intro p { margin:0 0 25px; color:#d2e8f8; font-size:14px; max-width:760px; line-height:1.8; }.gateway-domains { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; }.gateway-domain { min-height:148px; text-align:left; cursor:pointer; border:1px solid rgba(190,226,247,.28); background:rgba(255,255,255,.08); border-radius:10px; padding:20px; color:#fff; transition:.2s; }.gateway-domain:hover { transform:translateY(-3px); background:rgba(255,255,255,.16); border-color:#5fc7ff; }.gateway-domain.active { border-color:#55c5ff; background:linear-gradient(135deg,rgba(0,160,233,.34),rgba(255,255,255,.1)); }.gateway-domain strong,.gateway-domain span,.gateway-domain em,.gateway-domain small { display:block; }.gateway-domain strong { font-size:18px; }.gateway-domain span { color:#d4eaf8; font-size:12px; margin:8px 0; line-height:1.5; }.gateway-domain em { font-style:normal; color:#7dddff; font-size:12px; }.gateway-domain small { color:#b8d8f0; font-size:11px; margin-top:5px; }.gateway-footer { max-width:1280px; margin:36px auto 0; border-top:1px solid rgba(255,255,255,.18); padding-top:18px; color:#b8d8f0; font-size:12px; }
+
 /* Layout */
 .app-container { display: flex; min-height: 100vh; }
 
@@ -899,11 +902,23 @@ body {
 @media(max-width:900px){.domain-grid{grid-template-columns:repeat(2,1fr)}.domain-focus{align-items:flex-start;flex-direction:column}.domain-focus .btn{margin-left:0}}@media(max-width:600px){.domain-grid{grid-template-columns:1fr}}
 @media(max-width:800px){.topic-banner{align-items:flex-start;flex-direction:column}.topic-dimensions{padding-left:0;border-left:0;border-top:1px solid rgba(255,255,255,.25);padding-top:10px}}
 @media(max-width:1100px){.dashboard-drilldown-row,.kri-detail-grid{grid-template-columns:1fr}.kri-board{grid-template-columns:repeat(2,1fr)}}@media(max-width:600px){.kri-board,.scenario-board{grid-template-columns:1fr}.kri-detail-hero{display:block}.kri-detail-hero>div:last-child{text-align:left;margin-top:12px}.domain-tabs-bar{padding:0 12px}.kri-lineage{justify-content:flex-start}.kri-lineage i{transform:rotate(90deg);width:100%;text-align:center}}
+@media(max-width:900px){.gateway-domains{grid-template-columns:repeat(2,1fr)}}@media(max-width:600px){.domain-gateway{padding:28px 20px}.gateway-header{margin-bottom:30px}.gateway-intro h2{font-size:24px}.gateway-domains{grid-template-columns:1fr}}
 @media(max-width:1200px){.dashboard-heatmap{grid-template-columns:repeat(3,1fr)}.warning-charts,.portfolio-analysis-row{grid-template-columns:1fr}.portfolio-kpis{grid-template-columns:repeat(3,1fr)}}@media(max-width:768px){.dashboard-heatmap{grid-template-columns:1fr}.heatmap-legend{margin:0 0 12px;justify-content:flex-start;flex-wrap:wrap}.portfolio-kpis{grid-template-columns:1fr}.kanban-board{grid-template-columns:repeat(4,210px)}}
 
 </style>
 </head>
 <body>
+  <section class="domain-gateway" id="domainGateway">
+    <div class="gateway-header">
+      <div class="gateway-mark">集团</div>
+      <div><h1>集团穿透式监管平台</h1><p>面向集团总部的分领域、分法人主体监管工作台</p></div>
+    </div>
+    <div class="gateway-main">
+      <div class="gateway-intro"><span>请选择监管领域</span><h2>从监管领域进入专项工作台</h2><p>领域是系统一级入口。进入领域后，可使用驾驶舱、业务流程监测、预警中心、风险穿透、整改闭环和组合分析等模块开展集团级监管。</p></div>
+      <div class="gateway-domains" id="gatewayDomains"></div>
+    </div>
+    <div class="gateway-footer">监管穿透路径：监管领域 → 法人主体 → 监管事项 → KRI / 控制规则 → 风险预警 → 整改闭环</div>
+  </section>
   <div class="app-container">
     <aside class="sidebar">
       <div class="sidebar-header">
@@ -1553,6 +1568,7 @@ const App = {
   },
 
   init() {
+    this.renderDomainGateway();
     this.renderNav();
     this.renderDashboardMetrics();
     this.renderRegulationDomains();
@@ -1584,13 +1600,14 @@ const App = {
     document.getElementById('pageTitle').textContent = this.pageTitles[pageId] || pageId;
 
     document.querySelectorAll('.nav-item').forEach(item => {
-      item.classList.toggle('active', item.dataset.page === pageId);
+      item.classList.toggle('active', !params.detail && item.dataset.page === pageId);
     });
 
     if (pageId === 'penetration') {
       this.selectedRiskId = params.riskId || this.selectedRiskId || 'risk-2';
       this.renderPenetration(this.selectedRiskId);
       document.getElementById('penetrationBack').style.display = 'block';
+      if (params.detail) document.getElementById('pageTitle').textContent = '风险事项详细穿透分析';
     }
 
     if (pageId === 'process' && params.activityId) {
@@ -1686,14 +1703,24 @@ const App = {
   },
 
   selectRegulationDomain(domainId) {
+    this.enterDomain(domainId, false);
+  },
+
+  renderDomainGateway() {
+    const container = document.getElementById('gatewayDomains');
+    if (!container) return;
+    container.innerHTML = APP_DATA.regulationDomains.map(domain => `<button class="gateway-domain ${domain.id === 'investment' ? 'active' : ''}" onclick="App.enterDomain('${domain.id}', true)"><strong>${domain.name}</strong><span>${domain.desc}</span><em>${domain.risks} 项集团关注事项</em><small>${domain.id === 'investment' ? '已配置完整监管示例' : '集团总览模式'}</small></button>`).join('');
+  },
+
+  enterDomain(domainId, fromGateway) {
     const domain = APP_DATA.regulationDomains.find(x => x.id === domainId);
     if (!domain) return;
     this.currentDomain = domainId;
     this.renderRegulationDomains();
     this.renderGroupKriBoard();
-    if (domainId === 'investment') this.navigate('process');
-    else this.navigate('dashboard');
-    document.getElementById('pageTitle').textContent = domainId === 'investment' ? '投资管理 · 业务流程监测' : `集团穿透式监管驾驶舱 · ${domain.name}`;
+    if (fromGateway) document.getElementById('domainGateway').style.display = 'none';
+    this.navigate('dashboard');
+    document.getElementById('pageTitle').textContent = `${domain.name} · 集团穿透式监管驾驶舱`;
   },
 
   renderGroupKriBoard() {
@@ -1762,7 +1789,7 @@ const App = {
     tbody.innerHTML = APP_DATA.topRisks.map(r => {
       const rankClass = r.rank <= 3 ? `rank-${r.rank}` : 'rank-other';
       const levelBadge = r.level === '重大' ? 'badge-danger' : r.level === '较大' ? 'badge-warning' : 'badge-info';
-      return `<tr class="clickable" onclick="App.navigate('penetration', { riskId: '${r.id}' })">
+      return `<tr class="clickable" onclick="App.navigate('penetration', { riskId: '${r.id}', detail: true })">
         <td><span class="rank-num ${rankClass}">${r.rank}</span></td>
         <td>${r.name}</td>
         <td>${r.stage}</td>
@@ -1955,7 +1982,7 @@ const App = {
         <td>${w.project}</td>
         <td>${w.indicator}</td>
         <td><span class="badge ${badge}">${w.status}</span></td>
-        <td><button class="btn btn-primary" style="padding:4px 12px;font-size:12px;" onclick="App.navigate('penetration', { riskId: '${w.id}' })">穿透分析</button></td>
+        <td><button class="btn btn-primary" style="padding:4px 12px;font-size:12px;" onclick="App.navigate('penetration', { riskId: '${w.id}', detail: true })">穿透分析</button></td>
       </tr>`;
     }).join('');
     document.getElementById('warningPagination').innerHTML = '<span>共 46 条风险事件</span><button class="active">1</button><button>2</button><button>3</button><button>›</button>';
@@ -1965,7 +1992,7 @@ const App = {
     if (trigger) document.querySelectorAll('.filter-chip').forEach(x => x.classList.remove('active')), trigger.classList.add('active');
     const rows = APP_DATA.warnings.filter(x => !keyword || Object.values(x).join(' ').includes(keyword));
     const tbody = document.querySelector('#warningsTable tbody');
-    tbody.innerHTML = rows.map(w => `<tr class="clickable" onclick="App.navigate('penetration',{riskId:'${w.id}'})"><td>${w.name}</td><td>${w.unit}</td><td>${w.project}</td><td>${w.indicator}</td><td><span class="badge ${w.status === '红色' ? 'badge-danger' : w.status === '黄色' ? 'badge-warning' : 'badge-info'}">${w.status}</span></td><td><button class="btn btn-primary" onclick="event.stopPropagation();App.navigate('penetration',{riskId:'${w.id}'})">穿透分析</button></td></tr>`).join('');
+    tbody.innerHTML = rows.map(w => `<tr class="clickable" onclick="App.navigate('penetration',{riskId:'${w.id}',detail:true})"><td>${w.name}</td><td>${w.unit}</td><td>${w.project}</td><td>${w.indicator}</td><td><span class="badge ${w.status === '红色' ? 'badge-danger' : w.status === '黄色' ? 'badge-warning' : 'badge-info'}">${w.status}</span></td><td><button class="btn btn-primary" onclick="event.stopPropagation();App.navigate('penetration',{riskId:'${w.id}',detail:true})">穿透分析</button></td></tr>`).join('');
   },
 
   renderPenetration(riskId) {
