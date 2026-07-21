@@ -56,6 +56,7 @@ const App = {
     this.renderDashboardMetrics();
     this.renderRegulationDomains();
     this.renderGroupKriBoard();
+    this.renderMajorMatters();
     this.renderDashboardHeatmap();
     this.renderDashboardInsights();
     this.renderTopRisks();
@@ -141,7 +142,17 @@ const App = {
     };
     const icons={dashboard:'📊',portfolio:'📈',process:'🔄',controls:'🛡️',warnings:'🔔',penetration:'🔎',rectification:'✅'};
     if (this.currentDomain === 'investment') {
-      return base.concat([{id:'process',icon:'↳',label:'投资价值链监测'},{id:'controls',icon:'↳',label:'投资场景规则执行'},{id:'penetration',icon:'↳',label:'投资穿透分析'}]);
+      return [
+        {id:'group',icon:'◉',label:'集团监管总览'},
+        {id:'dashboard',icon:'📊',label:'投资管理驾驶舱'},
+        {id:'portfolio',icon:'📈',label:'投资结构与组合'},
+        {id:'process',icon:'🔄',label:'投资价值链监测'},
+        {id:'warnings',icon:'🔔',label:'投资风险监测'},
+        {id:'controls',icon:'🛡️',label:'投资场景规则执行'},
+        {id:'major',icon:'◆',label:'投资重大事项监管'},
+        {id:'penetration',icon:'🔎',label:'投资穿透分析'},
+        {id:'rectification',icon:'✅',label:'投资整改闭环'}
+      ];
     }
     return base;
   },
@@ -167,27 +178,27 @@ const App = {
   renderDashboardMetrics() {
     document.getElementById('dashboardMetrics').innerHTML = `
       <div class="metric-card">
-        <div class="label">纳入监管法人主体</div>
-        <div class="value">18<span>家</span></div>
+        <div class="label">集团投资总额</div>
+        <div class="value">8,562<span>亿元</span></div>
         <div class="sub-items">
-          集团级监管视角<br>
-          重点主体：<strong>A、B、C、D公司</strong>
+          覆盖投资主体：<strong>126家</strong><br>
+          股权、固定资产、并购及境外投资
         </div>
       </div>
       <div class="metric-card">
-        <div class="label">重点监管领域</div>
-        <div class="value">9<span>个</span></div>
+        <div class="label">年度投资计划</div>
+        <div class="value">1,236<span>亿元</span></div>
         <div class="sub-items">
-          投资、财务、产权、合同等<br>
-          当前专题：<strong>投资管理</strong>
+          年度实际投资：<strong>864亿元</strong><br>
+          计划执行率：<strong>69.9%</strong>
         </div>
       </div>
       <div class="metric-card">
-        <div class="label">重点监管法人主体</div>
-        <div class="value">4<span>家</span></div>
+        <div class="label">投资项目总数</div>
+        <div class="value">1,286<span>项</span></div>
         <div class="sub-items">
-          A公司 · B公司 · C公司 · D公司<br>
-          穿透维度：<strong>领域、主体、事项</strong>
+          重大投资项目：<strong>128项</strong><br>
+          风险投资项目：<strong>47项</strong>
         </div>
       </div>
       <div class="metric-card">
@@ -199,11 +210,11 @@ const App = {
         </div>
       </div>
       <div class="metric-card">
-        <div class="label">整改闭环情况</div>
-        <div class="value" style="color:var(--success);">87.1<span>%</span></div>
+        <div class="label">收益偏离项目</div>
+        <div class="value" style="color:var(--warning);">47<span>项</span></div>
         <div class="sub-items">
-          年度整改事项：<strong>62项</strong><br>
-          已完成：<strong>54项</strong> · 超期：<strong style="color:var(--danger)">3项</strong>
+          实际收益低于预期：<strong>31项</strong><br>
+          投后评价异常：<strong style="color:var(--danger)">17项</strong>
         </div>
       </div>
     `;
@@ -222,6 +233,11 @@ const App = {
 
   renderMajorMatters() {
     const node=document.getElementById('majorMatters'); if(!node)return;
+    if (this.currentDomain === 'investment') {
+      const types=[['重大投资决策','86','8','11'],['重大并购投资','24','4','5'],['重大投资变更','28','3','4'],['重大投资退出','14','2','3']];
+      node.innerHTML=`<div class="group-hero"><div><span>领域作用域：投资管理</span><h2>投资管理重大事项监管</h2><p>仅展示投资管理领域的重大投资决策、并购投资、投资变更和投资退出事项。</p></div><div>待集团关注 <b>18项</b></div></div><div class="field-status-grid">${types.map(t=>`<button onclick="App.navigate('penetration',{riskId:'risk-2',detail:true})"><b>${t[0]}</b><span>事项总数：${t[1]}项</span><em>风险事项：${t[2]}项</em><small>待集团关注：${t[3]}项</small></button>`).join('')}</div><div class="card"><div class="card-title">投资重大事项清单</div><table class="data-table"><thead><tr><th>事项名称</th><th>投资主体</th><th>法人层级</th><th>业务板块</th><th>区域</th><th>金额</th><th>阶段</th><th>触发KRI</th></tr></thead><tbody><tr><td>某境外能源项目</td><td>B公司</td><td>二级子企业</td><td>清洁能源</td><td>中东</td><td>30亿元</td><td>投后运营</td><td>投资收益率偏离</td></tr><tr><td>某固定资产建设项目</td><td>C公司</td><td>一级子企业</td><td>工程建设</td><td>境内</td><td>18亿元</td><td>投资实施</td><td>追加投资审批边界</td></tr></tbody></table></div>`;
+      return;
+    }
     const types=[['财务管理重大事项','218','5','9'],['投资管理重大事项','152','16','18'],['产权管理重大事项','36','3','6'],['合同管理重大事项','426','8','14'],['供应链管理重大事项','512','9','15'],['金融业务重大事项','56','3','4'],['境外业务重大事项','48','6','11'],['工程项目重大事项','312','7','12'],['科技创新重大事项','86','2','3'],['薪酬分配重大事项','22','1','2']];
     node.innerHTML=`<div class="group-hero"><div><span>集团总部统一监管</span><h2>重大事项监管</h2><p>按事项类型识别重大事项状态、风险、KRI预警、控制规则执行和责任主体。</p></div><div>待集团关注 <b>18项</b></div></div><div class="field-status-grid">${types.map(t=>`<button onclick="App.navigate('penetration',{riskId:'risk-2',detail:true})"><b>${t[0]}</b><span>事项总数：${t[1]}项</span><em>风险事项：${t[2]}项</em><small>待集团关注：${t[3]}项</small></button>`).join('')}</div><div class="card"><div class="card-title">重点事项清单</div><table class="data-table"><thead><tr><th>事项名称</th><th>类型</th><th>领域</th><th>法人</th><th>金额</th><th>阶段</th><th>风险场景</th><th>集团动作</th></tr></thead><tbody><tr><td>某境外能源项目</td><td>重大投资</td><td>投资管理</td><td>B公司</td><td>30亿元</td><td>投后运营</td><td>投资收益未达预期</td><td><span class="badge badge-danger">专项督办</span></td></tr><tr><td>某固定资产建设项目</td><td>重大工程</td><td>工程项目</td><td>C公司</td><td>18亿元</td><td>投资实施</td><td>追加投资审批风险</td><td><span class="badge badge-warning">升级审批</span></td></tr></tbody></table></div>`;
   },
