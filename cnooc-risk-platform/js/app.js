@@ -25,6 +25,7 @@ const App = {
   menuItems: [
     { id: 'dashboard', icon: '📊', label: '驾驶舱' },
     { id: 'process', icon: '🔄', label: '监管对象与价值链' },
+    { id: 'scenarios', icon: '◈', label: '风险场景' },
     { id: 'controls', icon: '🛡️', label: 'KRI与控制规则' },
     { id: 'warnings', icon: '🔔', label: '风险预警中心' },
     { id: 'rectification', icon: '✅', label: '整改闭环管理' },
@@ -34,7 +35,7 @@ const App = {
   pageTitles: {
     dashboard: '集团穿透式监管驾驶舱',
     process: '监管对象与价值链',
-    scenarios: '风险场景管理',
+    scenarios: '风险场景',
     warnings: '风险预警中心',
     penetration: '风险穿透分析',
     controls: 'KRI与控制规则',
@@ -45,7 +46,6 @@ const App = {
   },
 
   init() {
-    this.renderDomainGateway();
     this.renderNav();
     this.renderDashboardMetrics();
     this.renderRegulationDomains();
@@ -74,7 +74,7 @@ const App = {
     const page = document.getElementById('page-' + pageId);
     if (page) page.classList.add('active');
 
-    if (this.currentDomain !== 'investment' && ['process', 'controls', 'warnings', 'rectification', 'portfolio'].includes(pageId)) {
+    if (this.currentDomain !== 'investment' && ['process', 'scenarios', 'controls', 'warnings', 'rectification', 'portfolio'].includes(pageId)) {
       this.renderNonInvestmentDomainPage(pageId);
     }
 
@@ -214,6 +214,7 @@ const App = {
     this.renderProcessTree();
     this.renderValueChainOverview();
     this.renderRiskMatrix();
+    this.renderScenarios();
     this.renderWarnings();
     this.renderWarningCharts();
     this.renderControls();
@@ -228,7 +229,7 @@ const App = {
     const domain = APP_DATA.regulationDomains.find(x => x.id === this.currentDomain);
     if (!page || !domain) return;
     if (!this.domainPageTemplates[pageId]) this.domainPageTemplates[pageId] = page.innerHTML;
-    const moduleNames = { process:'监管对象与关键流程', controls:'KRI与控制规则', warnings:'预警中心', rectification:'整改闭环', portfolio:'监管分析台账' };
+    const moduleNames = { process:'监管对象与关键流程', scenarios:'风险场景', controls:'KRI与控制规则', warnings:'预警中心', rectification:'整改闭环', portfolio:'监管分析台账' };
     page.innerHTML = `<div class="domain-module-page"><div class="topic-banner"><div><strong>${domain.name} · ${moduleNames[pageId]}</strong><span>当前内容仅展示${domain.name}领域的集团监管口径，不混入投资管理专题数据。</span></div></div><div class="card"><div class="card-title">${domain.name}领域集团监管视图</div><div class="domain-module-grid"><div><b>监管对象</b><p>A、B、C、D公司及纳入集团监管范围的相关法人主体。</p></div><div><b>关键事项</b><p>${domain.desc}相关的重大事项、异常事件、控制规则执行与整改状态。</p></div><div><b>集团KRI</b><p>按法人主体、事项类型和风险等级汇总，形成预警、督办和整改闭环。</p></div><div><b>穿透方式</b><p>领域 → 法人主体 → 事项 / KRI → 控制规则 → 预警 → 整改。</p></div></div></div><div class="card"><div class="card-title">当前监管提示</div><p class="domain-module-note">本演示对${domain.name}领域提供集团级模块框架。投资管理领域已配置完整的业务价值链、KRI、控制规则和风险详情示例，可通过顶部领域 Tab 切换查看。</p></div></div>`;
   },
 
@@ -448,22 +449,13 @@ const App = {
 
   renderScenarios() {
     const container = document.getElementById('scenarioList');
-    container.innerHTML = APP_DATA.riskScenarios.map((group, idx) => `
+    container.innerHTML = `<div class="scenario-guidance"><b>场景库定位：</b>统一定义集团“管什么”。每个场景明确适用的投资类型、法人主体范围、风险责任部门和监管优先级；具体 KRI、阈值和控制规则在“KRI与控制规则”模块维护，预警事件在“预警中心”管理。</div>` + APP_DATA.riskScenarios.map((group, idx) => `
       <div class="scenario-group">
-        <div class="scenario-level1">
-          <span class="num">${idx + 1}</span>
-          ${group.name}
-        </div>
+        <div class="scenario-level1"><span class="num">${idx + 1}</span>${group.name}<small>集团级风险场景分类</small></div>
         <div class="scenario-children">
-          ${group.children.map(child => `
-            <div class="scenario-item" onclick="App.navigate('warnings')">
-              <div class="name">${child.name}</div>
-              <div class="desc">${child.desc}</div>
-            </div>
-          `).join('')}
+          ${group.children.map((child, ci) => `<div class="scenario-item"><div><div class="name">${child.name}</div><div class="desc">${child.desc}</div></div><div class="scenario-meta"><span>适用：${idx < 2 ? '固定资产投资、股权投资' : idx === 5 ? '境外投资' : '股权投资、固定资产投资'}</span><span>主体：A、B、C、D公司</span><button class="btn btn-outline" onclick="App.navigate('controls')">查看规则配置</button></div></div>`).join('')}
         </div>
-      </div>
-    `).join('');
+      </div>`).join('');
   },
 
   renderWarnings() {
@@ -667,24 +659,25 @@ const App = {
   },
 
   renderControls() {
-    const total = 968, valid = 911, abnormal = 57;
+    const total = 126, valid = 113, abnormal = 13;
     document.getElementById('controlStats').innerHTML = `
-      <div class="control-stat-card"><div class="num">${total}</div><div class="label">控制活动数量</div></div>
-      <div class="control-stat-card"><div class="num">${valid}</div><div class="label">有效执行</div></div>
-      <div class="control-stat-card abnormal"><div class="num">${abnormal}</div><div class="label">异常</div></div>
+      <div class="control-stat-card"><div class="num">${total}</div><div class="label">已配置监测规则</div></div>
+      <div class="control-stat-card"><div class="num">${valid}</div><div class="label">正常执行规则</div></div>
+      <div class="control-stat-card abnormal"><div class="num">${abnormal}</div><div class="label">待优化规则</div></div>
     `;
 
     const tbody = document.querySelector('#controlsTable tbody');
-    tbody.innerHTML = APP_DATA.controls.map(c => {
-      const badge = c.status === '正常' ? 'badge-success' : 'badge-danger';
+    tbody.innerHTML = APP_DATA.groupKris.map((kri, index) => {
+      const ruleType = index % 3 === 0 ? '阻断控制' : index % 3 === 1 ? '预警控制' : '复核控制';
+      const badge = ruleType === '阻断控制' ? 'badge-danger' : ruleType === '预警控制' ? 'badge-warning' : 'badge-info';
       return `<tr>
-        <td>${c.stage}</td>
-        <td>${c.scenario}</td>
-        <td>${c.activity}</td>
-        <td>${c.requirement}</td>
-        <td>${c.frequency}</td>
-        <td>${c.department}</td>
-        <td><span class="badge ${badge}">${c.status}</span></td>
+        <td>${kri.category}</td>
+        <td>${kri.scenario}</td>
+        <td>${kri.name}</td>
+        <td>${kri.threshold}</td>
+        <td>关键节点实时 / 月度汇总</td>
+        <td>${kri.source}</td>
+        <td><span class="badge ${badge}">${ruleType}</span></td>
       </tr>`;
     }).join('');
   },
@@ -787,22 +780,20 @@ const App = {
   renderValueChainOverview() {
     const node = document.getElementById('valueChainOverview');
     if (!node) return;
-    node.innerHTML = APP_DATA.processStages.map(stage => `<button class="value-chain-card" onclick="App.navigate('process',{stageId:'${stage.id}'})"><strong>${stage.name}</strong><span>${stage.projects} 个项目</span><span>风险 ${stage.risks} 项</span><em class="${stage.warnings > 2 ? 'risk-high' : stage.warnings ? 'risk-mid' : 'risk-low'}">${stage.warnings > 2 ? '存在预警' : stage.warnings ? '存在关注' : '正常运行'}</em></button>`).join('');
+    node.innerHTML = APP_DATA.processStages.map(stage => `<button class="value-chain-card" onclick="App.navigate('process',{stageId:'${stage.id}'})"><strong>${stage.name}</strong><span>${stage.projects} 项监管对象</span><span>关键事项：${stage.controls} 项</span><em class="${stage.warnings > 2 ? 'risk-high' : stage.warnings ? 'risk-mid' : 'risk-low'}">${stage.warnings > 2 ? '重点关注' : stage.warnings ? '持续跟踪' : '过程受控'}</em></button>`).join('') + `<div class="chain-description">全链条穿透围绕股权投资与固定资产投资，从战略规划、决策审批、合同交割、项目建设 / 投后管理到退出后评价，逐节点关联法人主体、审批事项、合同资金、实施进度和责任主体。</div>`;
   },
 
   renderRiskMatrix() {
     const node = document.getElementById('riskMatrix');
     if (!node) return;
-    const columns = APP_DATA.processStages.map(x => x.name);
-    const rows = ['战略风险', '投资决策风险', '财务风险', '经营风险', '退出风险'];
-    node.innerHTML = `<table class="matrix-table"><thead><tr><th>风险类型 / 阶段</th>${columns.map(x => `<th>${x}</th>`).join('')}</tr></thead><tbody>${rows.map((row, ri) => `<tr><th>${row}</th>${columns.map((_, ci) => { const score = (ri * 3 + ci * 2) % 5; return `<td><button class="matrix-dot l${score}" title="${row} · ${columns[ci]}" onclick="App.navigate('warnings')">${score ? '●' : ''}</button></td>`; }).join('')}</tr>`).join('')}</tbody></table><p class="matrix-note">点击风险点可进入风险预警中心，悬停查看所属阶段与风险等级。</p>`;
+    node.innerHTML = `<div class="entity-penetration"><div class="entity-root"><b>集团总部</b><span>出资人监管 / 授权管理 / 重大事项监督</span></div><div class="entity-branches"><div><i>↓</i><div class="entity-node"><b>A公司</b><span>一级法人主体 · 重大风险 5 项</span></div><i>↓</i><div class="entity-child"><b>A1项目公司</b><span>固定资产建设项目</span></div><div class="entity-child"><b>A2参股企业</b><span>股权投资项目</span></div></div><div><i>↓</i><div class="entity-node"><b>B公司</b><span>一级法人主体 · 重大风险 1 项</span></div><i>↓</i><div class="entity-child"><b>B1项目公司</b><span>投资运营主体</span></div></div><div><i>↓</i><div class="entity-node"><b>C公司</b><span>一级法人主体 · 重点关注事项</span></div><i>↓</i><div class="entity-child"><b>C1建设主体</b><span>固定资产投资主体</span></div></div><div><i>↓</i><div class="entity-node"><b>D公司</b><span>一级法人主体 · 境外投资事项</span></div><i>↓</i><div class="entity-child"><b>D1境外平台</b><span>境外投资运营主体</span></div></div></div></div><p class="matrix-note">按“集团总部 → 一级法人主体 → 项目公司 / 参股企业”逐级穿透，关联主体层级、投资类型、重大事项与风险状态。</p></div>`;
   },
 
   renderWarningCharts() {
     const node = document.getElementById('warningCharts');
     if (!node) return;
     const bars = APP_DATA.warningTrend.map(x => `<i style="height:${x[1] * 1.5}px" title="${x[0]}：${x[1]}项"></i>`).join('');
-    node.innerHTML = `<div class="chart-card"><h4>风险等级分布</h4><div class="donut"><b>46</b><span>风险事项</span></div><p><span class="badge badge-danger">L4 8</span> <span class="badge badge-warning">L3 15</span> <span class="badge badge-info">L2 23</span></p></div><div class="chart-card trend"><h4>近12个月风险趋势</h4><div class="bar-chart">${bars}</div><p>本月新增 <strong>12</strong> 项 · 已关闭 <strong>8</strong> 项</p></div><div class="chart-card"><h4>所属企业 × 风险等级</h4>${APP_DATA.warningEnterpriseHeatmap.map(x => `<div class="enterprise-line"><span>${x.unit}</span><b class="badge-danger">L4 ${x.l4}</b><b class="badge-warning">L3 ${x.l3}</b><b class="badge-info">L2 ${x.l2}</b></div>`).join('')}</div>`;
+    node.innerHTML = `<div class="chart-card"><h4>预警事件分级结构</h4><div class="donut"><b>46</b><span>当前预警</span></div><p><span class="badge badge-danger">L4 8</span> <span class="badge badge-warning">L3 15</span> <span class="badge badge-info">L2 23</span></p></div><div class="chart-card trend"><h4>预警事件生成与关闭趋势</h4><div class="bar-chart">${bars}</div><p>按月统计新生成预警、已关闭预警及存量变化，用于评价风险处置闭环效率。</p></div><div class="chart-card"><h4>法人主体预警分布</h4>${APP_DATA.warningEnterpriseHeatmap.map(x => `<div class="enterprise-line"><span>${x.unit}</span><b class="badge-danger">L4 ${x.l4}</b><b class="badge-warning">L3 ${x.l3}</b><b class="badge-info">L2 ${x.l2}</b></div>`).join('')}</div>`;
   },
 
   renderRectKanban() {
