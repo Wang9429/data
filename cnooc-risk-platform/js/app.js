@@ -319,13 +319,14 @@ const App = {
     const scenario = APP_DATA.groupRiskScenarios.find(x => x.id === scenarioId) || APP_DATA.groupRiskScenarios.find(x => x.kri === kri.id);
     const container = document.getElementById('kriDetailContent');
     if (!container) return;
+    const hasRisk = kri.status.includes('重大') || kri.status.includes('预警');
     container.innerHTML = `
       <div class="kri-detail-hero"><div><span>${kri.category}</span><h2>${kri.name}</h2><p>风险场景：${scenario ? scenario.name : kri.scenario}</p></div><div><b>${kri.value}</b><em>${kri.status}</em><small>集团口径 · 覆盖主体：${kri.entities}</small></div></div>
       <div class="kri-detail-grid">
         <div class="card"><div class="card-title">KRI定义与阈值</div><div class="detail-list"><p><b>计算口径：</b>${kri.formula}</p><p><b>触发阈值：</b><span class="badge badge-danger">${kri.threshold}</span></p><p><b>监测频率：</b>关键节点实时校验 + 月度集团汇总</p><p><b>适用范围：</b>集团纳入监管的法人主体及重大投资事项</p></div></div>
         <div class="card"><div class="card-title">控制规则与处置</div><div class="detail-list"><p><b>控制规则：</b>在立项、审批、合同、付款、变更或投后监测节点自动校验。</p><p><b>处置动作：</b>${kri.control}</p><p><b>升级路径：</b>责任主体复核 → 所属企业管理部门 → 集团投资管理部督办。</p><p><b>规则依据：</b>国资监管投资管理要求、集团授权与投资管理制度。</p></div></div>
         <div class="card"><div class="card-title">数据来源与法人主体穿透</div><div class="detail-list"><p><b>汇聚数据：</b>${kri.source}</p><p><b>主体维度：</b>${kri.entities}</p><p><b>事项维度：</b>项目编号、投资类型、审批层级、合同/付款/变更动作。</p><p><b>数据留痕：</b>规则命中记录、校验结果、例外审批、处置与关闭证据。</p></div></div>
-        <div class="card"><div class="card-title">风险场景与监管结论</div><div class="detail-list"><p><b>风险场景：</b>${scenario ? scenario.desc : kri.scenario}</p><p><b>关键控制：</b>${scenario ? scenario.control : kri.control}</p><p><b>当前集团结论：</b>存在${kri.status}，需对涉及法人主体开展专项复核并跟踪整改。</p><button class="btn btn-primary" onclick="App.navigate('penetration',{riskId:'risk-2'})">进入风险穿透分析</button></div></div>
+        <div class="card"><div class="card-title">规则执行与触发记录</div><div class="detail-list"><p><b>风险场景：</b>${scenario ? scenario.desc : kri.scenario}</p><p><b>控制目标：</b>及时识别并处置 ${kri.scenario}。</p><p><b>控制规则：</b>${kri.control}</p><p><b>最近执行：</b>2026-07-20 08:30；执行结果：${hasRisk ? '触发异常，已派单' : '正常放行'}。</p><p><b>控制证据：</b>规则执行记录、业务单据、审批记录、数据快照。</p>${hasRisk ? `<button class="btn btn-primary" onclick="App.navigate('penetration',{riskId:'risk-2',detail:true})">进入投资穿透分析</button>` : ''}</div></div>
       </div>
       <div class="card"><div class="card-title">集团穿透链路</div><div class="kri-lineage"><span>监管领域<br><b>投资管理</b></span><i>→</i><span>风险场景<br><b>${scenario ? scenario.name : kri.scenario}</b></span><i>→</i><span>集团KRI<br><b>${kri.name}</b></span><i>→</i><span>法人主体<br><b>${kri.entities}</b></span><i>→</i><span>控制处置<br><b>提示 / 阻断 / 升级 / 整改</b></span></div></div>`;
   },
@@ -740,25 +741,26 @@ const App = {
   },
 
   renderControls() {
-    const total = 126, valid = 113, abnormal = 13;
+    const total = 42, kriConfigured = 38, ruleConfigured = 36, abnormal = 13;
     document.getElementById('controlStats').innerHTML = `
-      <div class="control-stat-card"><div class="num">${total}</div><div class="label">已配置监测规则</div></div>
-      <div class="control-stat-card"><div class="num">${valid}</div><div class="label">正常执行规则</div></div>
-      <div class="control-stat-card abnormal"><div class="num">${abnormal}</div><div class="label">待优化规则</div></div>
+      <div class="control-stat-card"><div class="num">${total}</div><div class="label">投资风险场景</div></div>
+      <div class="control-stat-card"><div class="num">${kriConfigured}</div><div class="label">已配置KRI场景</div></div>
+      <div class="control-stat-card"><div class="num">${ruleConfigured}</div><div class="label">已配置控制规则场景</div></div>
+      <div class="control-stat-card abnormal"><div class="num">${abnormal}</div><div class="label">规则执行异常场景</div></div>
     `;
 
     const tbody = document.querySelector('#controlsTable tbody');
     tbody.innerHTML = APP_DATA.groupKris.map((kri, index) => {
       const ruleType = index % 3 === 0 ? '阻断控制' : index % 3 === 1 ? '预警控制' : '复核控制';
       const badge = ruleType === '阻断控制' ? 'badge-danger' : ruleType === '预警控制' ? 'badge-warning' : 'badge-info';
-      return `<tr>
-        <td>${kri.category}</td>
+      return `<tr class="clickable" onclick="App.navigate('kri',{kriId:'${kri.id}'})">
         <td>${kri.scenario}</td>
         <td>${kri.name}</td>
-        <td>2026-07-20 08:30</td>
-        <td><span class="badge badge-success">已执行</span></td>
-        <td>${index % 2 === 0 ? '<span class="badge badge-danger">命中 1 项</span>' : '<span class="badge badge-success">未命中</span>'}</td>
-        <td><span class="badge ${badge}">${ruleType} · ${index % 2 === 0 ? '已派单' : '正常放行'}</span></td>
+        <td>${kri.value}</td>
+        <td>${kri.threshold}</td>
+        <td><span class="badge ${index % 2 === 0 ? 'badge-danger' : 'badge-success'}">${index % 2 === 0 ? '异常' : '正常'}</span></td>
+        <td><span class="badge ${badge}">${ruleType}</span></td>
+        <td>${index % 2 === 0 ? '已触发 · 已派单' : '正常放行'}</td>
       </tr>`;
     }).join('');
   },
