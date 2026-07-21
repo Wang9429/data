@@ -20,23 +20,24 @@ const App = {
   currentPage: 'dashboard',
   selectedRiskId: null,
   currentDomain: 'investment',
+  domainPageTemplates: {},
 
   menuItems: [
     { id: 'dashboard', icon: '📊', label: '驾驶舱' },
-    { id: 'process', icon: '🔄', label: '业务流程监测' },
+    { id: 'process', icon: '🔄', label: '监管对象与价值链' },
+    { id: 'controls', icon: '🛡️', label: 'KRI与控制规则' },
     { id: 'warnings', icon: '🔔', label: '风险预警中心' },
-    { id: 'penetration', icon: '🔎', label: '风险穿透分析' },
     { id: 'rectification', icon: '✅', label: '整改闭环管理' },
-    { id: 'portfolio', icon: '📈', label: '投资组合分析' }
+    { id: 'portfolio', icon: '📈', label: '监管分析台账' }
   ],
 
   pageTitles: {
     dashboard: '集团穿透式监管驾驶舱',
-    process: '业务流程监测',
+    process: '监管对象与价值链',
     scenarios: '风险场景管理',
     warnings: '风险预警中心',
     penetration: '风险穿透分析',
-    controls: '控制活动管理',
+    controls: 'KRI与控制规则',
     matters: '投资事项及股东权利管理',
     rectification: '整改闭环管理',
     portfolio: '投资组合分析',
@@ -72,6 +73,10 @@ const App = {
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
     const page = document.getElementById('page-' + pageId);
     if (page) page.classList.add('active');
+
+    if (this.currentDomain !== 'investment' && ['process', 'controls', 'warnings', 'rectification', 'portfolio'].includes(pageId)) {
+      this.renderNonInvestmentDomainPage(pageId);
+    }
 
     document.getElementById('pageTitle').textContent = this.pageTitles[pageId] || pageId;
 
@@ -194,9 +199,37 @@ const App = {
     this.currentDomain = domainId;
     this.renderRegulationDomains();
     this.renderGroupKriBoard();
+    if (domainId === 'investment') this.restoreInvestmentPages();
     if (fromGateway) document.getElementById('domainGateway').style.display = 'none';
     this.navigate('dashboard');
     document.getElementById('pageTitle').textContent = `${domain.name} · 集团穿透式监管驾驶舱`;
+  },
+
+  restoreInvestmentPages() {
+    Object.keys(this.domainPageTemplates).forEach(id => {
+      const page = document.getElementById('page-' + id);
+      if (page) page.innerHTML = this.domainPageTemplates[id];
+    });
+    this.domainPageTemplates = {};
+    this.renderProcessTree();
+    this.renderValueChainOverview();
+    this.renderRiskMatrix();
+    this.renderWarnings();
+    this.renderWarningCharts();
+    this.renderControls();
+    this.renderRectification();
+    this.renderRectificationGovernance();
+    this.renderRectKanban();
+    this.renderPortfolio();
+  },
+
+  renderNonInvestmentDomainPage(pageId) {
+    const page = document.getElementById('page-' + pageId);
+    const domain = APP_DATA.regulationDomains.find(x => x.id === this.currentDomain);
+    if (!page || !domain) return;
+    if (!this.domainPageTemplates[pageId]) this.domainPageTemplates[pageId] = page.innerHTML;
+    const moduleNames = { process:'监管对象与关键流程', controls:'KRI与控制规则', warnings:'预警中心', rectification:'整改闭环', portfolio:'监管分析台账' };
+    page.innerHTML = `<div class="domain-module-page"><div class="topic-banner"><div><strong>${domain.name} · ${moduleNames[pageId]}</strong><span>当前内容仅展示${domain.name}领域的集团监管口径，不混入投资管理专题数据。</span></div></div><div class="card"><div class="card-title">${domain.name}领域集团监管视图</div><div class="domain-module-grid"><div><b>监管对象</b><p>A、B、C、D公司及纳入集团监管范围的相关法人主体。</p></div><div><b>关键事项</b><p>${domain.desc}相关的重大事项、异常事件、控制规则执行与整改状态。</p></div><div><b>集团KRI</b><p>按法人主体、事项类型和风险等级汇总，形成预警、督办和整改闭环。</p></div><div><b>穿透方式</b><p>领域 → 法人主体 → 事项 / KRI → 控制规则 → 预警 → 整改。</p></div></div></div><div class="card"><div class="card-title">当前监管提示</div><p class="domain-module-note">本演示对${domain.name}领域提供集团级模块框架。投资管理领域已配置完整的业务价值链、KRI、控制规则和风险详情示例，可通过顶部领域 Tab 切换查看。</p></div></div>`;
   },
 
   renderGroupKriBoard() {
@@ -736,9 +769,9 @@ const App = {
   renderDashboardInsights() {
     const insights = document.getElementById('dashboardInsights');
     if (insights) insights.innerHTML = `
-      <div class="insight-card"><div class="insight-head"><span>重点监管法人主体</span><button onclick="App.navigate('warnings')">查看风险清单 ›</button></div><div class="unit-risk"><b>A公司</b><span class="badge badge-danger">L4 风险 5项</span><small>经营持续下滑、境外装备项目收益偏离</small></div><div class="unit-risk"><b>D公司</b><span class="badge badge-warning">L3 风险 5项</span><small>境外运营、所在国政策变化</small></div><div class="unit-risk"><b>B公司</b><span class="badge badge-warning">L3 风险 2项</span><small>收益未达预期、利润完成偏低</small></div></div>
-      <div class="insight-card"><div class="insight-head"><span>集团投资管理监管重点</span><button onclick="App.navigate('process',{stageId:'post-invest'})">进入专题监管 ›</button></div><div class="supervision-list"><p><b>01</b> 投后管理：18项风险，5项重大风险，需强化月度经营监测</p><p><b>02</b> 投资退出：10项风险，重点关注退出收益偏差和退出周期</p><p><b>03</b> 立项论证：5项风险，关注收益测算及可研论证质量</p></div></div>
-      <div class="insight-card"><div class="insight-head"><span>整改督办提示</span><button onclick="App.navigate('rectification')">进入整改闭环 ›</button></div><div class="rect-overview"><strong>6</strong><span>项超期整改</span><strong>92%</strong><span>验证通过率</span></div><p class="insight-note">重大风险整改周期不超过90天；本月已完成8项风险关闭验证。</p></div>`;
+      <div class="insight-card dense-card"><div class="insight-head"><span>法人主体风险分布</span><button onclick="App.navigate('warnings')">查看明细 ›</button></div><table class="mini-table"><thead><tr><th>主体</th><th>重大</th><th>较大</th><th>预警状态</th></tr></thead><tbody><tr><td>A公司</td><td class="danger-text">5</td><td>8</td><td>重点督办</td></tr><tr><td>B公司</td><td class="danger-text">1</td><td>2</td><td>持续监测</td></tr><tr><td>C公司</td><td>0</td><td>3</td><td>持续监测</td></tr><tr><td>D公司</td><td class="danger-text">2</td><td>5</td><td>重点关注</td></tr></tbody></table></div>
+      <div class="insight-card dense-card"><div class="insight-head"><span>业务板块风险分布</span><button onclick="App.navigate('process')">查看价值链 ›</button></div><div class="board-bars"><p><span>股权投资</span><i><b style="width:76%"></b></i><em>18项</em></p><p><span>固定资产投资</span><i><b style="width:62%"></b></i><em>14项</em></p><p><span>境外投资</span><i><b style="width:48%"></b></i><em>8项</em></p><p><span>投资后评价</span><i><b style="width:32%"></b></i><em>6项</em></p></div><small class="insight-note">按投资类型、业务环节与法人主体汇总集团风险。</small></div>
+      <div class="insight-card dense-card"><div class="insight-head"><span>前十大风险场景</span><button onclick="App.navigate('warnings')">全部场景 ›</button></div><div class="top-scenarios"><button onclick="App.navigate('kri',{kriId:'kri-approval',scenarioId:'scenario-approval'})"><b>1</b> 决策审批合规风险 <span class="badge badge-danger">L4</span></button><button onclick="App.navigate('kri',{kriId:'kri-post',scenarioId:'scenario-post'})"><b>2</b> 投后运营与价值实现风险 <span class="badge badge-danger">L4</span></button><button onclick="App.navigate('kri',{kriId:'kri-capex',scenarioId:'scenario-capex'})"><b>3</b> 固定资产投资实施风险 <span class="badge badge-warning">L3</span></button><button onclick="App.navigate('kri',{kriId:'kri-filing',scenarioId:'scenario-filing'})"><b>4</b> 备案与监管程序风险 <span class="badge badge-warning">L3</span></button></div></div>`;
     const bottom = document.getElementById('dashboardBottom');
     if (bottom) bottom.innerHTML = `<div class="bottom-item"><span>投资管理专题风险评分</span><strong>78 分</strong><em>关注</em><p>投资决策、经营、收益、退出四维综合测算</p></div><div class="bottom-item"><span>法人主体风险分布</span><strong>4 家重点主体</strong><p>A公司 · B公司 · C公司 · D公司</p></div><div class="bottom-item"><span>本月集团监管动态</span><strong>新增预警 12 项</strong><p>自动识别 9 项 · 人工上报 3 项 · 已关闭 8 项</p></div>`;
   },
