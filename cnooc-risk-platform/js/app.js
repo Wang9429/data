@@ -23,7 +23,7 @@ const App = {
 
   menuItems: [
     { id: 'dashboard', icon: '📊', label: '驾驶舱' },
-    { id: 'process', icon: '🔄', label: '投资管理专题监管' },
+    { id: 'process', icon: '🔄', label: '业务流程监测' },
     { id: 'warnings', icon: '🔔', label: '风险预警中心' },
     { id: 'penetration', icon: '🔎', label: '风险穿透分析' },
     { id: 'rectification', icon: '✅', label: '整改闭环管理' },
@@ -32,20 +32,22 @@ const App = {
 
   pageTitles: {
     dashboard: '集团穿透式监管驾驶舱',
-    process: '投资管理专题监管',
+    process: '业务流程监测',
     scenarios: '风险场景管理',
     warnings: '风险预警中心',
     penetration: '风险穿透分析',
     controls: '控制活动管理',
     matters: '投资事项及股东权利管理',
     rectification: '整改闭环管理',
-    portfolio: '投资组合分析'
+    portfolio: '投资组合分析',
+    kri: 'KRI与风险场景详情'
   },
 
   init() {
     this.renderNav();
     this.renderDashboardMetrics();
     this.renderRegulationDomains();
+    this.renderGroupKriBoard();
     this.renderDashboardHeatmap();
     this.renderDashboardInsights();
     this.renderTopRisks();
@@ -88,6 +90,10 @@ const App = {
 
     if (pageId === 'process' && params.stageId) {
       setTimeout(() => this.expandStage(params.stageId), 100);
+    }
+
+    if (pageId === 'kri' && params.kriId) {
+      this.renderKriDetail(params.kriId, params.scenarioId);
     }
   },
 
@@ -175,9 +181,39 @@ const App = {
     if (!domain) return;
     this.currentDomain = domainId;
     this.renderRegulationDomains();
+    this.renderGroupKriBoard();
     if (domainId === 'investment') this.navigate('process');
     else this.navigate('dashboard');
-    document.getElementById('pageTitle').textContent = domainId === 'investment' ? '投资管理专题监管' : `集团穿透式监管驾驶舱 · ${domain.name}`;
+    document.getElementById('pageTitle').textContent = domainId === 'investment' ? '投资管理 · 业务流程监测' : `集团穿透式监管驾驶舱 · ${domain.name}`;
+  },
+
+  renderGroupKriBoard() {
+    const kriBoard = document.getElementById('groupKriBoard');
+    const scenarioBoard = document.getElementById('riskScenarioBoard');
+    if (this.currentDomain !== 'investment') {
+      const domain = APP_DATA.regulationDomains.find(x => x.id === this.currentDomain);
+      if (kriBoard) kriBoard.innerHTML = `<div class="domain-context-card"><b>${domain.name}领域集团监测</b><p>围绕${domain.desc}，按法人主体、重大事项、关键控制和整改状态开展集团级穿透监管。</p><span>当前关注：${domain.risks} 项</span><small>该领域暂展示集团总览，投资管理领域已配置详细 KRI 与控制规则示例。</small></div>`;
+      if (scenarioBoard) scenarioBoard.innerHTML = `<div class="domain-context-card"><b>集团监管穿透入口</b><p>点击预警、风险穿透、整改闭环等左侧模块，可从集团总览进一步查看该领域的法人主体、风险事项和闭环处置情况。</p><button class="btn btn-outline" onclick="App.selectRegulationDomain('investment')">查看投资管理完整示例</button></div>`;
+      return;
+    }
+    if (kriBoard) kriBoard.innerHTML = `<div class="kri-board">${APP_DATA.groupKris.map(kri => `<button class="kri-card" onclick="App.navigate('kri',{kriId:'${kri.id}'})"><span>${kri.category}</span><b>${kri.name}</b><strong>${kri.value}</strong><em class="${kri.status.includes('重大') ? 'critical' : 'warning'}">${kri.status}</em><small>涉及：${kri.entities}</small></button>`).join('')}</div>`;
+    if (scenarioBoard) scenarioBoard.innerHTML = `<div class="scenario-board">${APP_DATA.groupRiskScenarios.map(s => `<button class="scenario-drill-card" onclick="App.navigate('kri',{kriId:'${s.kri}',scenarioId:'${s.id}'})"><span class="badge ${s.level === '重大' ? 'badge-danger' : 'badge-warning'}">${s.level}</span><b>${s.name}</b><p>${s.desc}</p><small>主体：${s.entities}</small><em>查看场景穿透 ›</em></button>`).join('')}</div>`;
+  },
+
+  renderKriDetail(kriId, scenarioId) {
+    const kri = APP_DATA.groupKris.find(x => x.id === kriId) || APP_DATA.groupKris[0];
+    const scenario = APP_DATA.groupRiskScenarios.find(x => x.id === scenarioId) || APP_DATA.groupRiskScenarios.find(x => x.kri === kri.id);
+    const container = document.getElementById('kriDetailContent');
+    if (!container) return;
+    container.innerHTML = `
+      <div class="kri-detail-hero"><div><span>${kri.category}</span><h2>${kri.name}</h2><p>风险场景：${scenario ? scenario.name : kri.scenario}</p></div><div><b>${kri.value}</b><em>${kri.status}</em><small>集团口径 · 覆盖主体：${kri.entities}</small></div></div>
+      <div class="kri-detail-grid">
+        <div class="card"><div class="card-title">KRI定义与阈值</div><div class="detail-list"><p><b>计算口径：</b>${kri.formula}</p><p><b>触发阈值：</b><span class="badge badge-danger">${kri.threshold}</span></p><p><b>监测频率：</b>关键节点实时校验 + 月度集团汇总</p><p><b>适用范围：</b>集团纳入监管的法人主体及重大投资事项</p></div></div>
+        <div class="card"><div class="card-title">控制规则与处置</div><div class="detail-list"><p><b>控制规则：</b>在立项、审批、合同、付款、变更或投后监测节点自动校验。</p><p><b>处置动作：</b>${kri.control}</p><p><b>升级路径：</b>责任主体复核 → 所属企业管理部门 → 集团投资管理部督办。</p><p><b>规则依据：</b>国资监管投资管理要求、集团授权与投资管理制度。</p></div></div>
+        <div class="card"><div class="card-title">数据来源与法人主体穿透</div><div class="detail-list"><p><b>汇聚数据：</b>${kri.source}</p><p><b>主体维度：</b>${kri.entities}</p><p><b>事项维度：</b>项目编号、投资类型、审批层级、合同/付款/变更动作。</p><p><b>数据留痕：</b>规则命中记录、校验结果、例外审批、处置与关闭证据。</p></div></div>
+        <div class="card"><div class="card-title">风险场景与监管结论</div><div class="detail-list"><p><b>风险场景：</b>${scenario ? scenario.desc : kri.scenario}</p><p><b>关键控制：</b>${scenario ? scenario.control : kri.control}</p><p><b>当前集团结论：</b>存在${kri.status}，需对涉及法人主体开展专项复核并跟踪整改。</p><button class="btn btn-primary" onclick="App.navigate('penetration',{riskId:'risk-2'})">进入风险穿透分析</button></div></div>
+      </div>
+      <div class="card"><div class="card-title">集团穿透链路</div><div class="kri-lineage"><span>监管领域<br><b>投资管理</b></span><i>→</i><span>风险场景<br><b>${scenario ? scenario.name : kri.scenario}</b></span><i>→</i><span>集团KRI<br><b>${kri.name}</b></span><i>→</i><span>法人主体<br><b>${kri.entities}</b></span><i>→</i><span>控制处置<br><b>提示 / 阻断 / 升级 / 整改</b></span></div></div>`;
   },
 
   renderInvestmentKriControls() {

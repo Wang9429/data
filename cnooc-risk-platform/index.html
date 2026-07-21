@@ -34,6 +34,16 @@
         <!-- 首页驾驶舱 -->
         <div class="page active" id="page-dashboard">
           <div class="metrics-grid" id="dashboardMetrics"></div>
+          <div class="dashboard-drilldown-row">
+            <div class="card">
+              <div class="card-title">关键风险指标监测</div>
+              <div id="groupKriBoard"></div>
+            </div>
+            <div class="card">
+              <div class="card-title">重点风险场景</div>
+              <div id="riskScenarioBoard"></div>
+            </div>
+          </div>
           <div class="dashboard-insights" id="dashboardInsights"></div>
           <div class="card">
             <div class="card-title">投资价值链风险热力地图</div>
@@ -64,7 +74,7 @@
         <!-- 投资业务全过程监测 -->
         <div class="page" id="page-process">
           <div class="topic-banner">
-            <div><strong>投资管理专题监管</strong><span>集团总部围绕投资决策、实施、投后管理和退出开展穿透监管</span></div>
+            <div><strong id="processContextTitle">业务流程与控制监测</strong><span id="processContextDesc">集团总部围绕投资决策、实施、投后管理和退出开展穿透监管</span></div>
             <div class="topic-dimensions"><b>按法人主体</b><span>A、B、C、D公司</span><b>按投资类型</b><span>股权投资、固定资产投资</span></div>
           </div>
           <div class="card">
@@ -138,6 +148,12 @@
               </p>
             </div>
           </div>
+        </div>
+
+        <!-- KRI / 风险场景详情 -->
+        <div class="page" id="page-kri">
+          <div class="page-actions"><button class="btn btn-outline" onclick="App.navigate('dashboard')">← 返回驾驶舱</button></div>
+          <div id="kriDetailContent"></div>
         </div>
 
         <!-- 控制活动管理 -->
