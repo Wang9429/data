@@ -532,7 +532,8 @@ const App = {
       <button class="warning-stat total" onclick="App.filterWarnings('')"><div class="num">46</div><div class="label">风险事项</div></button>
       <button class="warning-stat red" onclick="App.filterWarnings('红色')"><div class="num">8</div><div class="label">重大风险</div></button>
       <button class="warning-stat yellow" onclick="App.filterWarnings('黄色')"><div class="num">15</div><div class="label">高风险</div></button>
-      <button class="warning-stat blue" onclick="App.showWarningDetail('risk-2')"><div class="num">28</div><div class="label">KRI异常 / 规则触发</div></button>
+      <button class="warning-stat blue" onclick="App.showWarningDetail('risk-2')"><div class="num">28</div><div class="label">KRI异常 / 规则触发</div><small>同比 +12.5%</small></button>
+      <button class="warning-stat total" onclick="App.filterWarnings('')"><div class="num">18</div><div class="label">整改未闭环</div><small>逾期 6项</small></button>
     `;
     document.getElementById('warningFilters').innerHTML = `
       <input type="search" placeholder="搜索风险名称、项目或所属单位" oninput="App.filterWarnings(this.value)">
@@ -540,17 +541,20 @@ const App = {
       <button class="filter-chip" onclick="App.filterWarnings('红色', this)">L4 重大</button>
       <button class="filter-chip" onclick="App.filterWarnings('黄色', this)">L3 较大</button>
       <button class="filter-chip" onclick="App.filterWarnings('蓝色', this)">L2 一般</button>
+      <select><option>全部法人层级</option><option>一级子企业</option><option>二级子企业</option><option>三级及以下企业</option><option>项目公司</option></select>
       <select><option>全部法人主体</option><option>A公司</option><option>B公司</option><option>C公司</option><option>D公司</option></select>
-      <select><option>全部业务阶段</option><option>投后管理</option><option>立项论证</option><option>投资退出</option></select>`;
+      <select><option>全部业务板块</option><option>工程建设</option><option>装备制造</option><option>清洁能源</option><option>其他业务</option></select>
+      <select><option>全部区域</option><option>境内</option><option>境外</option><option>中东</option><option>其他区域</option></select>
+      <select><option>全部业务阶段</option><option>投资机会识别</option><option>投资立项</option><option>投资决策</option><option>投资实施</option><option>投后管理</option><option>投资退出</option><option>投资后评价</option><option>整改与优化</option></select>`;
 
     const tbody = document.querySelector('#warningsTable tbody');
     tbody.innerHTML = APP_DATA.warnings.map(w => {
       const badge = w.status === '红色' ? 'badge-danger' : w.status === '黄色' ? 'badge-warning' : 'badge-info';
       return `<tr class="clickable" onclick="App.showWarningDetail('${w.id}')">
-        <td>${w.name}</td>
-        <td>${w.unit}</td>
-        <td>${w.project}</td>
-        <td>${w.indicator}</td>
+        <td>${w.name}<br><small>场景：投资收益/决策/投后风险</small></td>
+        <td>${w.unit}<br><small>二级子企业 · 清洁能源</small></td>
+        <td>${w.project}<br><small>投后管理 · 中东区域</small></td>
+        <td>${w.indicator}<br><small>规则：已触发 · 责任：投资管理部</small></td>
         <td><span class="badge ${badge}">${w.status}</span></td>
         <td><button class="btn btn-primary" style="padding:4px 12px;font-size:12px;" onclick="event.stopPropagation();App.showWarningDetail('${w.id}')">查看详情</button></td>
       </tr>`;
