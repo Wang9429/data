@@ -504,6 +504,8 @@ body {
   margin-bottom: 4px;
 }
 
+.scenario-guidance { margin-bottom:18px; padding:12px; background:#f1f7fc; border-left:3px solid var(--accent); font-size:13px; color:var(--text-secondary); line-height:1.7; }.scenario-guidance b { color:var(--primary); }.scenario-level1 small { margin-left:auto; font-size:11px; font-weight:400; opacity:.75; }.scenario-item { display:flex; justify-content:space-between; align-items:center; gap:20px; }.scenario-meta { display:flex; align-items:flex-end; flex-direction:column; gap:4px; min-width:220px; color:var(--text-secondary); font-size:11px; }.scenario-meta .btn { padding:4px 9px; font-size:11px; margin-top:3px; }
+
 .scenario-item .desc {
   font-size: 12px;
   color: var(--text-secondary);

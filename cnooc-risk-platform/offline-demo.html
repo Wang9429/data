@@ -511,6 +511,8 @@ body {
   margin-bottom: 4px;
 }
 
+.scenario-guidance { margin-bottom:18px; padding:12px; background:#f1f7fc; border-left:3px solid var(--accent); font-size:13px; color:var(--text-secondary); line-height:1.7; }.scenario-guidance b { color:var(--primary); }.scenario-level1 small { margin-left:auto; font-size:11px; font-weight:400; opacity:.75; }.scenario-item { display:flex; justify-content:space-between; align-items:center; gap:20px; }.scenario-meta { display:flex; align-items:flex-end; flex-direction:column; gap:4px; min-width:220px; color:var(--text-secondary); font-size:11px; }.scenario-meta .btn { padding:4px 9px; font-size:11px; margin-top:3px; }
+
 .scenario-item .desc {
   font-size: 12px;
   color: var(--text-secondary);
@@ -1080,17 +1082,17 @@ body {
         <div class="page" id="page-controls">
           <div class="control-stats" id="controlStats"></div>
           <div class="card">
-            <div class="card-title">控制活动清单</div>
+            <div class="card-title">KRI与控制规则配置清单</div>
             <table class="data-table" id="controlsTable">
               <thead>
                 <tr>
-                  <th>业务环节</th>
-                  <th>风险场景</th>
-                  <th>控制活动</th>
-                  <th>控制要求</th>
-                  <th>执行频率</th>
-                  <th>责任部门</th>
-                  <th>监测状态</th>
+                  <th>指标类型</th>
+                  <th>对应风险场景</th>
+                  <th>集团KRI</th>
+                  <th>阈值 / 触发条件</th>
+                  <th>监测频率</th>
+                  <th>数据来源</th>
+                  <th>控制方式</th>
                 </tr>
               </thead>
               <tbody></tbody>
@@ -1557,6 +1559,7 @@ const App = {
   menuItems: [
     { id: 'dashboard', icon: '📊', label: '驾驶舱' },
     { id: 'process', icon: '🔄', label: '监管对象与价值链' },
+    { id: 'scenarios', icon: '◈', label: '风险场景' },
     { id: 'controls', icon: '🛡️', label: 'KRI与控制规则' },
     { id: 'warnings', icon: '🔔', label: '风险预警中心' },
     { id: 'rectification', icon: '✅', label: '整改闭环管理' },
@@ -1566,7 +1569,7 @@ const App = {
   pageTitles: {
     dashboard: '集团穿透式监管驾驶舱',
     process: '监管对象与价值链',
-    scenarios: '风险场景管理',
+    scenarios: '风险场景',
     warnings: '风险预警中心',
     penetration: '风险穿透分析',
     controls: 'KRI与控制规则',
@@ -1605,7 +1608,7 @@ const App = {
     const page = document.getElementById('page-' + pageId);
     if (page) page.classList.add('active');
 
-    if (this.currentDomain !== 'investment' && ['process', 'controls', 'warnings', 'rectification', 'portfolio'].includes(pageId)) {
+    if (this.currentDomain !== 'investment' && ['process', 'scenarios', 'controls', 'warnings', 'rectification', 'portfolio'].includes(pageId)) {
       this.renderNonInvestmentDomainPage(pageId);
     }
 
@@ -1745,6 +1748,7 @@ const App = {
     this.renderProcessTree();
     this.renderValueChainOverview();
     this.renderRiskMatrix();
+    this.renderScenarios();
     this.renderWarnings();
     this.renderWarningCharts();
     this.renderControls();
@@ -1759,7 +1763,7 @@ const App = {
     const domain = APP_DATA.regulationDomains.find(x => x.id === this.currentDomain);
     if (!page || !domain) return;
     if (!this.domainPageTemplates[pageId]) this.domainPageTemplates[pageId] = page.innerHTML;
-    const moduleNames = { process:'监管对象与关键流程', controls:'KRI与控制规则', warnings:'预警中心', rectification:'整改闭环', portfolio:'监管分析台账' };
+    const moduleNames = { process:'监管对象与关键流程', scenarios:'风险场景', controls:'KRI与控制规则', warnings:'预警中心', rectification:'整改闭环', portfolio:'监管分析台账' };
     page.innerHTML = `<div class="domain-module-page"><div class="topic-banner"><div><strong>${domain.name} · ${moduleNames[pageId]}</strong><span>当前内容仅展示${domain.name}领域的集团监管口径，不混入投资管理专题数据。</span></div></div><div class="card"><div class="card-title">${domain.name}领域集团监管视图</div><div class="domain-module-grid"><div><b>监管对象</b><p>A、B、C、D公司及纳入集团监管范围的相关法人主体。</p></div><div><b>关键事项</b><p>${domain.desc}相关的重大事项、异常事件、控制规则执行与整改状态。</p></div><div><b>集团KRI</b><p>按法人主体、事项类型和风险等级汇总，形成预警、督办和整改闭环。</p></div><div><b>穿透方式</b><p>领域 → 法人主体 → 事项 / KRI → 控制规则 → 预警 → 整改。</p></div></div></div><div class="card"><div class="card-title">当前监管提示</div><p class="domain-module-note">本演示对${domain.name}领域提供集团级模块框架。投资管理领域已配置完整的业务价值链、KRI、控制规则和风险详情示例，可通过顶部领域 Tab 切换查看。</p></div></div>`;
   },
 
@@ -1979,22 +1983,13 @@ const App = {
 
   renderScenarios() {
     const container = document.getElementById('scenarioList');
-    container.innerHTML = APP_DATA.riskScenarios.map((group, idx) => `
+    container.innerHTML = `<div class="scenario-guidance"><b>场景库定位：</b>统一定义集团“管什么”。每个场景明确适用的投资类型、法人主体范围、风险责任部门和监管优先级；具体 KRI、阈值和控制规则在“KRI与控制规则”模块维护，预警事件在“预警中心”管理。</div>` + APP_DATA.riskScenarios.map((group, idx) => `
       <div class="scenario-group">
-        <div class="scenario-level1">
-          <span class="num">${idx + 1}</span>
-          ${group.name}
-        </div>
+        <div class="scenario-level1"><span class="num">${idx + 1}</span>${group.name}<small>集团级风险场景分类</small></div>
         <div class="scenario-children">
-          ${group.children.map(child => `
-            <div class="scenario-item" onclick="App.navigate('warnings')">
-              <div class="name">${child.name}</div>
-              <div class="desc">${child.desc}</div>
-            </div>
-          `).join('')}
+          ${group.children.map((child, ci) => `<div class="scenario-item"><div><div class="name">${child.name}</div><div class="desc">${child.desc}</div></div><div class="scenario-meta"><span>适用：${idx < 2 ? '固定资产投资、股权投资' : idx === 5 ? '境外投资' : '股权投资、固定资产投资'}</span><span>主体：A、B、C、D公司</span><button class="btn btn-outline" onclick="App.navigate('controls')">查看规则配置</button></div></div>`).join('')}
         </div>
-      </div>
-    `).join('');
+      </div>`).join('');
   },
 
   renderWarnings() {
@@ -2198,24 +2193,25 @@ const App = {
   },
 
   renderControls() {
-    const total = 968, valid = 911, abnormal = 57;
+    const total = 126, valid = 113, abnormal = 13;
     document.getElementById('controlStats').innerHTML = `
-      <div class="control-stat-card"><div class="num">${total}</div><div class="label">控制活动数量</div></div>
-      <div class="control-stat-card"><div class="num">${valid}</div><div class="label">有效执行</div></div>
-      <div class="control-stat-card abnormal"><div class="num">${abnormal}</div><div class="label">异常</div></div>
+      <div class="control-stat-card"><div class="num">${total}</div><div class="label">已配置监测规则</div></div>
+      <div class="control-stat-card"><div class="num">${valid}</div><div class="label">正常执行规则</div></div>
+      <div class="control-stat-card abnormal"><div class="num">${abnormal}</div><div class="label">待优化规则</div></div>
     `;
 
     const tbody = document.querySelector('#controlsTable tbody');
-    tbody.innerHTML = APP_DATA.controls.map(c => {
-      const badge = c.status === '正常' ? 'badge-success' : 'badge-danger';
+    tbody.innerHTML = APP_DATA.groupKris.map((kri, index) => {
+      const ruleType = index % 3 === 0 ? '阻断控制' : index % 3 === 1 ? '预警控制' : '复核控制';
+      const badge = ruleType === '阻断控制' ? 'badge-danger' : ruleType === '预警控制' ? 'badge-warning' : 'badge-info';
       return `<tr>
-        <td>${c.stage}</td>
-        <td>${c.scenario}</td>
-        <td>${c.activity}</td>
-        <td>${c.requirement}</td>
-        <td>${c.frequency}</td>
-        <td>${c.department}</td>
-        <td><span class="badge ${badge}">${c.status}</span></td>
+        <td>${kri.category}</td>
+        <td>${kri.scenario}</td>
+        <td>${kri.name}</td>
+        <td>${kri.threshold}</td>
+        <td>关键节点实时 / 月度汇总</td>
+        <td>${kri.source}</td>
+        <td><span class="badge ${badge}">${ruleType}</span></td>
       </tr>`;
     }).join('');
   },
