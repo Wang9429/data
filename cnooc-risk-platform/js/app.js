@@ -179,46 +179,14 @@ const App = {
 
   renderDashboardMetrics() {
     document.getElementById('dashboardMetrics').innerHTML = `
-      <div class="metric-card">
-        <div class="label">集团投资总额</div>
-        <div class="value">8,562<span>亿元</span></div>
-        <div class="sub-items">
-          覆盖投资主体：<strong>126家</strong><br>
-          股权、固定资产、并购及境外投资
-        </div>
-      </div>
-      <div class="metric-card">
-        <div class="label">年度投资计划</div>
-        <div class="value">1,236<span>亿元</span></div>
-        <div class="sub-items">
-          年度实际投资：<strong>864亿元</strong><br>
-          计划执行率：<strong>69.9%</strong>
-        </div>
-      </div>
-      <div class="metric-card">
-        <div class="label">投资项目总数</div>
-        <div class="value">1,286<span>项</span></div>
-        <div class="sub-items">
-          重大投资项目：<strong>128项</strong><br>
-          风险投资项目：<strong>47项</strong>
-        </div>
-      </div>
-      <div class="metric-card">
-        <div class="label">投资管理风险预警</div>
-        <div class="value" style="color:var(--danger);">46<span>项</span></div>
-        <div class="sub-items">
-          重大风险：<strong style="color:var(--danger)">8项</strong><br>
-          较大风险：<strong style="color:var(--warning)">15项</strong> · 一般关注：<strong>23项</strong>
-        </div>
-      </div>
-      <div class="metric-card">
-        <div class="label">收益偏离项目</div>
-        <div class="value" style="color:var(--warning);">47<span>项</span></div>
-        <div class="sub-items">
-          实际收益低于预期：<strong>31项</strong><br>
-          投后评价异常：<strong style="color:var(--danger)">17项</strong>
-        </div>
-      </div>
+      <div class="metric-card" onclick="App.navigate('portfolio')"><div class="label">投资项目总数</div><div class="value">1,286<span>项</span></div><div class="sub-items">重大项目：<strong>128项</strong><br>风险项目：<strong>47项</strong></div></div>
+      <div class="metric-card" onclick="App.navigate('portfolio')"><div class="label">集团投资总额</div><div class="value">8,562<span>亿元</span></div><div class="sub-items">覆盖投资主体：<strong>126家</strong><br>股权、固定资产、并购及境外投资</div></div>
+      <div class="metric-card" onclick="App.navigate('portfolio')"><div class="label">年度投资计划</div><div class="value">1,236<span>亿元</span></div><div class="sub-items">年度实际投资：<strong>864亿元</strong><br>计划完成率：<strong>69.9%</strong></div></div>
+      <div class="metric-card" onclick="App.navigate('major')"><div class="label">重大投资事项</div><div class="value">128<span>项</span></div><div class="sub-items">待集团决策：<strong>18项</strong><br>待集团关注：<strong>24项</strong></div></div>
+      <div class="metric-card" onclick="App.navigate('warnings')"><div class="label">投资风险事项</div><div class="value" style="color:var(--danger)">46<span>项</span></div><div class="sub-items">重大风险：<strong style="color:var(--danger)">8项</strong><br>高风险：<strong style="color:var(--warning)">15项</strong></div></div>
+      <div class="metric-card" onclick="App.navigate('portfolio')"><div class="label">收益偏离项目</div><div class="value" style="color:var(--warning)">47<span>项</span></div><div class="sub-items">实际收益低于预期：<strong>31项</strong><br>持续偏离项目：<strong>16项</strong></div></div>
+      <div class="metric-card" onclick="App.navigate('warnings')"><div class="label">投后评价完成率</div><div class="value">84.8<span>%</span></div><div class="sub-items">应开展后评价：<strong>112项</strong><br>逾期未完成：<strong style="color:var(--danger)">17项</strong></div></div>
+      <div class="metric-card" onclick="App.navigate('rectification')"><div class="label">整改未闭环事项</div><div class="value" style="color:var(--danger)">18<span>项</span></div><div class="sub-items">整改中：<strong>25项</strong><br>逾期整改：<strong style="color:var(--danger)">12项</strong></div></div>
     `;
   },
 
@@ -399,7 +367,7 @@ const App = {
     tbody.innerHTML = APP_DATA.topRisks.map(r => {
       const rankClass = r.rank <= 3 ? `rank-${r.rank}` : 'rank-other';
       const levelBadge = r.level === '重大' ? 'badge-danger' : r.level === '较大' ? 'badge-warning' : 'badge-info';
-      return `<tr class="clickable" onclick="App.navigate('penetration', { riskId: '${r.id}', detail: true })">
+      return `<tr class="clickable" onclick="App.navigate('warnings')">
         <td><span class="rank-num ${rankClass}">${r.rank}</span></td>
         <td>${r.name}</td>
         <td>${r.stage}</td>
@@ -829,46 +797,38 @@ const App = {
   renderPortfolio() {
     const title = document.getElementById('portfolioTitle');
     if (title) title.textContent = '投资结构与组合';
-    document.getElementById('portfolioByUnit').innerHTML = APP_DATA.portfolio.byUnit.map(u => `
-      <div class="portfolio-item">
-        <div class="name">${u.name}</div>
-        <div class="stat">投资项目：<strong>${u.projects}个</strong></div>
-        <div class="stat">风险项目：<strong style="color:var(--danger)">${u.riskProjects}个</strong></div>
-      </div>
-    `).join('');
+    document.getElementById('portfolioByUnit').innerHTML = [['集团总部','集团级','—',1286,'8,562亿元',128,47,31],['A公司','一级子企业','集团总部',286,'2,640亿元',32,12,8],['B公司','二级子企业','A公司',186,'1,826亿元',23,9,7],['C公司','三级及以下企业','B公司',92,'780亿元',11,5,3]].map(u => `<button class="portfolio-item" onclick="App.showPortfolioDetail('法人主体','${u[0]}')"><div class="name">${u[0]}</div><div class="stat">法人层级：<strong>${u[1]}</strong></div><div class="stat">上级法人：<strong>${u[2]}</strong></div><div class="stat">项目/金额：<strong>${u[3]}项 · ${u[4]}</strong></div><div class="stat">重大/风险/收益偏离：<strong>${u[5]} / ${u[6]} / ${u[7]}</strong></div></button>`).join('');
 
-    document.getElementById('portfolioByIndustry').innerHTML = APP_DATA.portfolio.byIndustry.map(i => `
-      <div class="portfolio-item">
-        <div class="name">${i.name}</div>
-        <div class="stat">项目：<strong>${i.projects}个</strong></div>
-      </div>
-    `).join('');
+    document.getElementById('portfolioByIndustry').innerHTML = [['工程建设',312,'2,486亿元',29,11,8],['清洁能源',248,'1,936亿元',24,10,9],['装备制造',196,'1,468亿元',21,8,6],['传统能源',286,'1,982亿元',32,12,8],['科技创新',86,'690亿元',9,3,2]].map(i => `<button class="portfolio-item" onclick="App.showPortfolioDetail('业务板块','${i[0]}')"><div class="name">${i[0]}</div><div class="stat">项目/金额：<strong>${i[1]}项 · ${i[2]}</strong></div><div class="stat">重大/风险/收益偏离：<strong>${i[3]} / ${i[4]} / ${i[5]}</strong></div></button>`).join('');
 
-    document.getElementById('portfolioByRegion').innerHTML = APP_DATA.portfolio.byRegion.map(r => `
-      <div class="portfolio-item">
-        <div class="name">${r.name}</div>
-        <div class="stat">项目：<strong>${r.projects}个</strong></div>
-      </div>
-    `).join('');
+    document.getElementById('portfolioByRegion').innerHTML = [['境内',928,'6,302亿元',86],['中东',126,'986亿元',16],['亚洲',98,'628亿元',12],['非洲',76,'424亿元',8],['欧洲及拉美',58,'222亿元',5]].map(r => `<button class="portfolio-item" onclick="App.showPortfolioDetail('区域','${r[0]}')"><div class="name">${r[0]}</div><div class="stat">项目/金额：<strong>${r[1]}项 · ${r[2]}</strong></div><div class="stat">风险项目：<strong style="color:var(--danger)">${r[3]}项</strong></div></button>`).join('');
     const kpis = document.getElementById('portfolioKpis');
-    if (kpis) kpis.innerHTML = APP_DATA.portfolioSummary.map(item => `
-      <div class="metric-card"><div class="label">${item[0]}</div><div class="value">${item[1]}<span>${item[0].includes('收益') ? '%' : item[0].includes('余额') ? '亿元' : ''}</span></div><div class="sub-items">${item[2]}</div></div>
-    `).join('');
+    if (kpis) kpis.innerHTML = [['投资项目总数','1,286','项'],['投资总额','8,562','亿元'],['重大投资项目','128','项'],['风险投资项目','47','项'],['收益偏离项目','31','项'],['境外投资项目','358','项'],['平均项目规模','6.7','亿元'],['投资组合集中度','72','%']].map(item => `<button class="metric-card" onclick="App.showPortfolioDetail('总体指标','${item[0]}')"><div class="label">${item[0]}</div><div class="value">${item[1]}<span>${item[2]}</span></div><div class="sub-items">点击查看组合分析详情</div></button>`).join('');
     document.getElementById('portfolioAnalysis').innerHTML = `
-      <div class="analysis-card"><h4>投资主体集中度</h4><strong>38.6%</strong><p>A公司投资金额占比最高；前五大投资主体占集团投资总额 72%，需持续关注集中度变化。</p></div>
-      <div class="analysis-card"><h4>区域与类型集中度</h4><strong>26.4%</strong><p>境外投资占比 26.4%；固定资产投资、股权投资、并购投资按类型穿透查看。</p></div>
-      <div class="analysis-card"><h4>项目健康度</h4><strong>47 项</strong><p>风险项目47项，其中收益偏离项目31项、整改未闭环项目18项。</p></div>`;
-    document.getElementById('portfolioAi').innerHTML = `<div class="card-title">投资项目穿透入口</div><p><strong>项目总数穿透：</strong>集团 → 法人层级 → 具体法人 → 投资项目 → 风险场景。</p><p><strong>组合监管结论：</strong>可按法人层级、业务板块、区域、投资类型四个维度识别投资集中度和风险项目分布。</p><button class="btn btn-primary" onclick="App.navigate('penetration',{riskId:'risk-2'})">查看风险项目穿透示例</button>`;
+      <button class="analysis-card" onclick="App.showPortfolioDetail('投资类型','股权投资')"><h4>投资类型结构</h4><strong>46%</strong><p>股权投资占比46%；固定资产投资32%；并购、境外及其他投资22%。</p></button>
+      <button class="analysis-card" onclick="App.showPortfolioDetail('集中度','法人集中度')"><h4>投资主体集中度</h4><strong>72%</strong><p>前五大投资主体占集团投资总额72%，需关注集中度变化。</p></button>
+      <button class="analysis-card" onclick="App.showPortfolioDetail('项目健康度','风险项目')"><h4>项目健康度</h4><strong>47 项</strong><p>风险项目47项，其中收益偏离31项、整改未闭环18项。</p></button>`;
+    document.getElementById('portfolioAi').innerHTML = `<div class="card-title">投资组合分析详情</div><div id="portfolioDetail"><p><strong>钻取路径：</strong>投资组合分析 → 投资维度 → 法人主体/业务板块/区域/投资类型 → 法人层级 → 具体投资项目。</p><p>点击本页任意核心指标、法人、业务板块、区域、投资类型或集中度结果，在此区域查看组合分析明细。</p></div>`;
+  },
+
+  showPortfolioDetail(dimension, value) {
+    const node = document.getElementById('portfolioDetail'); if (!node) return;
+    node.innerHTML = `<div class="card-title">${dimension} · ${value} 组合分析详情</div><div class="kri-detail-grid"><div class="detail-list"><p><b>第一层：总体情况</b></p><p>项目总数：1,286项；投资总额：8,562亿元；重大项目：128项；风险项目：47项；收益偏离：31项；整改未闭环：18项。</p><p><b>第二层：法人层级穿透</b></p><p>集团总部 → 一级子企业（12家）→ 二级子企业（38家）→ 三级及以下企业（75家）→ 具体投资法人。</p></div><div class="detail-list"><p><b>第三层：具体法人 / 投资项目</b></p><p>A公司：286项、2,640亿元、重大项目32项、风险项目12项；B公司：186项、1,826亿元、风险项目9项。</p><button class="btn btn-outline" onclick="App.showPortfolioProject()">查看投资项目明细</button></div></div>`;
+  },
+
+  showPortfolioProject() {
+    const node = document.getElementById('portfolioDetail'); if (!node) return;
+    node.innerHTML = `<div class="card-title">投资项目明细</div><table class="data-table"><thead><tr><th>项目名称</th><th>投资主体</th><th>法人层级</th><th>类型</th><th>金额</th><th>阶段</th><th>预期/实际收益</th><th>风险</th><th>整改</th></tr></thead><tbody><tr><td>某境外能源项目</td><td>B公司</td><td>二级子企业</td><td>境外投资</td><td>30亿元</td><td>投后运营</td><td>8% / 3.2%</td><td><span class="badge badge-danger">重大</span></td><td>整改中</td></tr><tr><td>某固定资产建设项目</td><td>C公司</td><td>一级子企业</td><td>固定资产投资</td><td>18亿元</td><td>投资实施</td><td>—</td><td><span class="badge badge-warning">较大</span></td><td>待验证</td></tr></tbody></table><p class="insight-note">项目风险为属性展示；如需查看具体风险事项，请使用项目清单中的“查看风险事项”入口进入投资风险监测。</p>`;
   },
 
   renderDashboardInsights() {
     const insights = document.getElementById('dashboardInsights');
     if (insights) insights.innerHTML = `
-      <div class="insight-card dense-card"><div class="insight-head"><span>法人主体风险分布</span><button onclick="App.navigate('warnings')">查看明细 ›</button></div><table class="mini-table"><thead><tr><th>主体</th><th>重大</th><th>较大</th><th>预警状态</th></tr></thead><tbody><tr><td>A公司</td><td class="danger-text">5</td><td>8</td><td>重点督办</td></tr><tr><td>B公司</td><td class="danger-text">1</td><td>2</td><td>持续监测</td></tr><tr><td>C公司</td><td>0</td><td>3</td><td>持续监测</td></tr><tr><td>D公司</td><td class="danger-text">2</td><td>5</td><td>重点关注</td></tr></tbody></table></div>
-      <div class="insight-card dense-card"><div class="insight-head"><span>业务板块风险分布</span><button onclick="App.navigate('process')">查看价值链 ›</button></div><div class="board-bars"><p><span>股权投资</span><i><b style="width:76%"></b></i><em>18项</em></p><p><span>固定资产投资</span><i><b style="width:62%"></b></i><em>14项</em></p><p><span>境外投资</span><i><b style="width:48%"></b></i><em>8项</em></p><p><span>投资后评价</span><i><b style="width:32%"></b></i><em>6项</em></p></div><small class="insight-note">按投资类型、业务环节与法人主体汇总集团风险。</small></div>
-      <div class="insight-card dense-card"><div class="insight-head"><span>前十大风险场景</span><button onclick="App.navigate('warnings')">全部场景 ›</button></div><div class="top-scenarios"><button onclick="App.navigate('kri',{kriId:'kri-approval',scenarioId:'scenario-approval'})"><b>1</b> 决策审批合规风险 <span class="badge badge-danger">L4</span></button><button onclick="App.navigate('kri',{kriId:'kri-post',scenarioId:'scenario-post'})"><b>2</b> 投后运营与价值实现风险 <span class="badge badge-danger">L4</span></button><button onclick="App.navigate('kri',{kriId:'kri-capex',scenarioId:'scenario-capex'})"><b>3</b> 固定资产投资实施风险 <span class="badge badge-warning">L3</span></button><button onclick="App.navigate('kri',{kriId:'kri-filing',scenarioId:'scenario-filing'})"><b>4</b> 备案与监管程序风险 <span class="badge badge-warning">L3</span></button></div></div>`;
+      <div class="insight-card dense-card"><div class="insight-head"><span>国资监管主题落实情况</span><button onclick="App.navigate('controls')">查看规则执行 ›</button></div><table class="mini-table"><thead><tr><th>监管主题</th><th>正常</th><th>异常</th><th>未闭环</th></tr></thead><tbody><tr><td>投资方向与主业匹配</td><td>272</td><td class="danger-text">14</td><td>4</td></tr><tr><td>投资决策程序履行</td><td>122</td><td class="danger-text">6</td><td>2</td></tr><tr><td>投资计划执行</td><td>118</td><td class="danger-text">8</td><td>3</td></tr><tr><td>投资后评价</td><td>95</td><td class="danger-text">17</td><td>9</td></tr></tbody></table></div>
+      <div class="insight-card dense-card"><div class="insight-head"><span>投资管理领域运行</span><button onclick="App.navigate('portfolio')">查看结构与组合 ›</button></div><div class="board-bars"><p><span>股权投资</span><i><b style="width:76%"></b></i><em>356项</em></p><p><span>固定资产投资</span><i><b style="width:62%"></b></i><em>412项</em></p><p><span>境外投资</span><i><b style="width:48%"></b></i><em>86项</em></p><p><span>投资后评价</span><i><b style="width:32%"></b></i><em>112项</em></p></div><small class="insight-note">展示投资规模变化、计划偏差、业务板块分布、境内外结构和项目退出情况。</small></div>
+      <div class="insight-card dense-card"><div class="insight-head"><span>集团投资重点关注</span><button onclick="App.navigate('major')">查看重大事项 ›</button></div><div class="top-scenarios"><button onclick="App.navigate('major')"><b>1</b> 重大投资事项 <span class="badge badge-danger">12项</span></button><button onclick="App.navigate('warnings')"><b>2</b> 重大投资风险 <span class="badge badge-danger">8项</span></button><button onclick="App.navigate('portfolio')"><b>3</b> 收益偏离项目 <span class="badge badge-warning">31项</span></button><button onclick="App.navigate('process',{stageId:'post-invest'})"><b>4</b> 重大投后异常 <span class="badge badge-warning">18项</span></button></div></div>`;
     const bottom = document.getElementById('dashboardBottom');
-    if (bottom) bottom.innerHTML = `<div class="bottom-item"><span>投资管理专题风险评分</span><strong>78 分</strong><em>关注</em><p>投资决策、经营、收益、退出四维综合测算</p></div><div class="bottom-item"><span>法人主体风险分布</span><strong>4 家重点主体</strong><p>A公司 · B公司 · C公司 · D公司</p></div><div class="bottom-item"><span>本月集团监管动态</span><strong>新增预警 12 项</strong><p>自动识别 9 项 · 人工上报 3 项 · 已关闭 8 项</p></div>`;
+    if (bottom) bottom.innerHTML = `<div class="bottom-item"><span>投资风险态势</span><strong>重大8项 / 高风险15项</strong><em>需持续关注</em><p>KRI异常46项 · 控制规则触发28项</p></div><div class="bottom-item"><span>重点投资法人</span><strong>4 家</strong><p>A公司 · B公司 · C公司 · D公司</p></div><div class="bottom-item"><span>投资管理待处理事项</span><strong>待决策18项</strong><p>待关注24项 · 待督办12项 · 待验证6项</p></div>`;
   },
 
   renderDashboardHeatmap() {
