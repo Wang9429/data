@@ -825,17 +825,18 @@ const App = {
 
     document.getElementById('portfolioByRegion').innerHTML = [['境内',928,'6,302亿元',86],['中东',126,'986亿元',16],['亚洲',98,'628亿元',12],['非洲',76,'424亿元',8],['欧洲及拉美',58,'222亿元',5]].map(r => `<button class="portfolio-item" onclick="App.showPortfolioDetail('区域','${r[0]}')"><div class="name">${r[0]}</div><div class="stat">项目/金额：<strong>${r[1]}项 · ${r[2]}</strong></div><div class="stat">风险项目：<strong style="color:var(--danger)">${r[3]}项</strong></div></button>`).join('');
     const kpis = document.getElementById('portfolioKpis');
-    if (kpis) kpis.innerHTML = [['投资项目总数','1,286','项'],['投资总额','8,562','亿元'],['重大投资项目','128','项'],['风险投资项目','47','项'],['收益偏离项目','31','项'],['境外投资项目','358','项'],['平均项目规模','6.7','亿元'],['投资组合集中度','72','%']].map(item => `<button class="metric-card" onclick="App.showPortfolioDetail('总体指标','${item[0]}')"><div class="label">${item[0]}</div><div class="value">${item[1]}<span>${item[2]}</span></div><div class="sub-items">点击查看组合分析详情</div></button>`).join('');
+    if (kpis) kpis.innerHTML = [['投资项目总数','1,286','项','同比+6.8%'],['投资总额','8,562','亿元','同比+8.6%'],['重大投资项目','128','项','占比10.0%'],['风险投资项目','47','项','占比3.7%'],['在建投资项目','412','项','环比+2.4%'],['已完成项目','516','项','完成率40.1%'],['退出项目','86','项','同比+10.3%'],['组合集中度','72','%','较上期+3.8%']].map(item => `<button class="metric-card" onclick="App.showPortfolioDetail('总体指标','${item[0]}')"><div class="label">${item[0]}</div><div class="value">${item[1]}<span>${item[2]}</span></div><div class="sub-items">${item[3]} · 点击查看详情</div></button>`).join('');
     document.getElementById('portfolioAnalysis').innerHTML = `
-      <button class="analysis-card" onclick="App.showPortfolioDetail('投资类型','股权投资')"><h4>投资类型结构</h4><strong>46%</strong><p>股权投资占比46%；固定资产投资32%；并购、境外及其他投资22%。</p></button>
-      <button class="analysis-card" onclick="App.showPortfolioDetail('集中度','法人集中度')"><h4>投资主体集中度</h4><strong>72%</strong><p>前五大投资主体占集团投资总额72%，需关注集中度变化。</p></button>
-      <button class="analysis-card" onclick="App.showPortfolioDetail('项目健康度','风险项目')"><h4>项目健康度</h4><strong>47 项</strong><p>风险项目47项，其中收益偏离31项、整改未闭环18项。</p></button>`;
+      <button class="analysis-card" onclick="App.showPortfolioDetail('前十大投资法人','A公司')"><h4>前十大投资法人</h4><strong>68.2%</strong><p>A公司、B公司等前十大法人占集团投资总额68.2%；风险项目排名可继续查看。</p></button>
+      <button class="analysis-card" onclick="App.showPortfolioDetail('前十大投资项目','项目金额排名')"><h4>前十大投资项目</h4><strong>41.5%</strong><p>前十大项目投资金额占比41.5%；覆盖重大项目、风险状态和收益状态。</p></button>
+      <button class="analysis-card" onclick="App.showPortfolioDetail('前十大投资区域','区域金额排名')"><h4>前十大投资区域</h4><strong>74.6%</strong><p>前十大区域投资金额占比74.6%；展示境内外、国家地区和风险项目。</p></button>
+      <button class="analysis-card" onclick="App.showPortfolioDetail('集中度趋势','2024-2026')"><h4>集中度变化趋势</h4><strong>72.0%</strong><p>法人：2024年64.1% → 2025年68.2% → 2026年72.0%，呈上升趋势。</p></button>`;
     document.getElementById('portfolioAi').innerHTML = `<div class="card-title">投资组合分析详情</div><div id="portfolioDetail"><p><strong>钻取路径：</strong>投资组合分析 → 投资维度 → 法人主体/业务板块/区域/投资类型 → 法人层级 → 具体投资项目。</p><p>点击本页任意核心指标、法人、业务板块、区域、投资类型或集中度结果，在此区域查看组合分析明细。</p></div>`;
   },
 
   showPortfolioDetail(dimension, value) {
     const node = document.getElementById('portfolioDetail'); if (!node) return;
-    node.innerHTML = `<div class="card-title">${dimension} · ${value} 组合分析详情</div><div class="kri-detail-grid"><div class="detail-list"><p><b>第一层：总体情况</b></p><p>项目总数：1,286项；投资总额：8,562亿元；重大项目：128项；风险项目：47项；收益偏离：31项；整改未闭环：18项。</p><p><b>第二层：法人层级穿透</b></p><p>集团总部 → 一级子企业（12家）→ 二级子企业（38家）→ 三级及以下企业（75家）→ 具体投资法人。</p></div><div class="detail-list"><p><b>第三层：具体法人 / 投资项目</b></p><p>A公司：286项、2,640亿元、重大项目32项、风险项目12项；B公司：186项、1,826亿元、风险项目9项。</p><button class="btn btn-outline" onclick="App.showPortfolioProject()">查看投资项目明细</button></div></div>`;
+    node.innerHTML = `<div class="card-title">${dimension} · ${value} 组合分析详情</div><div class="detail-list"><p><b>当前筛选条件：</b>${dimension} = ${value}；统计期间：2026年度；范围：集团投资管理领域。</p></div><div class="kri-detail-grid"><div class="detail-list"><p><b>总体与法人层级</b></p><p>项目总数：1,286项；投资总额：8,562亿元；重大项目：128项；风险项目：47项；收益偏离：31项。</p><p>集团总部 → 一级子企业（12家 / 2,640亿元）→ 二级子企业（38家 / 3,182亿元）→ 三级及以下企业（75家 / 1,920亿元）→ 项目公司。</p></div><div class="detail-list"><p><b>前十大对象</b></p><p>A公司：286项、2,640亿元、占比30.8%、风险12项；B公司：186项、1,826亿元、占比21.3%、风险9项；中东区域：126项、986亿元、风险16项。</p><p><b>集中度趋势：</b>2024年64.1% → 2025年68.2% → 2026年72.0%，较上期上升3.8%。</p><button class="btn btn-outline" onclick="App.showPortfolioProject()">查看投资项目明细</button></div></div>`;
   },
 
   showPortfolioProject() {
