@@ -150,7 +150,7 @@ const App = {
         {id:'warnings',icon:'🔔',label:'投资风险监测'},
         {id:'controls',icon:'🛡️',label:'投资场景规则执行'},
         {id:'major',icon:'◆',label:'投资重大事项监管'},
-        {id:'penetration',icon:'🔎',label:'投资穿透分析'},
+        {id:'penetration',icon:'↳',label:'　风险监测 · 投资穿透分析'},
         {id:'rectification',icon:'✅',label:'投资整改闭环'}
       ];
     }
@@ -568,7 +568,7 @@ const App = {
     const tbody = document.querySelector('#warningsTable tbody');
     tbody.innerHTML = APP_DATA.warnings.map(w => {
       const badge = w.status === '红色' ? 'badge-danger' : w.status === '黄色' ? 'badge-warning' : 'badge-info';
-      return `<tr>
+      return `<tr class="clickable" onclick="App.navigate('kri',{kriId:'${kri.id}'})">
         <td>${w.name}</td>
         <td>${w.unit}</td>
         <td>${w.project}</td>
@@ -886,7 +886,8 @@ const App = {
   renderRiskMatrix() {
     const node = document.getElementById('riskMatrix');
     if (!node) return;
-    node.innerHTML = `<div class="entity-penetration"><div class="entity-root"><b>集团总部</b><span>出资人监管 / 授权管理 / 重大事项监督</span></div><div class="entity-branches"><div><i>↓</i><div class="entity-node"><b>A公司</b><span>一级法人主体 · 重大风险 5 项</span></div><i>↓</i><div class="entity-child"><b>A1项目公司</b><span>固定资产建设项目</span></div><div class="entity-child"><b>A2参股企业</b><span>股权投资项目</span></div></div><div><i>↓</i><div class="entity-node"><b>B公司</b><span>一级法人主体 · 重大风险 1 项</span></div><i>↓</i><div class="entity-child"><b>B1项目公司</b><span>投资运营主体</span></div></div><div><i>↓</i><div class="entity-node"><b>C公司</b><span>一级法人主体 · 重点关注事项</span></div><i>↓</i><div class="entity-child"><b>C1建设主体</b><span>固定资产投资主体</span></div></div><div><i>↓</i><div class="entity-node"><b>D公司</b><span>一级法人主体 · 境外投资事项</span></div><i>↓</i><div class="entity-child"><b>D1境外平台</b><span>境外投资运营主体</span></div></div></div></div><p class="matrix-note">按“集团总部 → 一级法人主体 → 项目公司 / 参股企业”逐级穿透，关联主体层级、投资类型、重大事项与风险状态。</p></div>`;
+    const stages=[['投资规划',126,118,5,3,2,'A、C公司'],['项目筛选',148,136,7,4,1,'A、B公司'],['立项论证',186,162,13,8,3,'A、B、C公司'],['投资决策',128,119,6,4,2,'A、C公司'],['投资实施',212,184,18,11,7,'A、C、D公司'],['投后运营',356,298,32,18,8,'A、B、D公司'],['投资评价',112,95,17,9,5,'A、B公司'],['退出处置',18,12,6,4,3,'C、D公司']];
+    node.innerHTML=`<table class="data-table lifecycle-matrix"><thead><tr><th>投资阶段</th><th>事项总数</th><th>正常事项</th><th>异常事项</th><th>风险事项</th><th>超期事项</th><th>涉及法人</th></tr></thead><tbody>${stages.map(s=>`<tr class="clickable" onclick="App.openStageDrawer('${APP_DATA.processStages[stages.indexOf(s)].id}')"><td><strong>${s[0]}</strong></td><td>${s[1]}</td><td><span class="badge badge-success">${s[2]}</span></td><td><span class="badge badge-warning">${s[3]}</span></td><td><span class="badge badge-danger">${s[4]}</span></td><td>${s[5]}</td><td>${s[6]}</td></tr>`).join('')}</tbody></table><div class="stage-results"><div><b>阶段异常</b><span>异常事项 86 · 超期事项 31 · 程序异常 14</span></div><div><b>风险触发</b><span>KRI异常 46 · 控制规则触发 28 · 重大风险 12</span></div><div><b>整改状态</b><span>待整改 18 · 整改中 25 · 待验证 6 · 已闭环 43</span></div></div>`;
   },
 
   renderWarningCharts() {
