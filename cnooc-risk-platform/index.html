@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>海油集团股权投资全生命周期风险穿透监测平台</title>
+  <title>集团穿透式监管平台</title>
   <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
@@ -11,17 +11,17 @@
     <aside class="sidebar">
       <div class="sidebar-header">
         <div class="sidebar-logo">
-          <div class="logo-icon">海油</div>
-          <div class="sidebar-title">海油集团股权投资全生命周期<br>风险穿透监测平台</div>
+          <div class="logo-icon">集团</div>
+          <div class="sidebar-title">集团穿透式监管平台<br>投资管理专题监管</div>
         </div>
-        <div class="sidebar-subtitle">基于风险场景、控制活动与业务流程融合的股权投资穿透监管平台</div>
+        <div class="sidebar-subtitle">面向集团总部与出资人监管要求的分领域、分法人主体穿透监管演示平台</div>
       </div>
       <nav class="nav-menu" id="navMenu"></nav>
     </aside>
 
     <main class="main-content">
       <header class="top-header">
-        <div class="header-title" id="pageTitle">集团股权投资风险态势驾驶舱</div>
+        <div class="header-title" id="pageTitle">集团穿透式监管驾驶舱</div>
         <div class="header-meta">
           <span>数据更新时间：2026-07-20</span>
           <span>|</span>
@@ -33,6 +33,10 @@
         <!-- 首页驾驶舱 -->
         <div class="page active" id="page-dashboard">
           <div class="metrics-grid" id="dashboardMetrics"></div>
+          <div class="card">
+            <div class="card-title">重点监管领域总览</div>
+            <div id="regulationDomains"></div>
+          </div>
           <div class="dashboard-insights" id="dashboardInsights"></div>
           <div class="card">
             <div class="card-title">投资价值链风险热力地图</div>
@@ -62,6 +66,10 @@
 
         <!-- 投资业务全过程监测 -->
         <div class="page" id="page-process">
+          <div class="topic-banner">
+            <div><strong>投资管理专题监管</strong><span>集团总部围绕投资决策、实施、投后管理和退出开展穿透监管</span></div>
+            <div class="topic-dimensions"><b>按法人主体</b><span>A、B、C、D公司</span><b>按监管事项</b><span>重大投资、经营异常、收益偏差、退出安排</span></div>
+          </div>
           <div class="card">
             <div class="card-title">投资价值链总览</div>
             <div class="value-chain-overview" id="valueChainOverview"></div>
@@ -209,14 +217,14 @@
                 </tr>
                 <tr>
                   <td>重大事项报告滞后风险</td>
-                  <td>海油发展</td>
+                  <td>C公司</td>
                   <td>完善重大事项报告机制，明确报送时限</td>
                   <td><span class="badge badge-success">已完成</span></td>
                   <td>2026-06-15</td>
                 </tr>
                 <tr>
                   <td>经营指标偏离风险</td>
-                  <td>新能源公司</td>
+                  <td>B公司</td>
                   <td>加强经营跟踪，每月提交经营分析报告</td>
                   <td><span class="badge badge-warning">整改中</span></td>
                   <td>2026-09-15</td>

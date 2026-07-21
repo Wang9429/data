@@ -22,7 +22,7 @@ const App = {
 
   menuItems: [
     { id: 'dashboard', icon: '📊', label: '驾驶舱' },
-    { id: 'process', icon: '🔄', label: '投资价值链监测' },
+    { id: 'process', icon: '🔄', label: '投资管理专题监管' },
     { id: 'warnings', icon: '🔔', label: '风险预警中心' },
     { id: 'penetration', icon: '🔎', label: '风险穿透分析' },
     { id: 'rectification', icon: '✅', label: '整改闭环管理' },
@@ -30,8 +30,8 @@ const App = {
   ],
 
   pageTitles: {
-    dashboard: '集团股权投资风险监管驾驶舱',
-    process: '投资价值链监测',
+    dashboard: '集团穿透式监管驾驶舱',
+    process: '投资管理专题监管',
     scenarios: '风险场景管理',
     warnings: '风险预警中心',
     penetration: '风险穿透分析',
@@ -44,6 +44,7 @@ const App = {
   init() {
     this.renderNav();
     this.renderDashboardMetrics();
+    this.renderRegulationDomains();
     this.renderDashboardHeatmap();
     this.renderDashboardInsights();
     this.renderTopRisks();
@@ -101,7 +102,7 @@ const App = {
   renderCoreChain() {
     const chain = [
       '国资委46号文一级风险场景',
-      '海油集团投资业务二级风险场景',
+      '集团投资管理二级风险场景',
       '投资业务环节',
       '控制活动',
       '监测指标',
@@ -119,31 +120,31 @@ const App = {
   renderDashboardMetrics() {
     document.getElementById('dashboardMetrics').innerHTML = `
       <div class="metric-card">
-        <div class="label">存量股权投资项目</div>
-        <div class="value">356<span>个</span></div>
+        <div class="label">纳入监管法人主体</div>
+        <div class="value">18<span>家</span></div>
         <div class="sub-items">
-          覆盖所属单位：<strong>18家</strong><br>
-          涉及行业：油气产业链、新能源、海洋工程、装备制造、战略新兴产业
+          集团级监管视角<br>
+          重点主体：<strong>A、B、C、D公司</strong>
         </div>
       </div>
       <div class="metric-card">
-        <div class="label">股权投资规模</div>
-        <div class="value" style="font-size:22px;">1,286<span>亿元</span></div>
+        <div class="label">重点监管领域</div>
+        <div class="value">9<span>个</span></div>
         <div class="sub-items">
-          累计投资金额：<strong>1,286亿元</strong><br>
-          当前投资余额：<strong>864亿元</strong>
+          投资、财务、产权、合同等<br>
+          当前专题：<strong>投资管理</strong>
         </div>
       </div>
       <div class="metric-card">
-        <div class="label">重点关注项目</div>
-        <div class="value">23<span>个</span></div>
+        <div class="label">重点监管法人主体</div>
+        <div class="value">4<span>家</span></div>
         <div class="sub-items">
-          涉及所属单位：<strong>7家</strong><br>
-          境外项目 <strong>6个</strong> · 产业投资 <strong>17个</strong>
+          A公司 · B公司 · C公司 · D公司<br>
+          穿透维度：<strong>领域、主体、事项</strong>
         </div>
       </div>
       <div class="metric-card">
-        <div class="label">风险预警情况</div>
+        <div class="label">投资管理风险预警</div>
         <div class="value" style="color:var(--danger);">46<span>项</span></div>
         <div class="sub-items">
           重大风险：<strong style="color:var(--danger)">8项</strong><br>
@@ -159,6 +160,29 @@ const App = {
         </div>
       </div>
     `;
+  },
+
+  renderRegulationDomains() {
+    const container = document.getElementById('regulationDomains');
+    if (!container) return;
+    container.innerHTML = `<div class="domain-grid">${APP_DATA.regulationDomains.map(domain => `
+      <button class="domain-card ${domain.active ? 'active' : ''}" onclick="App.selectRegulationDomain('${domain.id}')">
+        <strong>${domain.name}</strong><span>${domain.desc}</span><em>${domain.risks} 项风险</em><small>${domain.status}</small>
+      </button>`).join('')}</div>
+      <div class="domain-focus" id="domainFocus"><b>当前专题：投资管理</b><span>按照国资监管穿透式监管要求，围绕法人主体、投资事项、业务环节、控制活动和整改闭环开展集团级监管。点击“投资管理”可进入专题监管页面；其他领域展示集团级监管范围。</span><button class="btn btn-primary" onclick="App.navigate('process')">进入投资管理专题监管</button></div>`;
+  },
+
+  selectRegulationDomain(domainId) {
+    const domain = APP_DATA.regulationDomains.find(x => x.id === domainId);
+    if (!domain) return;
+    if (domainId === 'investment') {
+      this.navigate('process');
+      return;
+    }
+    document.querySelectorAll('.domain-card').forEach(x => x.classList.remove('active'));
+    const active = Array.from(document.querySelectorAll('.domain-card')).find(x => x.querySelector('strong').textContent === domain.name);
+    if (active) active.classList.add('active');
+    document.getElementById('domainFocus').innerHTML = `<b>${domain.name}监管范围</b><span>集团总部按照出资人监管要求，对${domain.desc}开展法人主体、重大事项、风险预警和整改闭环的分层监管。本演示当前以“投资管理”作为重点专题展示。</span><button class="btn btn-outline" onclick="App.selectRegulationDomain('investment')">查看投资管理专题示例</button>`;
   },
 
   renderProcessMap() {
@@ -366,7 +390,7 @@ const App = {
       <button class="filter-chip" onclick="App.filterWarnings('红色', this)">L4 重大</button>
       <button class="filter-chip" onclick="App.filterWarnings('黄色', this)">L3 较大</button>
       <button class="filter-chip" onclick="App.filterWarnings('蓝色', this)">L2 一般</button>
-      <select><option>全部所属企业</option><option>海油工程</option><option>新能源公司</option><option>国际公司</option></select>
+      <select><option>全部法人主体</option><option>A公司</option><option>B公司</option><option>C公司</option><option>D公司</option></select>
       <select><option>全部业务阶段</option><option>投后管理</option><option>立项论证</option><option>投资退出</option></select>`;
 
     const tbody = document.querySelector('#warningsTable tbody');
@@ -656,11 +680,11 @@ const App = {
   renderDashboardInsights() {
     const insights = document.getElementById('dashboardInsights');
     if (insights) insights.innerHTML = `
-      <div class="insight-card"><div class="insight-head"><span>重点监管单位</span><button onclick="App.navigate('warnings')">查看风险清单 ›</button></div><div class="unit-risk"><b>海油工程</b><span class="badge badge-danger">L4 风险 5项</span><small>经营持续下滑、海外装备项目收益偏离</small></div><div class="unit-risk"><b>国际公司</b><span class="badge badge-warning">L3 风险 5项</span><small>境外运营、东道国政策变化</small></div><div class="unit-risk"><b>新能源公司</b><span class="badge badge-warning">L3 风险 2项</span><small>收益未达预期、利润完成偏低</small></div></div>
-      <div class="insight-card"><div class="insight-head"><span>总部监管重点</span><button onclick="App.navigate('process',{stageId:'post-invest'})">进入投后管理 ›</button></div><div class="supervision-list"><p><b>01</b> 投后管理：18项风险，5项重大风险，需强化月度经营监测</p><p><b>02</b> 投资退出：10项风险，重点关注退出收益偏差和退出周期</p><p><b>03</b> 立项论证：5项风险，关注收益测算及可研论证质量</p></div></div>
+      <div class="insight-card"><div class="insight-head"><span>重点监管法人主体</span><button onclick="App.navigate('warnings')">查看风险清单 ›</button></div><div class="unit-risk"><b>A公司</b><span class="badge badge-danger">L4 风险 5项</span><small>经营持续下滑、境外装备项目收益偏离</small></div><div class="unit-risk"><b>D公司</b><span class="badge badge-warning">L3 风险 5项</span><small>境外运营、所在国政策变化</small></div><div class="unit-risk"><b>B公司</b><span class="badge badge-warning">L3 风险 2项</span><small>收益未达预期、利润完成偏低</small></div></div>
+      <div class="insight-card"><div class="insight-head"><span>集团投资管理监管重点</span><button onclick="App.navigate('process',{stageId:'post-invest'})">进入专题监管 ›</button></div><div class="supervision-list"><p><b>01</b> 投后管理：18项风险，5项重大风险，需强化月度经营监测</p><p><b>02</b> 投资退出：10项风险，重点关注退出收益偏差和退出周期</p><p><b>03</b> 立项论证：5项风险，关注收益测算及可研论证质量</p></div></div>
       <div class="insight-card"><div class="insight-head"><span>整改督办提示</span><button onclick="App.navigate('rectification')">进入整改闭环 ›</button></div><div class="rect-overview"><strong>6</strong><span>项超期整改</span><strong>92%</strong><span>验证通过率</span></div><p class="insight-note">重大风险整改周期不超过90天；本月已完成8项风险关闭验证。</p></div>`;
     const bottom = document.getElementById('dashboardBottom');
-    if (bottom) bottom.innerHTML = `<div class="bottom-item"><span>投资组合风险评分</span><strong>78 分</strong><em>关注</em><p>行业、区域、收益、经营四维综合测算</p></div><div class="bottom-item"><span>资本配置结构</span><strong>864 亿元</strong><p>油气产业链 37% · 海洋工程 25% · 新能源 18%</p></div><div class="bottom-item"><span>本月监管动态</span><strong>新增预警 12 项</strong><p>自动识别 9 项 · 人工上报 3 项 · 已关闭 8 项</p></div>`;
+    if (bottom) bottom.innerHTML = `<div class="bottom-item"><span>投资管理专题风险评分</span><strong>78 分</strong><em>关注</em><p>投资决策、经营、收益、退出四维综合测算</p></div><div class="bottom-item"><span>法人主体风险分布</span><strong>4 家重点主体</strong><p>A公司 · B公司 · C公司 · D公司</p></div><div class="bottom-item"><span>本月集团监管动态</span><strong>新增预警 12 项</strong><p>自动识别 9 项 · 人工上报 3 项 · 已关闭 8 项</p></div>`;
   },
 
   renderDashboardHeatmap() {
