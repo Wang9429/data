@@ -6458,3 +6458,105 @@ Object.assign(APP_DATA, {
     { permissionSetId: 'PS-DR-02', permissionCode: 'DELIVERY_READINESS_VIEW', resourceType: 'regulatoryHandoverIndex', action: 'VIEW', riskLevel: 'LOW' }
   ];
 })();
+
+(function () {
+  APP_DATA.regulatoryDemoScenarioDefinitions = [
+    {
+      demoCode: 'DEMO-01',
+      name: '集团领导发现重大风险',
+      description: '从整体态势逐层穿透至具体法人、指标、风险和监管行动',
+      roleType: 'GROUP_LEADER',
+      stepLabels: ['集团总览', '综合监管态势', '风险集中度', '重点法人', 'KRI', '监管预警', '决策建议', '监管行动', '整改', '效果验证'],
+      pagePath: ['global-group-overview', 'regulatory-analysis-center', 'regulatory-risk-concentration', 'global-legal-entities', 'regulatory-kri-monitoring', 'regulatory-warning-center', 'regulatory-decision-recommendations', 'regulatory-actions', 'rectification', 'regulatory-improvement-effectiveness'],
+      expectedTraceChain: ['overview', 'analysis', 'concentration', 'entity', 'kri', 'warning', 'decision', 'action', 'rectification', 'verification'],
+      simulationOnly: false,
+      requiresHumanDecision: true
+    },
+    {
+      demoCode: 'DEMO-02',
+      name: '数据质量影响监管决策',
+      description: '数据质量直接影响 KRI 可信度与监管判断',
+      roleType: 'GROUP_REGULATORY',
+      stepLabels: ['数据源', '数据接入', '数据质量', '数据血缘', 'KRI可信度', '预警', '数据治理', '整改', '质量恢复'],
+      pagePath: ['regulatory-data-sources', 'regulatory-data-integration', 'regulatory-data-quality', 'regulatory-data-lineage', 'regulatory-kri-monitoring', 'regulatory-warning-center', 'regulatory-data-governance', 'rectification', 'regulatory-data-quality'],
+      expectedTraceChain: ['dataSource', 'integration', 'quality', 'lineage', 'kri', 'warning', 'governance', 'rectification', 'qualityRecovery'],
+      simulationOnly: false,
+      requiresHumanDecision: false
+    },
+    {
+      demoCode: 'DEMO-03',
+      name: '监管规则变更闭环',
+      description: '规则经仿真、影响分析和人工审批后进入运行，不直接修改生产数据',
+      roleType: 'GROUP_REGULATORY',
+      stepLabels: ['规则变更', '仿真', '影响分析', '人工审批', '发布', '部署', '运行监测', '效果评价'],
+      pagePath: ['regulatory-rule-approvals', 'regulatory-simulation', 'regulatory-rule-impact', 'regulatory-rule-approvals', 'regulatory-rule-versions', 'regulatory-rule-deployments', 'regulatory-rule-runtime', 'regulatory-rule-effectiveness'],
+      expectedTraceChain: ['ruleChange', 'simulation', 'impact', 'approval', 'publish', 'deploy', 'runtime', 'effectiveness'],
+      simulationOnly: true,
+      requiresHumanDecision: true
+    },
+    {
+      demoCode: 'DEMO-04',
+      name: '跨法人/跨领域协同监管',
+      description: '协调多个组织共同处理跨领域风险',
+      roleType: 'GROUP_REGULATORY',
+      stepLabels: ['跨领域风险', '协同事项', '主责/协同责任', '协同任务', '升级督办', '联合整改', '联合验证'],
+      pagePath: ['cross-domain-risks', 'regulatory-queue', 'regulatory-supervision-tasks', 'regulatory-my-work', 'regulatory-queue', 'rectification', 'regulatory-improvement-effectiveness'],
+      expectedTraceChain: ['crossRisk', 'coordination', 'responsibility', 'task', 'escalation', 'jointRect', 'jointVerify'],
+      simulationOnly: false,
+      requiresHumanDecision: true
+    },
+    {
+      demoCode: 'DEMO-05',
+      name: '持续改进闭环',
+      description: '平台自动发现问题和生成建议，关键监管决策由人确认',
+      roleType: 'GROUP_LEADER',
+      stepLabels: ['监管结果', '问题识别', '根因分析', '改进机会', '优化方案', '人工决策', '实施', '效果验证'],
+      pagePath: ['regulatory-performance', 'regulatory-improvement-center', 'regulatory-root-cause-analysis', 'regulatory-improvement-center', 'regulatory-optimization-plans', 'regulatory-authorization', 'regulatory-improvement-execution', 'regulatory-improvement-effectiveness'],
+      expectedTraceChain: ['result', 'problem', 'rootCause', 'opportunity', 'plan', 'humanDecision', 'implementation', 'verify'],
+      simulationOnly: false,
+      requiresHumanDecision: true
+    },
+    {
+      demoCode: 'DEMO-06',
+      name: '集团监管运营周期',
+      description: '日常运行到年度战略复盘的运营节奏展示',
+      roleType: 'GROUP_REGULATORY',
+      stepLabels: ['日常运行', '周度复核', '月度领域评价', '季度绩效评价', '年度战略复盘'],
+      pagePath: ['regulatory-workbench', 'regulatory-analysis-center', 'regulatory-data-governance', 'regulatory-performance', 'regulatory-strategic-review'],
+      expectedTraceChain: ['daily', 'weekly', 'monthly', 'quarterly', 'annual'],
+      simulationOnly: false,
+      requiresHumanDecision: true,
+      trendStatus: 'INSUFFICIENT_HISTORY'
+    }
+  ];
+  APP_DATA.regulatoryDemoScenarioIndexes = APP_DATA.regulatoryDemoScenarioIndexes || [];
+  APP_DATA.regulatoryDemoScenarioMetrics = APP_DATA.regulatoryDemoScenarioMetrics || {};
+  APP_DATA.regulatoryDemoScenarioResultIndexes = APP_DATA.regulatoryDemoScenarioResultIndexes || [];
+  const rpmDemo = APP_DATA.regulatoryRolePermissionMap || {};
+  ['ROLE-GROUP-LEADER', 'ROLE-GROUP-REG', 'ROLE-DOMAIN-REG', 'ROLE-ENTITY-REG'].forEach(r => {
+    rpmDemo[r] = [...new Set([...(rpmDemo[r] || []), 'DEMO_SCENARIO_VIEW'])];
+  });
+  APP_DATA.regulatoryRolePermissionMap = rpmDemo;
+  APP_DATA.regulatoryPermissionSets = [...(APP_DATA.regulatoryPermissionSets || []),
+    { permissionSetId: 'PS-DEMO-01', permissionCode: 'DEMO_SCENARIO_VIEW', resourceType: 'regulatoryDemoScenarioIndexes', action: 'VIEW', riskLevel: 'LOW' }
+  ];
+})();
+
+(function () {
+  APP_DATA.regulatoryDemoFinalFreezeIndex = APP_DATA.regulatoryDemoFinalFreezeIndex || {
+    version: 'Demo Final',
+    scope: 'DEMO_ONLY',
+    productionReady: false,
+    frozenAt: '2026-07-22',
+    groupPerspectiveChain: '集团→区域→国家→法人→项目',
+    regulatoryChain: '数据→指标/KRI→风险→预警→监管行动→整改→验证→持续改进',
+    constraints: {
+      publicPageCount: 70,
+      investmentFreeze: true,
+      noNewPages: true,
+      noFakeHistory: true,
+      noFakeClosedLoop: true
+    },
+    dataStatus: 'DERIVED'
+  };
+})();

@@ -140,6 +140,8 @@ const App = {
     if (this.initializeRegulatoryFinalAcceptance) this.initializeRegulatoryFinalAcceptance();
     if (this.initializeRegulatoryFinalRemediation) this.initializeRegulatoryFinalRemediation();
     if (this.initializeRegulatoryDeliveryReadiness) this.initializeRegulatoryDeliveryReadiness();
+    if (this.initializeRegulatoryDemoScenarios) this.initializeRegulatoryDemoScenarios();
+    if (this.finalizeRegulatoryDemoFreeze) this.finalizeRegulatoryDemoFreeze();
     this.renderNav();
     this.renderGroupOverview();
     this.renderRegulatoryEvents();
