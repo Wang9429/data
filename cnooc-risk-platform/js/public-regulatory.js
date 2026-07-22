@@ -2982,6 +2982,478 @@ Object.assign(App, {
     </div>`;
   },
 
+  _OP_SCENARIO_PHASES: ['DRAFT', 'INITIATED', 'SCOPING', 'ANALYZING', 'ACTION_REQUIRED', 'IN_EXECUTION', 'RECTIFICATION', 'VERIFICATION', 'EFFECTIVENESS_REVIEW', 'CLOSED'],
+  _OP_PHASE_TRANSITIONS: {
+    DRAFT: ['INITIATED'], INITIATED: ['SCOPING'], SCOPING: ['ANALYZING'], ANALYZING: ['ACTION_REQUIRED'],
+    ACTION_REQUIRED: ['IN_EXECUTION'], IN_EXECUTION: ['RECTIFICATION', 'VERIFICATION'], RECTIFICATION: ['VERIFICATION'],
+    VERIFICATION: ['EFFECTIVENESS_REVIEW'], EFFECTIVENESS_REVIEW: ['CLOSED']
+  },
+
+  initializeRegulatoryOperationalScenarios() {
+    this.buildRegulatoryOperationalThemes();
+    const defs = APP_DATA.regulatoryOperationalScenarioDefinitions || [];
+    defs.forEach(def => this.initializeRegulatoryOperationalScenario({ scenarioCode: def.scenarioCode, autoAdvance: true }));
+    this.buildRegulatoryOperationalLedger();
+    this.computeRegulatoryOperationalMetrics();
+    return APP_DATA.regulatoryOperationalMetrics;
+  },
+
+  buildRegulatoryOperationalThemes() {
+    const themeDefs = [
+      { themeId: 'THEME-FUND', themeName: '资金安全', domainIds: ['finance'], riskFilter: w => (w.domainId === 'finance' || (w.kriId || '').includes('capex')) },
+      { themeId: 'THEME-INVEST', themeName: '重大投资风险', domainIds: ['investment'], riskFilter: w => w.level === '重大' || w.level === 'L4' },
+      { themeId: 'THEME-OVERSEAS', themeName: '境外经营风险', domainIds: ['overseas'], riskFilter: m => (m.domainIds || []).includes('overseas') },
+      { themeId: 'THEME-CONTRACT', themeName: '合同履约风险', domainIds: ['contract'], riskFilter: m => (m.domainIds || []).includes('contract') },
+      { themeId: 'THEME-SUPPLY', themeName: '供应链风险', domainIds: ['supply'], riskFilter: m => (m.domainIds || []).includes('supply') },
+      { themeId: 'THEME-DATA', themeName: '数据质量风险', issueFilter: i => i.status !== 'CLOSED' },
+      { themeId: 'THEME-RECT', themeName: '重大整改风险', rectFilter: t => t.riskLevel === '高' || t.priority === 'CRITICAL' },
+      { themeId: 'THEME-CROSS', themeName: '跨法人风险', entityFilter: m => (m.entityIds || []).length >= 1 }
+    ];
+    const warnings = APP_DATA.warnings || [];
+    const cdr = APP_DATA.crossDomainRiskMatters || [];
+    const issues = APP_DATA.regulatoryDataQualityIssues || [];
+    const rects = APP_DATA.rectificationTasks || [];
+    const kris = APP_DATA.regulatoryKriRuntime || [];
+    const regWarns = APP_DATA.regulatoryWarnings || [];
+    const coordCases = APP_DATA.regulatoryCoordinationCases || [];
+    const themes = themeDefs.map(td => {
+      const domainKris = kris.filter(k => (td.domainIds || []).some(d => k.domainId === d));
+      const domainWarns = regWarns.filter(w => (td.domainIds || []).some(d => w.domainId === d));
+      const themeRisks = warnings.filter(td.riskFilter || (() => false));
+      const themeCdr = cdr.filter(td.riskFilter || td.entityFilter || (() => false));
+      const themeIssues = issues.filter(td.issueFilter || (() => (td.domainIds || []).some(d => issues.some(i => i.domainId === d))));
+      const themeRects = rects.filter(td.rectFilter || (() => false));
+      const themeCoord = coordCases.filter(c => (td.domainIds || []).some(d => (c.affectedDomains || []).includes(d)) || td.themeId === 'THEME-CROSS');
+      const overdue = themeRects.filter(t => t.deadline && t.deadline < this._coordToday() && t.status !== '已关闭').length +
+        (APP_DATA.regulatoryCoordinationTasks || []).filter(t => t.status === 'OVERDUE').length;
+      return {
+        themeId: td.themeId,
+        themeName: td.themeName,
+        affectedDomains: td.domainIds || [],
+        riskCount: themeRisks.length + themeCdr.length,
+        kriCount: domainKris.length,
+        warningCount: domainWarns.length,
+        majorItemCount: themeRisks.filter(w => w.level === '重大' || w.level === 'L4').length + themeCdr.filter(m => m.riskLevel === '高').length,
+        coordinationCaseCount: themeCoord.length,
+        rectificationCount: themeRects.filter(t => t.status !== '已关闭').length,
+        overdueCount: overdue,
+        verificationStatus: themeRects.every(t => t.verificationStatus === '已验证' || t.status === '已关闭') ? (themeRects.length ? 'VERIFIED' : 'NONE') : 'PENDING',
+        dataStatus: 'DERIVED',
+        trendStatus: 'INSUFFICIENT_HISTORY'
+      };
+    });
+    APP_DATA.regulatoryOperationalThemes = themes;
+    return themes;
+  },
+
+  _findOperationalTrigger(def) {
+    const code = def.scenarioCode;
+    if (code === 'OS-01') {
+      const w = (APP_DATA.warnings || []).find(x => x.level === '重大' || x.level === 'L4') || (APP_DATA.warnings || [])[0];
+      return w ? { triggerSourceType: 'warnings', triggerSourceId: w.id, scope: 'GROUP:G001' } : null;
+    }
+    if (code === 'OS-02') {
+      const i = (APP_DATA.regulatoryDataQualityIssues || []).find(x => x.status !== 'CLOSED');
+      return i ? { triggerSourceType: 'regulatoryDataQualityIssues', triggerSourceId: i.qualityIssueId, scope: 'GROUP:G001' } : null;
+    }
+    if (code === 'OS-03') {
+      const r = (APP_DATA.regulatoryRules || []).find(x => x.status === 'ACTIVE' || x.lastRunStatus === 'FAILED') || (APP_DATA.regulatoryRules || [])[0];
+      return r ? { triggerSourceType: 'regulatoryRules', triggerSourceId: r.ruleId, scope: 'GROUP:G001' } : null;
+    }
+    if (code === 'OS-04') {
+      const m = (APP_DATA.crossDomainRiskMatters || []).find(x => (x.entityIds || []).length >= 1) || (APP_DATA.crossDomainRiskMatters || [])[0];
+      return m ? { triggerSourceType: 'crossDomainRiskMatters', triggerSourceId: m.riskMatterId, scope: 'ENTITY:' + (m.entityIds?.[0] || 'G001') } : null;
+    }
+    if (code === 'OS-05') {
+      const m = (APP_DATA.crossDomainRiskMatters || []).find(x => (x.domainIds || []).length >= 2) || (APP_DATA.crossDomainRiskMatters || [])[0];
+      return m ? { triggerSourceType: 'crossDomainRiskMatters', triggerSourceId: m.riskMatterId, scope: 'GROUP:G001' } : null;
+    }
+    if (code === 'OS-06') {
+      const t = (APP_DATA.rectificationTasks || []).find(x => x.riskLevel === '高' || x.priority === 'CRITICAL') || (APP_DATA.rectificationTasks || [])[0];
+      return t ? { triggerSourceType: 'rectificationTasks', triggerSourceId: t.taskId, scope: 'ENTITY:' + (t.entityId || 'G001') } : null;
+    }
+    if (code === 'OS-07') {
+      const inst = (APP_DATA.regulatoryOperatingCycleInstances || []).find(x => x.cycleType === 'MONTHLY') || (APP_DATA.regulatoryOperatingCycleInstances || [])[0];
+      return inst ? { triggerSourceType: 'regulatoryOperatingCycleInstances', triggerSourceId: inst.id, scope: 'GROUP:G001' } : null;
+    }
+    if (code === 'OS-08') {
+      const rec = (APP_DATA.regulatoryOperatingRecommendations || []).find(x => x.requiresHumanDecision) || (APP_DATA.regulatoryDecisionRecommendations || [])[0];
+      return rec ? { triggerSourceType: rec.recommendationId ? 'regulatoryOperatingRecommendations' : 'regulatoryDecisionRecommendations', triggerSourceId: rec.recommendationId || rec.decisionRecommendationId, scope: 'GROUP:G001' } : null;
+    }
+    return null;
+  },
+
+  _collectOperationalScenarioLinks(def, trigger) {
+    const domains = [];
+    const entities = [];
+    const risks = [];
+    const kriIds = [];
+    const warnIds = [];
+    const actionIds = [];
+    const rectIds = [];
+    let coordIds = [];
+    if (trigger.triggerSourceType === 'warnings') {
+      const w = (APP_DATA.warnings || []).find(x => x.id === trigger.triggerSourceId);
+      if (w) { risks.push(w.id); if (w.entityId) entities.push(w.entityId); if (w.kriId) kriIds.push(w.kriId); }
+    }
+    if (trigger.triggerSourceType === 'crossDomainRiskMatters') {
+      const m = (APP_DATA.crossDomainRiskMatters || []).find(x => x.riskMatterId === trigger.triggerSourceId);
+      if (m) {
+        risks.push(m.riskMatterId);
+        domains.push(...(m.domainIds || []));
+        entities.push(...(m.entityIds || []));
+        kriIds.push(...(m.kriIds || []));
+        rectIds.push(...(m.relatedRectificationTaskIds || []));
+      }
+      coordIds = (APP_DATA.regulatoryCoordinationCases || []).filter(c => c.sourceId === trigger.triggerSourceId).map(c => c.id);
+    }
+    if (trigger.triggerSourceType === 'regulatoryDataQualityIssues') {
+      const i = (APP_DATA.regulatoryDataQualityIssues || []).find(x => x.qualityIssueId === trigger.triggerSourceId);
+      if (i) { if (i.kriId) kriIds.push(i.kriId); if (i.domainId) domains.push(i.domainId); }
+      kriIds.push(...(APP_DATA.regulatoryKriRuntime || []).filter(k => k.runtimeStatus === 'DATA_QUALITY_REVIEW_REQUIRED').map(k => k.kriId).slice(0, 3));
+      warnIds.push(...(APP_DATA.regulatoryWarnings || []).filter(w => w.dataStatus === 'BLOCKED').map(w => w.regulatoryWarningId).slice(0, 3));
+    }
+    if (trigger.triggerSourceType === 'regulatoryRules') {
+      const r = (APP_DATA.regulatoryRules || []).find(x => x.ruleId === trigger.triggerSourceId);
+      if (r?.kriId) kriIds.push(r.kriId);
+      if (r?.domainId) domains.push(r.domainId);
+    }
+    if (trigger.triggerSourceType === 'rectificationTasks') {
+      const t = (APP_DATA.rectificationTasks || []).find(x => x.taskId === trigger.triggerSourceId);
+      if (t) { rectIds.push(t.taskId); if (t.entityId) entities.push(t.entityId); if (t.riskMatterId) risks.push(t.riskMatterId); }
+    }
+    if (trigger.triggerSourceType === 'regulatoryOperatingCycleInstances') {
+      domains.push(...(APP_DATA.regulatoryDomainOperationReviews || []).map(d => d.domainId));
+    }
+    actionIds.push(...(APP_DATA.regulatoryActions || []).filter(a => a.status !== 'CLOSED').slice(0, 5).map(a => a.actionId));
+    warnIds.push(...(APP_DATA.regulatoryWarnings || []).filter(w => w.status === 'PENDING_REVIEW').slice(0, 5).map(w => w.regulatoryWarningId));
+    if (!coordIds.length) coordIds = (APP_DATA.regulatoryCoordinationCases || []).slice(0, 2).map(c => c.id);
+  return {
+      affectedDomains: [...new Set(domains)],
+      affectedEntities: [...new Set(entities)],
+      relatedRisks: [...new Set(risks)],
+      relatedKris: [...new Set(kriIds)],
+      relatedWarnings: [...new Set(warnIds)],
+      relatedActions: [...new Set(actionIds)],
+      relatedRectifications: [...new Set(rectIds)],
+      coordinationCaseIds: [...new Set(coordIds)]
+    };
+  },
+
+  initializeRegulatoryOperationalScenario(opts) {
+    const o = opts || {};
+    const def = (APP_DATA.regulatoryOperationalScenarioDefinitions || []).find(d => d.scenarioCode === o.scenarioCode) ||
+      APP_DATA.regulatoryOperationalScenarioDefinitions[0];
+    if (!def) return null;
+    const existing = (APP_DATA.regulatoryOperationalScenarios || []).find(s => s.scenarioCode === def.scenarioCode);
+    if (existing && !o.force) return existing;
+    const trigger = this._findOperationalTrigger(def);
+    if (!trigger) return null;
+    const links = this._collectOperationalScenarioLinks(def, trigger);
+    const theme = (APP_DATA.regulatoryOperationalThemes || []).find(t => t.themeName === def.theme) || { themeName: def.theme };
+    const scenario = {
+      id: 'ROS-' + def.scenarioCode.replace('OS-', ''),
+      scenarioCode: def.scenarioCode,
+      scenarioType: def.scenarioType,
+      regulatoryTheme: theme.themeName,
+      triggerSourceType: trigger.triggerSourceType,
+      triggerSourceId: trigger.triggerSourceId,
+      triggerReason: this._getOperationalTriggerReason(trigger),
+      scope: trigger.scope,
+      ...links,
+      status: 'ACTIVE',
+      phase: 'DRAFT',
+      requiresHumanDecision: true,
+      simulationOnly: def.scenarioType === 'DATA_QUALITY_IMPACT' || def.scenarioType === 'RULE_CHANGE_IMPACT',
+      dataStatus: 'DERIVED',
+      sourceTraceability: { triggerSourceType: trigger.triggerSourceType, triggerSourceId: trigger.triggerSourceId, scenarioCode: def.scenarioCode },
+      createdAt: this._coordNow(),
+      updatedAt: this._coordNow()
+    };
+    const idx = (APP_DATA.regulatoryOperationalScenarios || []).findIndex(s => s.scenarioCode === def.scenarioCode);
+    if (idx >= 0) APP_DATA.regulatoryOperationalScenarios[idx] = scenario;
+    else {
+      APP_DATA.regulatoryOperationalScenarios = APP_DATA.regulatoryOperationalScenarios || [];
+      APP_DATA.regulatoryOperationalScenarios.push(scenario);
+    }
+    APP_DATA.regulatoryOperationalScenarioOrchestrationIndex = APP_DATA.regulatoryOperationalScenarioOrchestrationIndex || [];
+    APP_DATA.regulatoryOperationalScenarioOrchestrationIndex.push({
+      orchestrationId: 'ROO-' + scenario.id,
+      scenarioId: scenario.id,
+      scenarioCode: scenario.scenarioCode,
+      currentPhase: scenario.phase,
+      dataStatus: 'DERIVED'
+    });
+    if (o.autoAdvance) {
+      const targetPhases = { 'OS-01': 'IN_EXECUTION', 'OS-02': 'ANALYZING', 'OS-03': 'ANALYZING', 'OS-04': 'RECTIFICATION', 'OS-05': 'ACTION_REQUIRED', 'OS-06': 'VERIFICATION', 'OS-07': 'CLOSED', 'OS-08': 'ACTION_REQUIRED' };
+      const target = targetPhases[def.scenarioCode] || 'ANALYZING';
+      this.advanceRegulatoryOperationalScenario(scenario.id, target, { reason: '初始化推进至典型运行阶段', skipApproval: true, approved: true });
+    }
+    return scenario;
+  },
+
+  _getOperationalTriggerReason(trigger) {
+    if (trigger.triggerSourceType === 'warnings') return '重大风险事项触发监管实战场景';
+    if (trigger.triggerSourceType === 'regulatoryDataQualityIssues') return '数据质量异常影响监管判断';
+    if (trigger.triggerSourceType === 'regulatoryRules') return '规则变更需影响分析';
+    if (trigger.triggerSourceType === 'crossDomainRiskMatters') return '跨领域/跨法人风险传导';
+    if (trigger.triggerSourceType === 'rectificationTasks') return '重大整改事项需验证';
+    if (trigger.triggerSourceType === 'regulatoryOperatingCycleInstances') return '监管运营周期运行';
+    return '监管决策建议需人工确认';
+  },
+
+  advanceRegulatoryOperationalScenario(scenarioId, targetPhase, opts) {
+    const o = opts || {};
+    const scenario = (APP_DATA.regulatoryOperationalScenarios || []).find(s => s.id === scenarioId);
+    if (!scenario) return { success: false, message: '场景不存在' };
+    const phases = this._OP_SCENARIO_PHASES;
+    const transitions = this._OP_PHASE_TRANSITIONS;
+    const currentIdx = phases.indexOf(scenario.phase);
+    const targetIdx = phases.indexOf(targetPhase);
+    if (targetIdx < 0) return { success: false, message: '无效阶段' };
+    if (targetIdx <= currentIdx && !o.force) return { success: false, message: '不能回退阶段' };
+    const access = this.canRegulatoryAccess(this.getCurrentRegulatoryUser()?.userId, 'regulatoryOperationalScenarios', scenarioId, 'MANAGE');
+    if (!access.allowed && !o.skipApproval) {
+      this.createRegulatoryAuditLog({ actionType: 'OVERRIDE_DENIED', objectType: 'regulatoryOperationalScenarios', objectId: scenarioId, reason: access.reason });
+      return { success: false, denied: true, message: access.reason };
+    }
+    if (!o.skipApproval && ['ACTION_REQUIRED', 'IN_EXECUTION', 'CLOSED'].includes(targetPhase) && !o.approved) {
+      return { success: false, requiresHumanDecision: true, message: '阶段推进需人工审批', pendingPhase: targetPhase };
+    }
+    let phase = scenario.phase;
+    if (o.skipApproval) phase = targetPhase;
+    else {
+      while (phases.indexOf(phase) < targetIdx) {
+        const next = transitions[phase];
+        if (!next || !next.length) break;
+        phase = next[0];
+        if (phases.indexOf(phase) >= targetIdx) { phase = targetPhase; break; }
+      }
+      if (phases.indexOf(phase) < targetIdx) phase = targetPhase;
+    }
+    const before = { phase: scenario.phase, status: scenario.status };
+    scenario.phase = phase;
+    scenario.updatedAt = this._coordNow();
+    if (phase === 'CLOSED') scenario.status = 'CLOSED';
+    else scenario.status = 'IN_PROGRESS';
+    this.refreshOperationalScenarioLinks(scenarioId);
+    const health = this.calculateOperationalScenarioHealth(scenarioId);
+    scenario.healthStatus = health.overallStatus;
+    this.createRegulatoryAuditLog({
+      actionType: 'PHASE_ADVANCE', objectType: 'regulatoryOperationalScenarios', objectId: scenarioId,
+      beforeState: before, afterState: { phase: scenario.phase, status: scenario.status },
+      reason: o.reason || '监管实战场景阶段推进'
+    });
+    const orch = (APP_DATA.regulatoryOperationalScenarioOrchestrationIndex || []).find(x => x.scenarioId === scenarioId);
+    if (orch) orch.currentPhase = scenario.phase;
+    return { success: true, scenario, health, requiresHumanDecision: o.requiresHumanDecision !== false };
+  },
+
+  refreshOperationalScenarioLinks(scenarioId) {
+    const scenario = (APP_DATA.regulatoryOperationalScenarios || []).find(s => s.id === scenarioId);
+    if (!scenario) return null;
+    const def = (APP_DATA.regulatoryOperationalScenarioDefinitions || []).find(d => d.scenarioCode === scenario.scenarioCode);
+    const trigger = { triggerSourceType: scenario.triggerSourceType, triggerSourceId: scenario.triggerSourceId };
+    const links = this._collectOperationalScenarioLinks(def || {}, trigger);
+    Object.assign(scenario, links);
+    scenario.updatedAt = this._coordNow();
+    return scenario;
+  },
+
+  calculateOperationalScenarioHealth(scenarioId) {
+    const scenario = (APP_DATA.regulatoryOperationalScenarios || []).find(s => s.id === scenarioId);
+    if (!scenario) return { overallStatus: 'INSUFFICIENT_DATA', trendStatus: 'INSUFFICIENT_HISTORY', sourceTraceable: true };
+    const hasData = scenario.relatedKris?.length || scenario.relatedRisks?.length || scenario.triggerSourceId;
+    const dataCompleteness = hasData ? Math.min(100, 40 + (scenario.relatedKris?.length || 0) * 10 + (scenario.relatedWarnings?.length || 0) * 5) : null;
+    const creds = (scenario.relatedKris || []).map(id => this.getKriDataCredibility(id)).filter(c => c.dataStatus === 'OK');
+    const indicatorCredibility = creds.length ? Math.round(creds.reduce((s, c) => s + (c.credibility || 0), 0) / creds.length) : (scenario.relatedKris?.length ? 60 : null);
+    const riskIdentification = scenario.relatedRisks?.length ? Math.min(100, scenario.relatedRisks.length * 25) : null;
+    const actions = (APP_DATA.regulatoryActions || []).filter(a => (scenario.relatedActions || []).includes(a.actionId));
+    const actionRate = actions.length ? Math.round(actions.filter(a => ['COMPLETED', 'VERIFIED', 'CLOSED', 'IN_PROGRESS'].includes(a.status)).length / actions.length * 100) : null;
+    const coordTasks = (APP_DATA.regulatoryCoordinationTasks || []).filter(t => (scenario.coordinationCaseIds || []).includes(t.coordinationCaseId));
+    const coordEff = coordTasks.length ? Math.round(coordTasks.filter(t => t.status === 'COMPLETED').length / coordTasks.length * 100) : null;
+    const rects = (APP_DATA.rectificationTasks || []).filter(t => (scenario.relatedRectifications || []).includes(t.taskId));
+    const rectRate = rects.length ? Math.round(rects.filter(t => t.status === '已关闭' || t.verificationStatus === '已验证').length / rects.length * 100) : null;
+    const verifyRate = rects.length ? Math.round(rects.filter(t => t.verificationStatus === '已验证').length / rects.length * 100) : null;
+    const joint = (APP_DATA.regulatoryJointVerificationIndex || []).find(v => (scenario.coordinationCaseIds || []).includes(v.coordinationCaseId));
+    const regulatoryEffect = joint?.status === 'FULLY_VERIFIED' ? 90 : joint?.status === 'PARTIALLY_VERIFIED' ? 60 : scenario.phase === 'CLOSED' ? 85 : null;
+    const dims = { dataCompleteness, indicatorCredibility, riskIdentification, actionExecutionRate: actionRate, crossOrgCoordinationEfficiency: coordEff, rectificationCompletionRate: rectRate, verificationCompletionRate: verifyRate, regulatoryEffectiveness: regulatoryEffect };
+    const vals = Object.values(dims).filter(v => v != null);
+    let overallStatus = 'INSUFFICIENT_DATA';
+    if (vals.length) {
+      const avg = vals.reduce((a, b) => a + b, 0) / vals.length;
+      overallStatus = avg >= 80 ? 'HEALTHY' : avg >= 65 ? 'WATCH' : avg >= 45 ? 'AT_RISK' : 'CRITICAL';
+    }
+    const result = { scenarioId, dimensions: dims, overallStatus, trendStatus: 'INSUFFICIENT_HISTORY', sourceTraceable: true, dataStatus: vals.length ? 'DERIVED' : 'INSUFFICIENT_DATA', evaluatedAt: this._coordNow() };
+    const ri = (APP_DATA.regulatoryOperationalScenarioResultIndexes || []).findIndex(r => r.scenarioId === scenarioId);
+    if (ri >= 0) APP_DATA.regulatoryOperationalScenarioResultIndexes[ri] = result;
+    else {
+      APP_DATA.regulatoryOperationalScenarioResultIndexes = APP_DATA.regulatoryOperationalScenarioResultIndexes || [];
+      APP_DATA.regulatoryOperationalScenarioResultIndexes.push(result);
+    }
+    return result;
+  },
+
+  buildRegulatoryOperationalLedger() {
+    const ledger = (APP_DATA.regulatoryOperationalScenarios || []).map(s => {
+      const health = (APP_DATA.regulatoryOperationalScenarioResultIndexes || []).find(h => h.scenarioId === s.id) || this.calculateOperationalScenarioHealth(s.id);
+      const resp = (APP_DATA.regulatoryCoordinationResponsibilityIndex || []).find(r => (s.coordinationCaseIds || []).includes(r.caseId));
+      const cycle = (APP_DATA.regulatoryOperatingCycleInstances || []).find(c => c.id === s.triggerSourceId);
+      return {
+        ledgerId: 'ROL-' + s.id,
+        scenarioId: s.id,
+        scenarioCode: s.scenarioCode,
+        regulatoryTheme: s.regulatoryTheme,
+        triggerSourceType: s.triggerSourceType,
+        triggerSourceId: s.triggerSourceId,
+        triggerReason: s.triggerReason,
+        phase: s.phase,
+        status: s.status,
+        healthStatus: health.overallStatus,
+        relatedRisks: s.relatedRisks,
+        relatedKris: s.relatedKris,
+        relatedWarnings: s.relatedWarnings,
+        relatedActions: s.relatedActions,
+        coordinationCaseIds: s.coordinationCaseIds,
+        relatedRectifications: s.relatedRectifications,
+        rectificationEvidence: (s.relatedRectifications || []).map(tid => {
+          const t = (APP_DATA.rectificationTasks || []).find(x => x.taskId === tid);
+          return t ? { taskId: tid, verificationStatus: t.verificationStatus, evidence: t.evidenceSummary || t.title } : null;
+        }).filter(Boolean),
+        effectivenessResult: health.overallStatus,
+        responsibleOrganization: resp?.primaryOwner?.organizationId || s.scope,
+        operatingCycleId: cycle?.id,
+        dataStatus: 'DERIVED',
+        sourceTraceability: { ...s.sourceTraceability, forwardLinks: ['relatedActions', 'coordinationCaseIds', 'relatedRectifications'], backwardLinks: ['triggerSourceType', 'triggerSourceId', 'relatedRisks', 'relatedKris'] },
+        updatedAt: s.updatedAt
+      };
+    });
+    APP_DATA.regulatoryOperationalLedger = ledger;
+    return ledger;
+  },
+
+  computeRegulatoryOperationalMetrics() {
+    const scenarios = APP_DATA.regulatoryOperationalScenarios || [];
+    const themes = APP_DATA.regulatoryOperationalThemes || [];
+    const ledger = APP_DATA.regulatoryOperationalLedger || [];
+    const healthResults = APP_DATA.regulatoryOperationalScenarioResultIndexes || [];
+    APP_DATA.regulatoryOperationalMetrics = {
+      operationalScenarioCount: scenarios.length,
+      themeCount: themes.length,
+      ledgerCount: ledger.length,
+      closedScenarioCount: scenarios.filter(s => s.phase === 'CLOSED' || s.status === 'CLOSED').length,
+      inProgressCount: scenarios.filter(s => s.status === 'IN_PROGRESS').length,
+      atRiskCount: scenarios.filter(s => {
+        const h = healthResults.find(r => r.scenarioId === s.id);
+        return h?.overallStatus === 'AT_RISK' || h?.overallStatus === 'CRITICAL' || s.healthStatus === 'AT_RISK' || s.healthStatus === 'CRITICAL';
+      }).length,
+      trendStatus: 'INSUFFICIENT_HISTORY',
+      dataStatus: 'DERIVED'
+    };
+    return APP_DATA.regulatoryOperationalMetrics;
+  },
+
+  filterOperationalScenariosByScope(scenarios) {
+    const user = this.getCurrentRegulatoryUser();
+    if (!user) return [];
+    const assignments = this.getUserRoleAssignments(user.userId);
+    if (assignments.some(a => a.scopeType === 'GROUP')) return scenarios;
+    return scenarios.filter(s => {
+      const entityIds = s.affectedEntities || [];
+      return assignments.some(asg => {
+        if (asg.scopeType === 'ENTITY') return (asg.scopeIds || []).some(sid => entityIds.includes(sid) || (s.scope || '').includes(sid));
+        if (asg.scopeType === 'DOMAIN') return (s.affectedDomains || []).some(d => (asg.scopeIds || []).includes(d));
+        return false;
+      });
+    });
+  },
+
+  renderOperationalScenarioDashboardPanel() {
+    const m = APP_DATA.regulatoryOperationalMetrics || {};
+    const scenarios = APP_DATA.regulatoryOperationalScenarios || [];
+    const themes = APP_DATA.regulatoryOperationalThemes || [];
+    return `<div class="card"><div class="card-title">监管实战场景运行 ${this.renderPublicUnifiedStatusBadge('DERIVED')}</div>
+      <div class="group-metrics">${[
+        [m.operationalScenarioCount || scenarios.length, '实战场景', `App.navigatePublic('regulatory-workbench')`],
+        [m.themeCount || themes.length, '监管主题', `App.navigatePublic('regulatory-analysis-center')`],
+        [m.inProgressCount || scenarios.filter(s => s.status === 'IN_PROGRESS').length, '运行中', `App.navigatePublic('regulatory-workbench')`],
+        [m.closedScenarioCount || 0, '已闭环', `App.navigatePublic('regulatory-performance')`],
+        [m.atRiskCount || 0, 'AT_RISK场景', `App.navigatePublic('regulatory-analysis-center')`],
+        [(APP_DATA.regulatoryOperationalLedger || []).length, '运营台账', `App.navigatePublic('regulatory-strategic-review')`]
+      ].map(([v, l, n]) => this.renderPublicKpiCard(l, v, n)).join('')}</div>
+      ${themes.length ? `<p class="insight-note"><b>重点监管主题：</b>${themes.filter(t => t.majorItemCount > 0 || t.overdueCount > 0).slice(0, 4).map(t => t.themeName + '(' + t.riskCount + '风险)').join('、') || themes.slice(0, 3).map(t => t.themeName).join('、')}</p>` : ''}
+      ${scenarios.length ? `<table class="data-table"><thead><tr><th>场景</th><th>主题</th><th>阶段</th><th>健康度</th></tr></thead><tbody>${scenarios.slice(0, 5).map(s => `<tr class="clickable" onclick="App.navigatePublic('regulatory-workbench')"><td>${s.scenarioCode}</td><td>${s.regulatoryTheme}</td><td>${this.renderPublicUnifiedStatusBadge(s.phase)}</td><td>${this.renderPublicUnifiedStatusBadge(s.healthStatus || 'INSUFFICIENT_DATA')}</td></tr>`).join('')}</tbody></table>` : ''}
+    </div>`;
+  },
+
+  renderOperationalScenarioWorkbenchPanel() {
+    const user = this.getCurrentRegulatoryUser();
+    const scenarios = this.filterOperationalScenariosByScope(APP_DATA.regulatoryOperationalScenarios || []);
+    const themes = APP_DATA.regulatoryOperationalThemes || [];
+    const active = scenarios.filter(s => s.status === 'IN_PROGRESS');
+    const coord = this.filterCoordinationCasesByScope(APP_DATA.regulatoryCoordinationCases || []);
+    const pendingVerify = (APP_DATA.rectificationTasks || []).filter(t => t.verificationStatus !== '已验证' && t.status !== '已关闭');
+    const pendingEffect = (APP_DATA.regulatoryOperationalScenarioResultIndexes || []).filter(r => r.overallStatus === 'AT_RISK' || r.overallStatus === 'CRITICAL');
+    const cycleResults = APP_DATA.regulatoryOperatingRuntimeMetrics || {};
+    return `<div class="card"><div class="card-title">监管实战运营工作台</div>
+      <div class="group-metrics">${[
+        [active.length, '当前监管实战场景', `App.navigatePublic('regulatory-workbench')`],
+        [themes.filter(t => t.majorItemCount > 0).length || themes.length, '重点监管主题', `App.navigatePublic('regulatory-analysis-center')`],
+        [(APP_DATA.regulatoryDailyOperations || []).filter(d => d.priority === 'CRITICAL' || d.priority === 'HIGH').length, '待我处理事项', `App.navigatePublic('regulatory-queue')`],
+        [coord.filter(c => c.status === 'PROPOSED' || c.status === 'CONFIRMED').length, '跨组织协同事项', `App.navigatePublic('regulatory-queue',{queueType:'COORDINATION_CONFIRMATION'})`],
+        [pendingVerify.length, '待验证整改', `App.navigatePublic('rectification')`],
+        [pendingEffect.length, '待效果评价事项', `App.navigatePublic('regulatory-performance')`],
+        [cycleResults.dailyOperationCount || 0, '本周期监管结果', `App.navigatePublic('regulatory-analysis-center')`]
+      ].map(([v, l, n]) => this.renderPublicKpiCard(l, v, n)).join('')}</div>
+      ${active.length ? `<p class="insight-note"><b>运行中场景：</b>${active.map(s => s.scenarioCode + '·' + s.phase).join('、')}</p>` : ''}
+    </div>`;
+  },
+
+  renderOperationalScenarioRolePanel(roleType) {
+    const scenarios = this.filterOperationalScenariosByScope(APP_DATA.regulatoryOperationalScenarios || []);
+    const themes = APP_DATA.regulatoryOperationalThemes || [];
+    let items = [];
+    if (roleType === 'GROUP_LEADER') {
+      items = [
+        [themes.filter(t => t.majorItemCount > 0).length, '重大监管主题'],
+        [scenarios.filter(s => s.scenarioType === 'MAJOR_RISK').length, '重大风险'],
+        [(APP_DATA.regulatoryCoordinationCases || []).filter(c => c.severity === 'CRITICAL').length, '重大协同事项'],
+        [(APP_DATA.regulatoryOperatingRecommendations || []).filter(r => r.status === 'OPEN').length, '资源调度建议'],
+        [scenarios.filter(s => s.phase === 'EFFECTIVENESS_REVIEW' || s.phase === 'CLOSED').length, '监管效果']
+      ];
+    } else if (roleType === 'GROUP_REGULATORY') {
+      items = [
+        [scenarios.length, '监管场景'],
+        [scenarios.filter(s => s.relatedRisks?.length).length, '重点风险'],
+        [scenarios.filter(s => s.phase === 'ACTION_REQUIRED').length, '待决策'],
+        [(APP_DATA.regulatoryCoordinationCases || []).filter(c => c.status === 'PROPOSED').length, '待协同'],
+        [(APP_DATA.regulatoryEscalationRecords || []).filter(e => e.status === 'PROPOSED').length, '待督办'],
+        [(APP_DATA.regulatoryJointVerificationIndex || []).filter(v => v.status !== 'FULLY_VERIFIED').length, '待验证']
+      ];
+    } else if (roleType === 'DOMAIN_REGULATOR') {
+      const scopeDomains = this.regulatoryRoleScopeId ? [this.regulatoryRoleScopeId] : (APP_DATA.regulatoryDomainConfigurations || []).slice(0, 1).map(d => d.domainId);
+      items = [
+        [themes.filter(t => (t.affectedDomains || []).some(d => scopeDomains.includes(d))).length, '本领域监管主题'],
+        [(APP_DATA.regulatoryKriRuntime || []).filter(k => scopeDomains.includes(k.domainId) && ['WARNING', 'CRITICAL'].includes(k.runtimeStatus || k.status)).length, 'KRI'],
+        [(APP_DATA.regulatoryWarnings || []).filter(w => scopeDomains.includes(w.domainId)).length, '预警'],
+        [(APP_DATA.regulatoryActions || []).filter(a => scopeDomains.includes(a.domainId)).length, '监管行动'],
+        [(APP_DATA.rectificationTasks || []).filter(t => scopeDomains.includes(t.domainId)).length, '领域整改']
+      ];
+    } else {
+      const scopeId = this.regulatoryRoleScopeId;
+      items = [
+        [(APP_DATA.warnings || []).filter(w => w.entityId === scopeId).length, '本法人风险'],
+        [(APP_DATA.regulatoryWarnings || []).filter(w => w.entityId === scopeId).length, '本法人预警'],
+        [(APP_DATA.rectificationTasks || []).filter(t => t.entityId === scopeId && t.status !== '已关闭').length, '待整改'],
+        [(APP_DATA.regulatoryCoordinationFeedbackIndex || []).filter(f => f.status === 'REJECTED').length, '待反馈'],
+        [(APP_DATA.rectificationTasks || []).filter(t => t.entityId === scopeId && t.verificationStatus !== '已验证').length, '待验证']
+      ];
+    }
+    return `<div class="card"><div class="card-title">监管实战 · ${roleType}</div>
+      <div class="group-metrics">${items.map(([v, l]) => this.renderPublicKpiCard(l, v, `App.navigatePublic('regulatory-workbench')`)).join('')}</div>
+    </div>`;
+  },
+
   renderOperatingCycleDashboardPanel() {
     const cycles = APP_DATA.regulatoryOperatingCycles || [];
     const m = APP_DATA.regulatoryOperatingMetrics || {};
@@ -3777,7 +4249,8 @@ Object.assign(App, {
       'regulatoryOperatingCycles:VIEW': 'OPERATING_VIEW', 'regulatoryOperatingCycles:MANAGE': 'OPERATING_MANAGE',
       'regulatoryOperatingRecommendations:MANAGE': 'OPERATING_MANAGE', 'regulatoryOperatingRecommendations:VIEW': 'OPERATING_VIEW',
       'regulatoryCoordinationCases:VIEW': 'COORDINATION_VIEW', 'regulatoryCoordinationCases:MANAGE': 'COORDINATION_MANAGE',
-      'regulatoryEscalationRecords:CONFIRM': 'COORDINATION_ESCALATE', 'regulatoryEscalationRecords:VIEW': 'COORDINATION_VIEW'
+      'regulatoryEscalationRecords:CONFIRM': 'COORDINATION_ESCALATE', 'regulatoryEscalationRecords:VIEW': 'COORDINATION_VIEW',
+      'regulatoryOperationalScenarios:VIEW': 'OPERATIONAL_VIEW', 'regulatoryOperationalScenarios:MANAGE': 'OPERATIONAL_MANAGE'
     };
     if (map[resourceType + ':' + action]) return map[resourceType + ':' + action];
     if (action === 'APPROVE') return 'ACTION_APPROVE';
@@ -5613,6 +6086,7 @@ Object.assign(App, {
       ${this.renderGroupOverviewRectificationSummary(m)}
       ${this.renderGroupOverviewHealthSummary()}
       ${this.renderOperatingCycleDashboardPanel()}
+      ${this.renderOperationalScenarioDashboardPanel()}
       ${this.renderCoordinationDashboardPanel()}
       ${this.renderGroupOverviewOperationsEntry()}
       ${this.renderGroupOverviewPageCatalog(m)}
@@ -8010,6 +8484,7 @@ Object.assign(App, {
       </div>
       ${this.renderBatchAdaptationWorkbenchPanel()}
       ${this.renderDailyOperationsWorkbenchPanel()}
+      ${this.renderOperationalScenarioWorkbenchPanel()}
       ${this.renderCoordinationWorkbenchPanel()}
       ${this.renderPeriodicFocusPanel()}
       ${this.renderClosureVerificationWorkbenchPanel()}
@@ -8189,6 +8664,7 @@ Object.assign(App, {
       ${this.renderRoleJourneyPanel(role.roleId)}
       ${this.renderOperatingRolePathPanel(role.roleType)}
       ${this.renderCoordinationRolePanel(role.roleType)}
+      ${this.renderOperationalScenarioRolePanel(role.roleType)}
       <div class="group-two">
         <div class="card"><div class="card-title">当前最重要的问题</div>${urgentHtml}</div>
         <div class="card"><div class="card-title">我的待办</div>${pendingHtml ? `<table class="data-table"><thead><tr><th>类型</th><th>标题</th><th>优先级</th><th>截止</th><th>超期</th></tr></thead><tbody>${pendingHtml}</tbody></table>` : this.renderPublicEmptyState('暂无')}<p>${this.renderPublicLinkButton('我的监管工作', `App.navigatePublic('regulatory-my-work')`)}</p></div>
