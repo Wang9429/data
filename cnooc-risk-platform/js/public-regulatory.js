@@ -1638,8 +1638,8 @@ Object.assign(App, {
     const cycleType = o.cycleType || 'DAILY';
     const today = this._opToday();
     const periods = {
-      DAILY: { start: today, end: today, id: 'ROC-' + today + '-DAILY', owner: 'ROLE-GROUP-REG' },
-      WEEKLY: { start: '2026-07-16', end: today, id: 'ROC-2026-W29-WEEKLY', owner: 'ROLE-GROUP-REG' },
+      DAILY: { start: today, end: today, id: 'ROC-2026-07-DAILY', owner: 'ROLE-GROUP-REG' },
+      WEEKLY: { start: '2026-07-16', end: today, id: 'ROC-2026-W30-WEEKLY', owner: 'ROLE-GROUP-REG' },
       MONTHLY: { start: '2026-07-01', end: today, id: 'ROC-2026-07-MONTHLY', owner: 'ROLE-GROUP-REG' },
       QUARTERLY: { start: '2026-07-01', end: today, id: 'ROC-2026-Q3-QUARTERLY', owner: 'ROLE-GROUP-LEADER' },
       ANNUAL: { start: '2026-01-01', end: today, id: 'ROC-2026-ANNUAL', owner: 'ROLE-GROUP-LEADER' }
@@ -1698,44 +1698,64 @@ Object.assign(App, {
   generateDailyRegulatoryOperations() {
     const ops = [];
     let seq = 1;
-    const add = (category, sourceType, sourceId, currentStatus, priority, owner, lastUpdated) => {
+    const nameOf = (sourceType, sourceId) => {
+      if (sourceType === 'regulatoryWarnings') return (APP_DATA.regulatoryWarnings || []).find(w => w.regulatoryWarningId === sourceId)?.kriId || sourceId;
+      if (sourceType === 'rectificationTasks') return (APP_DATA.rectificationTasks || []).find(t => t.taskId === sourceId)?.title || sourceId;
+      if (sourceType === 'regulatoryActions') return (APP_DATA.regulatoryActions || []).find(a => a.actionId === sourceId)?.actionId || sourceId;
+      if (sourceType === 'regulatoryDataQualityIssues') return (APP_DATA.regulatoryDataQualityIssues || []).find(i => i.qualityIssueId === sourceId)?.issueType || sourceId;
+      if (sourceType === 'regulatoryKriRuntime') return (APP_DATA.regulatoryKriRuntime || []).find(k => k.kriRuntimeId === sourceId)?.kriId || sourceId;
+      return sourceId;
+    };
+    const add = (category, sourceType, sourceId, currentStatus, priority, owner, lastUpdated, extra) => {
       ops.push({
         operationId: 'RDO-' + String(seq++).padStart(4, '0'),
         category,
         sourceType,
         sourceId,
+        sourceName: nameOf(sourceType, sourceId),
         currentStatus,
+        status: currentStatus,
         priority,
         owner: owner || '—',
+        responsibleRole: extra?.responsibleRole || 'ROLE-GROUP-REG',
+        responsibleScope: extra?.responsibleScope || 'GROUP:G001',
+        dueDate: extra?.dueDate || null,
         lastUpdated: lastUpdated || this._opNow(),
-        sourceTraceability: { sourceType, sourceId }
+        dataStatus: 'REAL',
+        sourceTraceability: { sourceType, sourceId, ...(extra?.trace || {}) }
       });
     };
     (APP_DATA.regulatoryDataIntegrationJobs || []).filter(j => j.status === 'FAILED').forEach(j =>
-      add('DATA_INTEGRATION', 'regulatoryDataIntegrationJobs', j.integrationJobId || j.jobId, j.status, 'HIGH', j.ownerOrganizationId, j.lastRunAt));
+      add('DATA_INTEGRATION', 'regulatoryDataIntegrationJobs', j.integrationJobId || j.jobId, j.status, 'HIGH', j.ownerOrganizationId, j.lastRunAt, { responsibleRole: 'ROLE-GROUP-REG', trace: { sourceId: j.sourceId } }));
+    (APP_DATA.regulatoryDataSources || []).filter(s => s.connectionStatus === 'OFFLINE').forEach(s =>
+      add('DATA_INTEGRATION', 'regulatoryDataSources', s.sourceId, 'OFFLINE', 'CRITICAL', s.dataOwner, s.lastSyncTime, { responsibleRole: 'ROLE-DOMAIN-REG', responsibleScope: 'ENTITY:' + (s.entityId || 'G001') }));
     (APP_DATA.regulatoryDataQualityIssues || []).filter(i => i.status !== 'CLOSED').forEach(i =>
-      add('DATA_QUALITY', 'regulatoryDataQualityIssues', i.qualityIssueId, i.status, i.severity === 'HIGH' ? 'CRITICAL' : 'HIGH', i.relatedGovernanceTaskId, this._opNow()));
+      add('DATA_QUALITY', 'regulatoryDataQualityIssues', i.qualityIssueId, i.status, i.severity === 'HIGH' ? 'CRITICAL' : 'HIGH', i.relatedGovernanceTaskId, this._opNow(), { responsibleRole: 'ROLE-ENTITY-REG', trace: { kriId: i.kriId } }));
     (APP_DATA.regulatoryWarnings || []).filter(w => w.status === 'PENDING_REVIEW' || w.warningLevel === 'CRITICAL').forEach(w =>
-      add('WARNING_REVIEW', 'regulatoryWarnings', w.regulatoryWarningId, w.status, w.warningLevel === 'CRITICAL' ? 'CRITICAL' : 'HIGH', w.entityId, w.detectedAt));
+      add('WARNING_REVIEW', 'regulatoryWarnings', w.regulatoryWarningId, w.status, w.warningLevel === 'CRITICAL' ? 'CRITICAL' : 'HIGH', w.entityId, w.detectedAt, { responsibleRole: 'ROLE-GROUP-REG', trace: { kriId: w.kriId, riskMatterId: w.riskMatterId } }));
+    (APP_DATA.warnings || []).filter(w => w.level === '重大' || w.level === 'L4').forEach(w =>
+      add('RISK_REVIEW', 'warnings', w.id, w.status || '监测中', 'CRITICAL', w.unit, this._opNow(), { responsibleRole: 'ROLE-GROUP-REG', trace: { kriId: w.kriId } }));
     (APP_DATA.regulatoryKriRuntime || []).filter(k => ['WARNING', 'CRITICAL', 'DATA_QUALITY_REVIEW_REQUIRED'].includes(k.runtimeStatus || k.status)).forEach(k =>
-      add('KRI_ANOMALY', 'regulatoryKriRuntime', k.kriRuntimeId, k.runtimeStatus || k.status, 'HIGH', k.scopeId, k.lastCalculatedAt));
+      add('KRI_ANOMALY', 'regulatoryKriRuntime', k.kriRuntimeId, k.runtimeStatus || k.status, 'HIGH', k.scopeId, k.lastCalculatedAt, { responsibleRole: 'ROLE-DOMAIN-REG', trace: { kriId: k.kriId } }));
     (APP_DATA.regulatoryActions || []).filter(a => ['PENDING', 'ASSIGNED', 'IN_PROGRESS'].includes(a.status)).forEach(a =>
-      add('ACTION_PENDING', 'regulatoryActions', a.actionId, a.status, a.priority === 'CRITICAL' ? 'CRITICAL' : 'MEDIUM', a.responsibleOrganizationId, a.updatedAt));
+      add('ACTION_PENDING', 'regulatoryActions', a.actionId, a.status, a.priority === 'CRITICAL' ? 'CRITICAL' : 'MEDIUM', a.responsibleOrganizationId, a.updatedAt, { dueDate: a.dueDate, responsibleRole: 'ROLE-GROUP-REG' }));
     (APP_DATA.regulatorySupervisionTasks || []).filter(t => t.overdue || (t.deadline && t.deadline < this._opToday() && !['COMPLETED', 'EVALUATED'].includes(t.taskStatus))).forEach(t =>
-      add('TASK_OVERDUE', 'regulatorySupervisionTasks', t.supervisionTaskId, t.taskStatus, 'HIGH', t.responsibleOrganizationId, t.deadline));
+      add('TASK_OVERDUE', 'regulatorySupervisionTasks', t.supervisionTaskId, t.taskStatus, 'HIGH', t.responsibleOrganizationId, t.deadline, { dueDate: t.deadline }));
     (APP_DATA.rectificationTasks || []).filter(t => t.verificationStatus !== '已验证' && t.status !== '已关闭').forEach(t => {
       const pri = t.deadline && t.deadline < this._opToday() ? 'CRITICAL' : (t.verificationStatus === '待验证' || t.verificationStatus === '验证中' ? 'HIGH' : 'MEDIUM');
-      add('RECTIFICATION_VERIFY', 'rectificationTasks', t.taskId, t.verificationStatus || t.status, pri, t.responsibleDepartment || t.owner, t.deadline);
+      add('RECTIFICATION_VERIFY', 'rectificationTasks', t.taskId, t.verificationStatus || t.status, pri, t.responsibleDepartment || t.owner, t.deadline, { dueDate: t.deadline, trace: { riskMatterId: t.riskMatterId } });
     });
     (APP_DATA.regulatoryAuthorizationRequests || []).filter(a => ['SUBMITTED', 'IN_REVIEW', 'PENDING'].includes(a.status)).forEach(a =>
-      add('AUTHORIZATION_PENDING', 'regulatoryAuthorizationRequests', a.authorizationId, a.status, a.riskLevel === 'CRITICAL' ? 'CRITICAL' : 'HIGH', a.requesterId, a.submittedAt));
+      add('AUTHORIZATION_PENDING', 'regulatoryAuthorizationRequests', a.authorizationId, a.status, a.riskLevel === 'CRITICAL' ? 'CRITICAL' : 'HIGH', a.requesterId, a.submittedAt, { responsibleRole: 'ROLE-GROUP-LEADER' }));
+    (APP_DATA.regulatoryOperatingRecommendations || []).filter(r => r.status === 'OPEN' && r.requiresHumanDecision).forEach(r =>
+      add('HUMAN_DECISION', 'regulatoryOperatingRecommendations', r.recommendationId, r.status, r.priority, 'ROLE-GROUP-LEADER', r.generatedAt, { responsibleRole: 'ROLE-GROUP-LEADER' }));
     APP_DATA.regulatoryDailyOperations = ops;
     return ops;
   },
 
   generatePeriodicRegulatoryReview(reviewType, periodStart, periodEnd) {
     const typeMap = {
-      WEEKLY_REVIEW: { id: 'RPR-2026-W29', title: '2026年第29周监管复盘', cycle: 'WEEKLY', owner: 'ROLE-GROUP-REG' },
+      WEEKLY_REVIEW: { id: 'RPR-2026-W30', title: '2026年第30周监管复盘', cycle: 'WEEKLY', owner: 'ROLE-GROUP-REG' },
       MONTHLY_REVIEW: { id: 'RPR-2026-07', title: '2026年7月月度监管复盘', cycle: 'MONTHLY', owner: 'ROLE-GROUP-REG' },
       QUARTERLY_REVIEW: { id: 'RPR-2026-Q3', title: '2026年第三季度监管评价', cycle: 'QUARTERLY', owner: 'ROLE-GROUP-LEADER' },
       ANNUAL_REVIEW: { id: 'RPR-2026', title: '2026年度战略复盘', cycle: 'ANNUAL', owner: 'ROLE-GROUP-LEADER' }
@@ -1825,7 +1845,7 @@ Object.assign(App, {
     let sum = 0; let wsum = 0;
     Object.keys(dims).forEach((k, i) => { if (dims[k] != null) { sum += dims[k] * weights[i]; wsum += weights[i]; } });
     const overall = wsum ? Math.round(sum / wsum * 10) / 10 : null;
-    return { scopeType, scopeId, ...dims, overallRegulatoryHealth: overall, dataStatus: overall != null ? 'OK' : 'INSUFFICIENT_DATA', trendStatus: 'INSUFFICIENT_HISTORY' };
+    return { scopeType, scopeId, ...dims, overallRegulatoryHealth: overall, dataStatus: overall != null ? 'OK' : 'INSUFFICIENT_DATA', trendStatus: 'INSUFFICIENT_HISTORY', sourceTraceable: true };
   },
 
   refreshRegulatoryOperatingSnapshots() {
@@ -1927,47 +1947,483 @@ Object.assign(App, {
     };
   },
 
+  initializeRegulatoryOperatingRuntime() {
+    this.detectRegulatoryOperatingExceptions();
+    this.generateWeeklyRegulatoryReview();
+    this.generateMonthlyDomainReview();
+    this.generateQuarterlyRegulatoryPerformance();
+    this.generateAnnualOperationReview();
+    this.instantiateOperatingCycleInstances();
+    this.computeRegulatoryOperatingRuntimeMetrics();
+    return APP_DATA.regulatoryOperatingRuntimeMetrics;
+  },
+
+  instantiateOperatingCycleInstances() {
+    const cycles = APP_DATA.regulatoryOperatingCycles || [];
+    const daily = APP_DATA.regulatoryDailyOperations || [];
+    const recs = APP_DATA.regulatoryOperatingRecommendations || [];
+    const exceptions = APP_DATA.regulatoryOperatingExceptions || [];
+    const instances = cycles.map(c => {
+      const relatedDaily = daily.filter(d => {
+        if (c.cycleType === 'DAILY') return true;
+        if (c.cycleType === 'WEEKLY') return ['WARNING_REVIEW', 'RISK_REVIEW', 'TASK_OVERDUE', 'RECTIFICATION_VERIFY'].includes(d.category);
+        return true;
+      });
+      const pendingDecision = recs.filter(r => r.status === 'OPEN' && r.requiresHumanDecision).length;
+      const exCount = exceptions.filter(e => e.status !== 'RESOLVED').length;
+      return {
+        id: c.cycleId,
+        cycleType: c.cycleType,
+        period: c.periodStart + ' ~ ' + c.periodEnd,
+        status: c.status,
+        startedAt: c.periodStart + ' 00:00:00',
+        completedAt: c.status === 'COMPLETED' ? c.periodEnd + ' 23:59:59' : null,
+        sourceTraceability: { cycleId: c.cycleId, relatedReviews: c.relatedReviews || [], relatedActions: c.relatedActions || [] },
+        operationCount: c.cycleType === 'DAILY' ? daily.length : relatedDaily.length,
+        exceptionCount: exCount,
+        pendingDecisionCount: pendingDecision,
+        generatedRecommendations: recs.filter(r => r.status === 'OPEN').map(r => r.recommendationId),
+        dataStatus: 'DERIVED'
+      };
+    });
+    APP_DATA.regulatoryOperatingCycleInstances = instances;
+    APP_DATA.regulatoryOperatingExecutionRecords = instances.map(inst => ({
+      recordId: 'ROER-' + inst.id,
+      instanceId: inst.id,
+      cycleType: inst.cycleType,
+      executedAt: this._opNow(),
+      status: inst.status,
+      operationCount: inst.operationCount,
+      exceptionCount: inst.exceptionCount,
+      dataStatus: 'DERIVED'
+    }));
+    APP_DATA.regulatoryOperatingResultIndexes = [
+      { indexId: 'RORI-WEEKLY', reviewType: 'WEEKLY_REVIEW', instanceId: 'ROC-2026-W30-WEEKLY', dataStatus: 'DERIVED' },
+      { indexId: 'RORI-MONTHLY', reviewType: 'DOMAIN_OPERATION_REVIEW', instanceId: 'ROC-2026-07-MONTHLY', dataStatus: 'DERIVED' },
+      { indexId: 'RORI-QUARTERLY', reviewType: 'QUARTERLY_PERFORMANCE', instanceId: 'ROC-2026-Q3-QUARTERLY', dataStatus: 'DERIVED' },
+      { indexId: 'RORI-ANNUAL', reviewType: 'ANNUAL_OPERATION', instanceId: 'ROC-2026-ANNUAL', dataStatus: 'DERIVED' }
+    ];
+    return instances;
+  },
+
+  generateWeeklyRegulatoryReview() {
+    const start = '2026-07-16';
+    const end = this._opToday();
+    const warnings = APP_DATA.regulatoryWarnings || [];
+    const risks = (APP_DATA.warnings || []).filter(w => w.level === '重大' || w.level === 'L4');
+    const overdueTasks = (APP_DATA.regulatorySupervisionTasks || []).filter(t => t.overdue || (t.deadline && t.deadline < end && !['COMPLETED', 'EVALUATED'].includes(t.taskStatus)));
+    const qualityIssues = (APP_DATA.regulatoryDataQualityIssues || []).filter(i => i.status !== 'CLOSED');
+    const openActions = (APP_DATA.regulatoryActions || []).filter(a => !['COMPLETED', 'VERIFIED', 'CLOSED'].includes(a.status));
+    const pendingVerify = (APP_DATA.rectificationTasks || []).filter(t => t.verificationStatus !== '已验证' && t.status !== '已关闭');
+    const permExceptions = (APP_DATA.regulatoryAuthorizationRequests || []).filter(a => a.status === 'REJECTED' || a.riskLevel === 'CRITICAL');
+    const ruleExceptions = (APP_DATA.regulatoryRules || []).filter(r => r.status === 'DISABLED' || r.lastRunStatus === 'FAILED');
+    const focusItems = [
+      ...risks.slice(0, 3).map(w => ({ itemType: 'HIGH_RISK', sourceType: 'warnings', sourceId: w.id, sourceName: w.name || w.id, priority: 'CRITICAL', dataStatus: 'REAL' })),
+      ...warnings.filter(w => w.warningLevel === 'CRITICAL').slice(0, 3).map(w => ({ itemType: 'MAJOR_WARNING', sourceType: 'regulatoryWarnings', sourceId: w.regulatoryWarningId, sourceName: w.kriId, priority: 'CRITICAL', dataStatus: 'REAL' }))
+    ];
+    const decisionItems = (APP_DATA.regulatoryOperatingRecommendations || []).filter(r => r.status === 'OPEN' && r.requiresHumanDecision).slice(0, 5).map(r => ({
+      itemType: 'PENDING_DECISION', sourceType: 'regulatoryOperatingRecommendations', sourceId: r.recommendationId, reason: r.reason, priority: r.priority, requiresHumanDecision: true, dataStatus: 'REAL'
+    }));
+    const escalationItems = [...overdueTasks, ...pendingVerify.filter(t => t.deadline && t.deadline < end)].slice(0, 5).map(t => ({
+      itemType: 'ESCALATION', sourceType: t.supervisionTaskId ? 'regulatorySupervisionTasks' : 'rectificationTasks', sourceId: t.supervisionTaskId || t.taskId, priority: 'HIGH', dataStatus: 'REAL'
+    }));
+    const trackingItems = [...openActions, ...qualityIssues].slice(0, 5).map(x => ({
+      itemType: 'TRACKING', sourceType: x.actionId ? 'regulatoryActions' : 'regulatoryDataQualityIssues', sourceId: x.actionId || x.qualityIssueId, priority: 'MEDIUM', dataStatus: 'REAL'
+    }));
+    const review = {
+      reviewId: 'RPR-2026-W30',
+      reviewType: 'WEEKLY_REVIEW',
+      title: '2026年第30周监管复核',
+      periodStart: start,
+      periodEnd: end,
+      status: 'COMPLETED',
+      ownerRole: 'ROLE-GROUP-REG',
+      newHighRiskCount: risks.length,
+      newMajorWarningCount: warnings.filter(w => w.warningLevel === 'CRITICAL' || w.status === 'PENDING_REVIEW').length,
+      overdueItemCount: overdueTasks.length,
+      newDataQualityIssueCount: qualityIssues.length,
+      incompleteActionCount: openActions.length,
+      pendingVerificationCount: pendingVerify.length,
+      permissionExceptionCount: permExceptions.length,
+      ruleRuntimeExceptionCount: ruleExceptions.length,
+      focusItems,
+      decisionItems,
+      escalationItems,
+      trackingItems,
+      trendComparisonStatus: 'INSUFFICIENT_HISTORY',
+      dataStatus: 'DERIVED',
+      generatedAt: this._opNow(),
+      sourceTraceability: { cycleInstanceId: 'ROC-2026-W30-WEEKLY', derivedFrom: ['warnings', 'regulatoryWarnings', 'regulatorySupervisionTasks', 'rectificationTasks'] }
+    };
+    const idx = (APP_DATA.regulatoryPeriodicReviews || []).findIndex(r => r.reviewType === 'WEEKLY_REVIEW');
+    if (idx >= 0) APP_DATA.regulatoryPeriodicReviews[idx] = { ...(APP_DATA.regulatoryPeriodicReviews[idx] || {}), ...review };
+    else {
+      APP_DATA.regulatoryPeriodicReviews = APP_DATA.regulatoryPeriodicReviews || [];
+      APP_DATA.regulatoryPeriodicReviews.push(review);
+    }
+    return review;
+  },
+
+  generateMonthlyDomainReview() {
+    const domains = (APP_DATA.regulatoryDomainConfigurations || []).slice(0, 9);
+    const reviews = domains.map(dom => {
+      const domainId = dom.domainId;
+      const issues = (APP_DATA.regulatoryDataQualityIssues || []).filter(i => i.domainId === domainId && i.status !== 'CLOSED');
+      const kris = (APP_DATA.regulatoryKriRuntime || []).filter(k => k.domainId === domainId);
+      const warns = (APP_DATA.regulatoryWarnings || []).filter(w => w.domainId === domainId);
+      const actions = (APP_DATA.regulatoryActions || []).filter(a => a.domainId === domainId);
+      const rects = (APP_DATA.rectificationTasks || []).filter(t => t.domainId === domainId || (t.riskMatterId && (APP_DATA.crossDomainRiskRelations || []).some(r => r.domainId === domainId && r.riskMatterId === t.riskMatterId)));
+      const adapt = (APP_DATA.regulatoryDomainAdaptationResults || []).find(r => r.domainId === domainId);
+      const hasData = issues.length || kris.length || warns.length || actions.length || rects.length || adapt;
+      const dataHealth = issues.length ? Math.max(0, 100 - issues.length * 10) : (kris.length ? 80 : null);
+      const kriHealth = kris.length ? Math.round(kris.filter(k => !['WARNING', 'CRITICAL', 'DATA_QUALITY_REVIEW_REQUIRED'].includes(k.runtimeStatus || k.status)).length / kris.length * 100) : null;
+      const warnEff = warns.length ? Math.round(warns.filter(w => w.status !== 'PENDING_REVIEW').length / warns.length * 100) : null;
+      const actionRate = actions.length ? Math.round(actions.filter(a => ['COMPLETED', 'VERIFIED', 'CLOSED', 'IN_PROGRESS'].includes(a.status)).length / actions.length * 100) : null;
+      const rectClose = rects.length ? Math.round(rects.filter(t => t.status === '已关闭' || t.verificationStatus === '已验证').length / rects.length * 100) : null;
+      const verifyRate = rects.length ? Math.round(rects.filter(t => t.verificationStatus === '已验证').length / rects.length * 100) : null;
+      const credScores = (dom.linkedKriIds || dom.kriIds || []).map(id => this.getKriDataCredibility(id)).filter(c => c.dataStatus === 'OK');
+      const dataCredibility = credScores.length ? Math.round(credScores.reduce((s, c) => s + (c.credibility || 0), 0) / credScores.length) : (kris.length ? 70 : null);
+      let domainStatus = 'INSUFFICIENT_DATA';
+      if (hasData) {
+        const scores = [dataHealth, kriHealth, warnEff, actionRate, rectClose].filter(v => v != null);
+        const avg = scores.length ? scores.reduce((a, b) => a + b, 0) / scores.length : 50;
+        domainStatus = avg >= 75 ? 'HEALTHY' : avg >= 55 ? 'WATCH' : 'AT_RISK';
+        if (!scores.length) domainStatus = 'INSUFFICIENT_DATA';
+      }
+      return {
+        reviewId: 'RDOR-2026-07-' + domainId.toUpperCase(),
+        reviewType: 'DOMAIN_OPERATION_REVIEW',
+        domainId,
+        domainName: dom.domainName,
+        periodStart: '2026-07-01',
+        periodEnd: this._opToday(),
+        dataHealthScore: dataHealth,
+        kriHealthScore: kriHealth,
+        warningDisposalEfficiency: warnEff,
+        actionExecutionRate: actionRate,
+        rectificationClosureRate: rectClose,
+        verificationCompletionRate: verifyRate,
+        dataCredibilityScore: dataCredibility,
+        domainStatus,
+        closedLoopStatus: adapt?.closedLoopStatus || 'INSUFFICIENT_REAL_DATA',
+        maturityLevel: adapt?.maturityLevel,
+        trendStatus: 'INSUFFICIENT_HISTORY',
+        dataStatus: hasData ? 'DERIVED' : 'INSUFFICIENT_DATA',
+        sourceTraceability: { domainId, sourceTypes: ['regulatoryDataQualityIssues', 'regulatoryKriRuntime', 'regulatoryWarnings', 'regulatoryActions', 'rectificationTasks'] },
+        generatedAt: this._opNow()
+      };
+    });
+    APP_DATA.regulatoryDomainOperationReviews = reviews;
+    return reviews;
+  },
+
+  generateQuarterlyRegulatoryPerformance() {
+    const actions = APP_DATA.regulatoryActions || [];
+    const warns = APP_DATA.regulatoryWarnings || [];
+    const rects = APP_DATA.rectificationTasks || [];
+    const issues = APP_DATA.regulatoryDataQualityIssues || [];
+    const kris = APP_DATA.regulatoryKriRuntime || [];
+    const actualResults = {
+      riskDiscoveryTimeliness: warns.length ? Math.round(warns.filter(w => w.status !== 'PENDING_REVIEW').length / warns.length * 100) : null,
+      warningJudgmentTimeliness: warns.length ? Math.round(warns.filter(w => w.status !== 'PENDING_REVIEW').length / warns.length * 100) : null,
+      actionTimeliness: actions.length ? Math.round(actions.filter(a => !a.overdue).length / actions.length * 100) : null,
+      rectificationCompletionRate: rects.length ? Math.round(rects.filter(t => t.status === '已关闭' || t.verificationStatus === '已验证').length / rects.length * 100) : null,
+      rectificationVerificationRate: rects.length ? Math.round(rects.filter(t => t.verificationStatus === '已验证').length / rects.length * 100) : null,
+      dataQualityImprovement: issues.length ? Math.round(issues.filter(i => i.status === 'CLOSED').length / issues.length * 100) : null,
+      kriEffectiveness: kris.length ? Math.round(kris.filter(k => !['WARNING', 'CRITICAL'].includes(k.runtimeStatus || k.status)).length / kris.length * 100) : null,
+      dataStatus: 'REAL',
+      trendStatus: 'INSUFFICIENT_HISTORY'
+    };
+    const evaluationResults = {
+      overallScore: (() => {
+        const vals = Object.values(actualResults).filter(v => typeof v === 'number');
+        return vals.length ? Math.round(vals.reduce((a, b) => a + b, 0) / vals.length) : null;
+      })(),
+      dataStatus: actualResults.dataStatus === 'REAL' ? 'DERIVED' : 'INSUFFICIENT_DATA',
+      trendStatus: 'INSUFFICIENT_HISTORY'
+    };
+    const recommendations = (APP_DATA.regulatoryOperatingRecommendations || []).slice(0, 5).map(r => ({
+      recommendationId: r.recommendationId,
+      reason: r.reason,
+      suggestedAction: r.suggestedAction,
+      requiresHumanDecision: true,
+      evaluationOnly: true,
+      dataStatus: 'DERIVED'
+    }));
+    const review = {
+      reviewId: 'RQPR-2026-Q3',
+      reviewType: 'QUARTERLY_PERFORMANCE',
+      periodStart: '2026-07-01',
+      periodEnd: this._opToday(),
+      actualResults,
+      evaluationResults,
+      recommendations,
+      dataStatus: 'DERIVED',
+      trendStatus: 'INSUFFICIENT_HISTORY',
+      sourceTraceability: { cycleInstanceId: 'ROC-2026-Q3-QUARTERLY', derivedFrom: ['regulatoryActions', 'rectificationTasks', 'regulatoryWarnings', 'regulatoryKriRuntime'] },
+      generatedAt: this._opNow()
+    };
+    APP_DATA.regulatoryQuarterlyPerformanceReviews = [review];
+    return review;
+  },
+
+  generateAnnualOperationReview() {
+    const goals = APP_DATA.regulatoryStrategicObjectives || APP_DATA.regulatoryStrategicGoals || [];
+    const plans = APP_DATA.regulatoryAnnualPlans || [];
+    const focus = APP_DATA.regulatoryFocusItems || APP_DATA.regulatoryAnnualFocus || [];
+    const perf = APP_DATA.regulatoryPerformanceSummary || {};
+    const domainReviews = APP_DATA.regulatoryDomainOperationReviews || [];
+    const atRiskDomains = domainReviews.filter(d => d.domainStatus === 'AT_RISK');
+    const unmetGoals = goals.filter(g => g.completionRate != null && g.completionRate < 0.8);
+    const planVariance = plans.filter(p => p.completionRate != null && p.completionRate < 0.8);
+    const recs = (APP_DATA.regulatoryOperatingRecommendations || []).filter(r => r.status === 'OPEN').map(r => ({
+      recommendationId: r.recommendationId,
+      reason: r.reason,
+      suggestedAction: r.suggestedAction,
+      requiresHumanDecision: true,
+      priority: r.priority
+    }));
+    const result = {
+      resultId: 'RAOR-2026',
+      reviewType: 'ANNUAL_OPERATION',
+      periodStart: '2026-01-01',
+      periodEnd: this._opToday(),
+      operatingResultsSummary: {
+        dailyOperationCount: (APP_DATA.regulatoryDailyOperations || []).length,
+        exceptionCount: (APP_DATA.regulatoryOperatingExceptions || []).length,
+        domainAtRiskCount: atRiskDomains.length,
+        performanceScore: perf.regulatoryEffectivenessScore,
+        dataStatus: 'DERIVED'
+      },
+      strategicGoalAchievement: goals.map(g => ({
+        goalId: g.objectiveId || g.goalId || g.id,
+        goalName: g.objectiveName || g.goalName || g.name,
+        achievementRate: g.completionRate,
+        status: g.completionRate != null && g.completionRate >= 0.8 ? 'ACHIEVED' : g.completionRate != null ? 'PARTIAL' : 'INSUFFICIENT_DATA',
+        dataStatus: g.completionRate != null ? 'REAL' : 'INSUFFICIENT_DATA'
+      })),
+      annualFocusCompletion: focus.length ? focus.map(f => ({
+        focusId: f.focusId || f.id,
+        focusName: f.focusName || f.name,
+        completionRate: f.completionRate,
+        dataStatus: f.completionRate != null ? 'REAL' : 'INSUFFICIENT_DATA'
+      })) : plans.slice(0, 3).map(p => ({ focusId: p.planId, focusName: p.planName, completionRate: p.completionRate, dataStatus: 'REAL' })),
+      riskChanges: {
+        highRiskCount: (APP_DATA.warnings || []).filter(w => w.level === '重大' || w.level === 'L4').length,
+        atRiskDomainCount: atRiskDomains.length,
+        dataStatus: 'REAL'
+      },
+      capabilityMaturity: (APP_DATA.regulatoryDomainAdaptationResults || []).map(r => ({
+        domainId: r.domainId,
+        maturityLevel: r.maturityLevel,
+        closedLoopStatus: r.closedLoopStatus
+      })),
+      nextCycleRecommendations: recs,
+      unmetGoals: unmetGoals.map(g => g.objectiveName || g.goalName || g.name),
+      planVarianceCount: planVariance.length,
+      strategicDeviation: unmetGoals.length || planVariance.length ? 'DEVIATION_DETECTED' : 'ON_TRACK',
+      trendStatus: 'INSUFFICIENT_HISTORY',
+      dataStatus: 'DERIVED',
+      sourceTraceability: {
+        cycleInstanceId: 'ROC-2026-ANNUAL',
+        linkedPages: ['regulatory-strategic-review', 'regulatory-annual-plan', 'regulatory-focus-management']
+      },
+      generatedAt: this._opNow()
+    };
+    APP_DATA.regulatoryAnnualOperationResults = [result];
+    return result;
+  },
+
+  detectRegulatoryOperatingExceptions() {
+    const exceptions = [];
+    let seq = 1;
+    const add = (exceptionType, sourceType, sourceId, severity, responsibleRole, extra) => {
+      exceptions.push({
+        exceptionId: 'ROEX-' + String(seq++).padStart(4, '0'),
+        exceptionType,
+        sourceType,
+        sourceId,
+        severity,
+        status: 'OPEN',
+        responsibleRole: responsibleRole || 'ROLE-GROUP-REG',
+        createdAt: this._opNow(),
+        dataStatus: 'REAL',
+        sourceTraceability: { sourceType, sourceId, ...(extra || {}) }
+      });
+    };
+    (APP_DATA.regulatoryDataSources || []).filter(s => s.connectionStatus === 'OFFLINE').forEach(s =>
+      add('DATA_SOURCE_UNAVAILABLE', 'regulatoryDataSources', s.sourceId, 'CRITICAL', 'ROLE-DOMAIN-REG'));
+    (APP_DATA.regulatoryDataQualityIssues || []).filter(i => i.status !== 'CLOSED' && i.severity === 'HIGH').forEach(i =>
+      add('DATA_QUALITY_BLOCKED', 'regulatoryDataQualityIssues', i.qualityIssueId, 'HIGH', 'ROLE-ENTITY-REG', { kriId: i.kriId }));
+    (APP_DATA.regulatoryKriRuntime || []).filter(k => k.runtimeStatus === 'DATA_QUALITY_REVIEW_REQUIRED' || k.status === 'DATA_QUALITY_REVIEW_REQUIRED').forEach(k =>
+      add('KRI_CALCULATION_FAILED', 'regulatoryKriRuntime', k.kriRuntimeId, 'HIGH', 'ROLE-DOMAIN-REG', { kriId: k.kriId }));
+    (APP_DATA.regulatoryWarnings || []).filter(w => w.status === 'GENERATION_FAILED' || w.dataStatus === 'BLOCKED').forEach(w =>
+      add('WARNING_GENERATION_FAILED', 'regulatoryWarnings', w.regulatoryWarningId, 'HIGH', 'ROLE-GROUP-REG'));
+    (APP_DATA.regulatoryActions || []).filter(a => a.overdue || (a.dueDate && a.dueDate < this._opToday() && !['COMPLETED', 'CLOSED', 'VERIFIED'].includes(a.status))).forEach(a =>
+      add('ACTION_EXECUTION_OVERDUE', 'regulatoryActions', a.actionId, 'HIGH', 'ROLE-GROUP-REG'));
+    (APP_DATA.rectificationTasks || []).filter(t => t.deadline && t.deadline < this._opToday() && t.verificationStatus !== '已验证' && t.status !== '已关闭').forEach(t =>
+      add('RECTIFICATION_VERIFICATION_OVERDUE', 'rectificationTasks', t.taskId, 'CRITICAL', 'ROLE-ENTITY-REG'));
+    (APP_DATA.regulatoryAuthorizationRequests || []).filter(a => a.status === 'REJECTED').forEach(a =>
+      add('PERMISSION_EXCEPTION', 'regulatoryAuthorizationRequests', a.authorizationId, 'MEDIUM', 'ROLE-GROUP-LEADER'));
+    (APP_DATA.regulatoryRules || []).filter(r => r.lastRunStatus === 'FAILED' || r.status === 'DISABLED').forEach(r =>
+      add('RULE_RUNTIME_EXCEPTION', 'regulatoryRules', r.ruleId, 'MEDIUM', 'ROLE-GROUP-REG'));
+    APP_DATA.regulatoryOperatingExceptions = exceptions;
+    return exceptions;
+  },
+
+  computeRegulatoryOperatingRuntimeMetrics() {
+    const instances = APP_DATA.regulatoryOperatingCycleInstances || [];
+    const daily = APP_DATA.regulatoryDailyOperations || [];
+    const weekly = (APP_DATA.regulatoryPeriodicReviews || []).filter(r => r.reviewType === 'WEEKLY_REVIEW');
+    const monthly = APP_DATA.regulatoryDomainOperationReviews || [];
+    const quarterly = APP_DATA.regulatoryQuarterlyPerformanceReviews || [];
+    const annual = APP_DATA.regulatoryAnnualOperationResults || [];
+    const exceptions = APP_DATA.regulatoryOperatingExceptions || [];
+    APP_DATA.regulatoryOperatingRuntimeMetrics = {
+      cycleInstanceCount: instances.length,
+      dailyOperationCount: daily.length,
+      weeklyReviewCount: weekly.length,
+      monthlyDomainReviewCount: monthly.length,
+      quarterlyPerformanceCount: quarterly.length,
+      annualReviewCount: annual.length,
+      operatingExceptionCount: exceptions.length,
+      openExceptionCount: exceptions.filter(e => e.status === 'OPEN').length,
+      pendingHumanDecisionCount: (APP_DATA.regulatoryOperatingRecommendations || []).filter(r => r.status === 'OPEN' && r.requiresHumanDecision).length,
+      trendStatus: 'INSUFFICIENT_HISTORY',
+      dataStatus: 'DERIVED'
+    };
+    return APP_DATA.regulatoryOperatingRuntimeMetrics;
+  },
+
+  acknowledgeOperatingRecommendation(recommendationId, opts) {
+    const o = opts || {};
+    const rec = (APP_DATA.regulatoryOperatingRecommendations || []).find(r => r.recommendationId === recommendationId);
+    if (!rec) return { success: false, message: '建议不存在' };
+    const access = this.canRegulatoryAccess(this.getCurrentRegulatoryUser()?.userId, 'regulatoryOperatingRecommendations', recommendationId, 'MANAGE');
+    if (!access.allowed) {
+      this.createRegulatoryAuditLog({ actionType: 'OVERRIDE_DENIED', objectType: 'regulatoryOperatingRecommendations', objectId: recommendationId, reason: access.reason });
+      return { success: false, denied: true, message: access.reason };
+    }
+    const before = { status: rec.status };
+    rec.status = o.approved === false ? 'REJECTED' : 'ACKNOWLEDGED';
+    rec.acknowledgedAt = this._opNow();
+    rec.acknowledgedBy = this.getCurrentRegulatoryUser()?.userId;
+    this.createRegulatoryAuditLog({
+      actionType: o.approved === false ? 'REJECT' : 'ACKNOWLEDGE',
+      objectType: 'regulatoryOperatingRecommendations',
+      objectId: recommendationId,
+      beforeState: before,
+      afterState: { status: rec.status },
+      reason: o.reason || '人工确认运营建议'
+    });
+    if (o.approved !== false && o.createAction) {
+      return { success: true, recommendation: rec, nextStep: '监管行动需人工创建，不自动执行', requiresHumanDecision: true };
+    }
+    return { success: true, recommendation: rec, requiresHumanDecision: true };
+  },
+
+  calculateOperatingRuntimeHealth(scopeType, scopeId) {
+    const base = this.calculateOperatingHealth(scopeType, scopeId);
+    const jobs = APP_DATA.regulatoryDataIntegrationJobs || [];
+    const warns = APP_DATA.regulatoryWarnings || [];
+    const actions = APP_DATA.regulatoryActions || [];
+    const rects = APP_DATA.rectificationTasks || [];
+    const improvements = APP_DATA.regulatoryImprovementItems || APP_DATA.regulatoryContinuousImprovements || [];
+    const dataRuntimeHealth = jobs.length ? Math.round((1 - jobs.filter(j => j.status === 'FAILED').length / jobs.length) * 100) : null;
+    const riskIdentificationHealth = base.riskHealth;
+    const regulatoryResponseHealth = warns.length ? Math.round(warns.filter(w => w.status !== 'PENDING_REVIEW').length / warns.length * 100) : null;
+    const rectificationClosureHealth = base.rectificationHealth;
+    const kriIds = (APP_DATA.groupKris || []).slice(0, 10).map(k => k.id);
+    const creds = kriIds.map(id => this.getKriDataCredibility(id)).filter(c => c.dataStatus === 'OK');
+    const dataCredibilityHealth = creds.length ? Math.round(creds.reduce((s, c) => s + (c.credibility || 0), 0) / creds.length) : null;
+    const overdueActions = actions.filter(a => a.overdue || (a.dueDate && a.dueDate < this._opToday())).length;
+    const operatingTimelinessHealth = actions.length ? Math.max(0, Math.round((1 - overdueActions / actions.length) * 100)) : null;
+    const continuousImprovementHealth = improvements.length ? Math.round(improvements.filter(i => i.status === 'COMPLETED' || i.status === '已关闭').length / improvements.length * 100) : null;
+    const dims = { dataRuntimeHealth, riskIdentificationHealth, regulatoryResponseHealth, rectificationClosureHealth, dataCredibilityHealth, operatingTimelinessHealth, continuousImprovementHealth };
+    const vals = Object.values(dims).filter(v => v != null);
+    const overall = vals.length ? Math.round(vals.reduce((a, b) => a + b, 0) / vals.length * 10) / 10 : null;
+    return {
+      scopeType, scopeId, ...dims, ...base,
+      overallRuntimeHealth: overall,
+      sourceTraceable: true,
+      trendStatus: 'INSUFFICIENT_HISTORY',
+      dataStatus: vals.length ? 'DERIVED' : 'INSUFFICIENT_DATA'
+    };
+  },
+
   renderOperatingCycleDashboardPanel() {
     const cycles = APP_DATA.regulatoryOperatingCycles || [];
     const m = APP_DATA.regulatoryOperatingMetrics || {};
+    const rm = APP_DATA.regulatoryOperatingRuntimeMetrics || {};
+    const instances = APP_DATA.regulatoryOperatingCycleInstances || [];
     const groupH = (APP_DATA.regulatoryOperatingSnapshots || []).find(s => s.scopeType === 'GROUP') || {};
+    const runtimeH = this.calculateOperatingRuntimeHealth('GROUP', 'G001');
+    const weekly = (APP_DATA.regulatoryPeriodicReviews || []).find(r => r.reviewType === 'WEEKLY_REVIEW');
+    const domainReviews = APP_DATA.regulatoryDomainOperationReviews || [];
+    const worstDomain = domainReviews.filter(d => d.domainStatus !== 'INSUFFICIENT_DATA').sort((a, b) => ({ AT_RISK: 0, WATCH: 1, HEALTHY: 2 }[a.domainStatus] - { AT_RISK: 0, WATCH: 1, HEALTHY: 2 }[b.domainStatus]))[0];
+    const quarterly = (APP_DATA.regulatoryQuarterlyPerformanceReviews || [])[0];
+    const annual = (APP_DATA.regulatoryAnnualOperationResults || [])[0];
+    const dailyInst = instances.find(i => i.cycleType === 'DAILY');
     const cycleRows = ['DAILY', 'WEEKLY', 'MONTHLY', 'QUARTERLY', 'ANNUAL'].map(t => {
       const c = cycles.find(x => x.cycleType === t);
+      const inst = instances.find(i => i.cycleType === t);
       const labels = { DAILY: '今日运行', WEEKLY: '本周运行', MONTHLY: '本月运行', QUARTERLY: '本季度运行', ANNUAL: '年度运行' };
-      return c ? `<tr class="clickable" onclick="App.navigatePublic('regulatory-workbench')"><td>${labels[t]}</td><td>${c.cycleId}</td><td>${this.renderPublicUnifiedStatusBadge(c.status)}</td><td>${c.pendingItemCount ?? '—'}</td><td>${c.overallRegulatoryHealth != null ? c.overallRegulatoryHealth : this.renderPublicUnifiedStatusBadge('INSUFFICIENT_DATA')}</td></tr>` : '';
+      return c ? `<tr class="clickable" onclick="App.navigatePublic('regulatory-workbench')"><td>${labels[t]}</td><td>${c.cycleId}</td><td>${this.renderPublicUnifiedStatusBadge(inst?.status || c.status)}</td><td>${inst?.operationCount ?? c.pendingItemCount ?? '—'}</td><td>${c.overallRegulatoryHealth != null ? c.overallRegulatoryHealth : this.renderPublicUnifiedStatusBadge('INSUFFICIENT_DATA')}</td></tr>` : '';
     }).join('');
     const daily = APP_DATA.regulatoryDailyOperations || [];
+    const weeklyRisks = weekly?.newHighRiskCount ?? weekly?.focusItems?.length ?? 0;
     return `<div class="card"><div class="card-title">当前监管运营周期 ${m.trendStatus === 'INSUFFICIENT_HISTORY' ? this.renderPublicUnifiedStatusBadge('INSUFFICIENT_HISTORY') : ''}</div>
-      <p class="insight-note">运营健康度 ${groupH.overallRegulatoryHealth != null ? groupH.overallRegulatoryHealth : 'INSUFFICIENT_DATA'} · 日常待办 <b>${daily.length}</b> · 开放建议 <b>${m.openRecommendationCount || 0}</b></p>
+      <p class="insight-note">运营实例 <b>${rm.cycleInstanceCount || instances.length}</b> · 今日事项 <b>${daily.length}</b> · 运营异常 <b>${rm.operatingExceptionCount || 0}</b> · 待人工决策 <b>${rm.pendingHumanDecisionCount || 0}</b></p>
       <div class="group-metrics">${[
+        [dailyInst?.status || 'IN_PROGRESS', '周期运行状态', `App.navigatePublic('regulatory-workbench')`],
+        [daily.length, '今日监管事项', `App.navigatePublic('regulatory-workbench')`],
+        [weeklyRisks, '本周高风险事项', `App.navigatePublic('regulatory-analysis-center')`],
+        [worstDomain ? worstDomain.domainName + '·' + worstDomain.domainStatus : 'INSUFFICIENT_DATA', '本月领域健康度', `App.navigatePublic('regulatory-data-governance')`],
+        [quarterly?.evaluationResults?.overallScore ?? 'INSUFFICIENT_DATA', '季度绩效', `App.navigatePublic('regulatory-performance')`],
+        [annual?.strategicDeviation || '—', '年度战略偏差', `App.navigatePublic('regulatory-strategic-review')`],
         [daily.filter(d => d.category === 'WARNING_REVIEW').length, '待研判预警', `App.navigatePublic('regulatory-warning-center')`],
         [daily.filter(d => d.category === 'ACTION_PENDING').length, '待分派行动', `App.navigatePublic('regulatory-actions')`],
         [daily.filter(d => d.category === 'RECTIFICATION_VERIFY').length, '待验证整改', `App.navigatePublic('rectification')`],
-        [daily.filter(d => d.category === 'DATA_INTEGRATION').length, '数据接入异常', `App.navigatePublic('regulatory-data-integration')`],
-        [daily.filter(d => d.category === 'AUTHORIZATION_PENDING').length, '待审批事项', `App.navigatePublic('regulatory-authorization')`],
-        [groupH.overallRegulatoryHealth ?? '—', '运营健康度', `App.navigatePublic('regulatory-analysis-center')`]
+        [runtimeH.overallRuntimeHealth ?? groupH.overallRegulatoryHealth ?? '—', '运营健康度', `App.navigatePublic('regulatory-analysis-center')`]
       ].map(([v, l, n]) => this.renderPublicKpiCard(l, v, n)).join('')}</div>
-      <table class="data-table"><thead><tr><th>周期</th><th>编号</th><th>状态</th><th>待处理</th><th>健康度</th></tr></thead><tbody>${cycleRows}</tbody></table>
+      <table class="data-table"><thead><tr><th>周期</th><th>编号</th><th>状态</th><th>事项数</th><th>健康度</th></tr></thead><tbody>${cycleRows}</tbody></table>
     </div>`;
   },
 
   renderDailyOperationsWorkbenchPanel() {
     const daily = APP_DATA.regulatoryDailyOperations || [];
+    const weekly = (APP_DATA.regulatoryPeriodicReviews || []).find(r => r.reviewType === 'WEEKLY_REVIEW');
+    const domainReviews = APP_DATA.regulatoryDomainOperationReviews || [];
+    const exceptions = APP_DATA.regulatoryOperatingExceptions || [];
+    const decisions = daily.filter(d => d.category === 'HUMAN_DECISION');
     const cats = [
       ['WARNING_REVIEW', '待研判预警', 'regulatory-warning-center'],
       ['ACTION_PENDING', '待分派行动', 'regulatory-actions'],
       ['TASK_OVERDUE', '超期监管任务', 'regulatory-supervision-tasks'],
       ['RECTIFICATION_VERIFY', '待验证整改', 'rectification'],
       ['DATA_INTEGRATION', '数据接入异常', 'regulatory-data-integration'],
-      ['AUTHORIZATION_PENDING', '待审批事项', 'regulatory-authorization']
+      ['AUTHORIZATION_PENDING', '待审批事项', 'regulatory-authorization'],
+      ['HUMAN_DECISION', '待人工决策', 'regulatory-workbench']
     ];
     const kpi = cats.map(([cat, label, page]) => [daily.filter(d => d.category === cat).length, label, `App.navigatePublic('${page}')`]);
-    const rows = daily.filter(d => d.priority === 'CRITICAL' || d.priority === 'HIGH').slice(0, 8).map(d =>
-      `<tr class="clickable" onclick="${this._operatingSourceNav(d.sourceType, d.sourceId)}"><td>${d.category}</td><td>${d.sourceType}</td><td>${d.sourceId}</td><td>${this.renderPublicPriorityBadge(d.priority)}</td><td>${d.currentStatus}</td></tr>`
+    const mustToday = daily.filter(d => d.priority === 'CRITICAL' || d.priority === 'HIGH').slice(0, 6);
+    const weeklyReview = (weekly?.focusItems || []).slice(0, 3);
+    const focusDomains = domainReviews.filter(d => d.domainStatus === 'AT_RISK' || d.domainStatus === 'WATCH').slice(0, 3);
+    const rows = mustToday.map(d =>
+      `<tr class="clickable" onclick="${this._operatingSourceNav(d.sourceType, d.sourceId)}"><td>${d.category}</td><td>${d.sourceName || d.sourceId}</td><td>${this.renderPublicPriorityBadge(d.priority)}</td><td>${d.responsibleRole || '—'}</td><td>${d.currentStatus}</td></tr>`
+    ).join('');
+    const exRows = exceptions.filter(e => e.status === 'OPEN').slice(0, 4).map(e =>
+      `<tr class="clickable" onclick="${this._operatingSourceNav(e.sourceType, e.sourceId)}"><td>${e.exceptionType}</td><td>${e.sourceId}</td><td>${this.renderPublicPriorityBadge(e.severity)}</td><td>${e.responsibleRole}</td></tr>`
     ).join('');
     return `<div class="card"><div class="card-title">今日监管工作</div>
       <div class="group-metrics">${kpi.map(([v, l, n]) => this.renderPublicKpiCard(l, v, n)).join('')}</div>
-      ${rows ? `<table class="data-table"><thead><tr><th>类别</th><th>来源类型</th><th>来源ID</th><th>优先级</th><th>状态</th></tr></thead><tbody>${rows}</tbody></table>` : this.renderPublicEmptyState('暂无高优先级事项')}
+      <p class="insight-note"><b>今日必须处理：</b>${mustToday.length} 项高优先级</p>
+      <p class="insight-note"><b>本周必须复核：</b>${weeklyReview.length ? weeklyReview.map(i => i.sourceName || i.sourceId).join('、') : '—'}</p>
+      <p class="insight-note"><b>本月重点领域：</b>${focusDomains.map(d => d.domainName + '(' + d.domainStatus + ')').join('、') || '—'}</p>
+      <p class="insight-note"><b>待人工决策：</b>${decisions.length} 项 · <b>运营异常：</b>${exceptions.filter(e => e.status === 'OPEN').length} 项</p>
+      ${rows ? `<table class="data-table"><thead><tr><th>类别</th><th>来源</th><th>优先级</th><th>责任角色</th><th>状态</th></tr></thead><tbody>${rows}</tbody></table>` : this.renderPublicEmptyState('暂无高优先级事项')}
+      ${exRows ? `<div class="card-title" style="margin-top:12px">运营异常</div><table class="data-table"><thead><tr><th>异常类型</th><th>来源ID</th><th>严重度</th><th>责任角色</th></tr></thead><tbody>${exRows}</tbody></table>` : ''}
+      <button class="btn btn-outline" onclick="App.navigatePublic('regulatory-analysis-center')">周期复盘</button>
     </div>`;
   },
 
@@ -1988,41 +2444,65 @@ Object.assign(App, {
 
   renderOperatingCycleAnalysisPanel() {
     const reviews = APP_DATA.regulatoryPeriodicReviews || [];
+    const domainReviews = APP_DATA.regulatoryDomainOperationReviews || [];
+    const quarterly = (APP_DATA.regulatoryQuarterlyPerformanceReviews || [])[0];
+    const annual = (APP_DATA.regulatoryAnnualOperationResults || [])[0];
+    const exceptions = APP_DATA.regulatoryOperatingExceptions || [];
     const period = this.regulatoryOperatingAnalysisPeriod || 'MONTHLY';
     const reviewMap = { DAILY: null, WEEKLY: 'WEEKLY_REVIEW', MONTHLY: 'MONTHLY_REVIEW', QUARTERLY: 'QUARTERLY_REVIEW', ANNUAL: 'ANNUAL_REVIEW' };
     const rev = reviews.find(r => r.reviewType === reviewMap[period]);
-    const trendNote = rev?.trendComparisonStatus === 'INSUFFICIENT_HISTORY' ? this.renderPublicEmptyState('INSUFFICIENT_HISTORY — 无足够历史数据，不伪造同比/环比') : '';
-    const rows = rev ? [
-      ['本周期新增预警', rev.newWarningCount],
-      ['KRI异常变化', rev.kriAnomalyCount],
-      ['重点法人变化', rev.entityChangeCount],
-      ['领域变化', rev.domainChangeCount],
-      ['监管行动执行', rev.actionExecutionCount],
-      ['整改闭环', rev.rectificationVerifiedCount + '/' + (rev.rectificationOpenCount + rev.rectificationVerifiedCount)],
-      ['数据质量影响', rev.dataQualityImpactCount]
-    ].map(([l, v]) => `<tr><td>${l}</td><td>${v}</td><td>${this.renderPublicUnifiedStatusBadge('INSUFFICIENT_HISTORY')}</td><td>${this.renderPublicUnifiedStatusBadge('INSUFFICIENT_HISTORY')}</td></tr>`).join('') : '';
-    return `<div class="card"><div class="card-title">监管运营周期分析 ${['DAILY', 'WEEKLY', 'MONTHLY', 'QUARTERLY', 'ANNUAL'].map(p => `<button class="btn btn-outline" style="margin:2px" onclick="App.regulatoryOperatingAnalysisPeriod='${p}';App.renderRegulatoryAnalysisCenter()">${p === 'DAILY' ? '日' : p === 'WEEKLY' ? '周' : p === 'MONTHLY' ? '月' : p === 'QUARTERLY' ? '季' : '年'}</button>`).join('')}</div>
+    const trendNote = this.renderPublicEmptyState('INSUFFICIENT_HISTORY — 无足够历史数据，不伪造同比/环比');
+    let rows = '';
+    if (period === 'DAILY') {
+      const daily = APP_DATA.regulatoryDailyOperations || [];
+      rows = [['今日运营事项', daily.length], ['高优先级', daily.filter(d => d.priority === 'CRITICAL' || d.priority === 'HIGH').length], ['待人工决策', daily.filter(d => d.category === 'HUMAN_DECISION').length]].map(([l, v]) => `<tr><td>${l}</td><td>${v}</td><td>${this.renderPublicUnifiedStatusBadge('INSUFFICIENT_HISTORY')}</td><td>—</td></tr>`).join('');
+    } else if (period === 'WEEKLY' && rev) {
+      rows = [['重点事项', rev.focusItems?.length || 0], ['待决策', rev.decisionItems?.length || 0], ['需升级', rev.escalationItems?.length || 0], ['持续跟踪', rev.trackingItems?.length || 0], ['运营异常', exceptions.filter(e => e.status === 'OPEN').length]].map(([l, v]) => `<tr><td>${l}</td><td>${v}</td><td>${this.renderPublicUnifiedStatusBadge('INSUFFICIENT_HISTORY')}</td><td>—</td></tr>`).join('');
+    } else if (period === 'MONTHLY') {
+      rows = domainReviews.map(d => `<tr><td>${d.domainName}</td><td>${this.renderPublicUnifiedStatusBadge(d.domainStatus)}</td><td>${d.dataHealthScore ?? '—'}</td><td>${d.kriHealthScore ?? '—'}</td></tr>`).join('');
+    } else if (period === 'QUARTERLY' && quarterly) {
+      const ar = quarterly.actualResults || {};
+      rows = Object.keys(ar).filter(k => typeof ar[k] === 'number').map(k => `<tr><td>${k}</td><td>${ar[k]}%</td><td>${this.renderPublicUnifiedStatusBadge('INSUFFICIENT_HISTORY')}</td><td>${quarterly.recommendations?.length || 0} 条建议</td></tr>`).join('');
+    } else if (period === 'ANNUAL' && annual) {
+      rows = [['战略目标', annual.strategicGoalAchievement?.length || 0], ['年度重点', annual.annualFocusCompletion?.length || 0], ['高风险领域', annual.riskChanges?.atRiskDomainCount || 0], ['下一周期建议', annual.nextCycleRecommendations?.length || 0]].map(([l, v]) => `<tr><td>${l}</td><td>${v}</td><td>${this.renderPublicUnifiedStatusBadge(annual.strategicDeviation)}</td><td>—</td></tr>`).join('');
+    } else if (rev) {
+      rows = [['本周期新增预警', rev.newWarningCount], ['KRI异常变化', rev.kriAnomalyCount], ['重点法人变化', rev.entityChangeCount], ['领域变化', rev.domainChangeCount], ['监管行动执行', rev.actionExecutionCount], ['整改闭环', rev.rectificationVerifiedCount + '/' + (rev.rectificationOpenCount + rev.rectificationVerifiedCount)], ['数据质量影响', rev.dataQualityImpactCount]].map(([l, v]) => `<tr><td>${l}</td><td>${v}</td><td>${this.renderPublicUnifiedStatusBadge('INSUFFICIENT_HISTORY')}</td><td>—</td></tr>`).join('');
+    }
+    const headers = period === 'MONTHLY' ? '<th>领域</th><th>状态</th><th>数据健康</th><th>KRI健康</th>' : '<th>指标</th><th>本周期</th><th>趋势</th><th>备注</th>';
+    return `<div class="card"><div class="card-title">监管运营周期分析 · 日→周→月→季→年 ${['DAILY', 'WEEKLY', 'MONTHLY', 'QUARTERLY', 'ANNUAL'].map(p => `<button class="btn btn-outline" style="margin:2px" onclick="App.regulatoryOperatingAnalysisPeriod='${p}';App.renderRegulatoryAnalysisCenter()">${p === 'DAILY' ? '日' : p === 'WEEKLY' ? '周' : p === 'MONTHLY' ? '月' : p === 'QUARTERLY' ? '季' : '年'}</button>`).join('')}</div>
       ${trendNote}
-      ${rows ? `<table class="data-table"><thead><tr><th>指标</th><th>本周期</th><th>上周期</th><th>同比/环比</th></tr></thead><tbody>${rows}</tbody></table>` : this.renderPublicEmptyState('暂无复盘数据')}
+      ${rows ? `<table class="data-table"><thead><tr>${headers}</tr></thead><tbody>${rows}</tbody></table>` : this.renderPublicEmptyState('暂无复盘数据')}
     </div>`;
   },
 
   renderOperatingCyclePerformancePanel() {
     const p = this.computeOperatingCyclePerformance();
+    const quarterly = (APP_DATA.regulatoryQuarterlyPerformanceReviews || [])[0];
+    const domainReviews = APP_DATA.regulatoryDomainOperationReviews || [];
+    const rolePerf = ['ROLE-GROUP-REG', 'ROLE-DOMAIN-REG', 'ROLE-ENTITY-REG'].map(r => {
+      const tasks = (APP_DATA.regulatorySupervisionTasks || []).filter(t => t.responsibleRole === r || t.ownerRole === r);
+      const done = tasks.filter(t => ['COMPLETED', 'EVALUATED'].includes(t.taskStatus)).length;
+      return [r, tasks.length ? Math.round(done / tasks.length * 100) + '%' : 'INSUFFICIENT_DATA'];
+    });
     const items = [
-      ['riskDiscoveryEfficiency', '风险发现效率'],
-      ['warningReviewEfficiency', '预警研判效率'],
-      ['actionCompletionRate', '监管行动完成率'],
-      ['rectificationVerificationRate', '整改验证率'],
-      ['dataQualityImprovementRate', '数据质量改善率'],
-      ['actionEffectivenessRate', '监管行动有效率'],
-      ['regulatoryClosureRate', '监管闭环率']
+      ['riskDiscoveryEfficiency', '风险发现效率', '周期绩效'],
+      ['warningReviewEfficiency', '预警研判效率', '周期绩效'],
+      ['actionCompletionRate', '监管行动完成率', '周期绩效'],
+      ['rectificationVerificationRate', '整改验证率', '整改绩效'],
+      ['dataQualityImprovementRate', '数据质量改善率', '数据运行绩效'],
+      ['actionEffectivenessRate', '监管行动有效率', '周期绩效'],
+      ['regulatoryClosureRate', '监管闭环率', '领域绩效']
     ];
-    return `<div class="card"><div class="card-title">运营周期绩效 ${p.trendStatus === 'INSUFFICIENT_HISTORY' ? this.renderPublicUnifiedStatusBadge('INSUFFICIENT_HISTORY') : ''}</div>
+    const domainRows = domainReviews.slice(0, 5).map(d => `<tr><td>${d.domainName}</td><td>${this.renderPublicUnifiedStatusBadge(d.domainStatus)}</td><td>${d.actionExecutionRate ?? '—'}%</td><td>${d.rectificationClosureRate ?? '—'}%</td></tr>`).join('');
+    const roleRows = rolePerf.map(([r, v]) => `<tr><td>${r}</td><td>${v}</td><td colspan="2">${this.renderPublicUnifiedStatusBadge('INSUFFICIENT_HISTORY')}</td></tr>`).join('');
+    return `<div class="card"><div class="card-title">运营周期绩效 ${p.trendStatus === 'INSUFFICIENT_HISTORY' ? this.renderPublicUnifiedStatusBadge('INSUFFICIENT_HISTORY') : ''} <span class="insight-note">（评价结果仅供分析，不自动影响考核）</span></div>
       <div class="group-metrics">${items.map(([k, l]) => {
         const v = p[k];
-        return this.renderPublicKpiCard(l, v != null ? v + (k === 'regulatoryClosureRate' ? '%' : '%') : 'INSUFFICIENT_DATA', `App.navigatePublic('regulatory-performance')`);
+        return this.renderPublicKpiCard(l, v != null ? v + '%' : 'INSUFFICIENT_DATA', `App.navigatePublic('regulatory-performance')`);
       }).join('')}</div>
+      ${quarterly ? `<p class="insight-note">季度综合评价：${quarterly.evaluationResults?.overallScore ?? 'INSUFFICIENT_DATA'} · 建议 ${quarterly.recommendations?.length || 0} 条（均需人工决策）</p>` : ''}
+      ${domainRows ? `<div class="card-title" style="margin-top:8px">领域绩效</div><table class="data-table"><thead><tr><th>领域</th><th>状态</th><th>行动执行率</th><th>整改闭环率</th></tr></thead><tbody>${domainRows}</tbody></table>` : ''}
+      ${roleRows ? `<div class="card-title" style="margin-top:8px">角色绩效</div><table class="data-table"><thead><tr><th>角色</th><th>任务完成率</th><th colspan="2">趋势</th></tr></thead><tbody>${roleRows}</tbody></table>` : ''}
     </div>`;
   },
 
@@ -2031,16 +2511,26 @@ Object.assign(App, {
     const monthly = reviews.find(r => r.reviewType === 'MONTHLY_REVIEW');
     const quarterly = reviews.find(r => r.reviewType === 'QUARTERLY_REVIEW');
     const annual = reviews.find(r => r.reviewType === 'ANNUAL_REVIEW');
+    const annualResult = (APP_DATA.regulatoryAnnualOperationResults || [])[0];
+    const domainReviews = APP_DATA.regulatoryDomainOperationReviews || [];
+    const atRisk = domainReviews.filter(d => d.domainStatus === 'AT_RISK');
     const steps = [
       { label: '日常运行', sub: (APP_DATA.regulatoryDailyOperations || []).length + ' 项', onclick: `App.navigatePublic('regulatory-workbench')` },
       { label: '月度复盘', sub: monthly?.title || '—', onclick: `App.navigatePublic('regulatory-analysis-center')` },
       { label: '季度评价', sub: quarterly?.title || '—', onclick: `App.navigatePublic('regulatory-performance')` },
-      { label: '年度战略复盘', sub: annual?.title || '—', onclick: `App.navigatePublic('regulatory-strategic-review')` },
+      { label: '年度战略复盘', sub: annual?.title || annualResult?.resultId || '—', onclick: `App.navigatePublic('regulatory-strategic-review')` },
       { label: '下一周期重点', sub: (APP_DATA.regulatoryOperatingRecommendations || []).filter(r => r.status === 'OPEN').length + ' 条建议', onclick: `App.navigatePublic('regulatory-focus-management')` }
     ];
+    const goalRows = (annualResult?.strategicGoalAchievement || []).slice(0, 4).map(g =>
+      `<tr><td>${g.goalName || g.goalId}</td><td>${g.achievementRate != null ? Math.round(g.achievementRate * 100) + '%' : 'INSUFFICIENT_DATA'}</td><td>${this.renderPublicUnifiedStatusBadge(g.status)}</td></tr>`
+    ).join('');
     return `<div class="card"><div class="card-title">周期复盘 → 战略复盘联动</div>
       ${this.renderPublicStrategicCycleFlow(steps.map(s => ({ label: s.label, onclick: s.onclick })))}
       <p class="insight-note">${steps.map(s => `${s.label}（${s.sub}）`).join(' → ')}</p>
+      ${annualResult ? `<p class="insight-note"><b>年度运营结果：</b>${annualResult.operatingResultsSummary?.dailyOperationCount || 0} 项日常运营 · ${annualResult.operatingResultsSummary?.exceptionCount || 0} 项异常 · 战略偏差 ${annualResult.strategicDeviation}</p>` : ''}
+      ${atRisk.length ? `<p class="insight-note"><b>重点风险变化：</b>${atRisk.map(d => d.domainName).join('、')} 处于 AT_RISK</p>` : ''}
+      ${goalRows ? `<div class="card-title" style="margin-top:8px">战略目标达成</div><table class="data-table"><thead><tr><th>目标</th><th>达成率</th><th>状态</th></tr></thead><tbody>${goalRows}</tbody></table>` : ''}
+      ${annualResult?.nextCycleRecommendations?.length ? `<p class="insight-note"><b>下一周期建议：</b>${annualResult.nextCycleRecommendations.slice(0, 3).map(r => r.suggestedAction).join('；')}（均需人工确认）</p>` : ''}
     </div>`;
   },
 
@@ -2653,7 +3143,8 @@ Object.assign(App, {
       'regulatoryOptimizationPlans:VIEW': 'OPTIMIZATION_PLAN_VIEW', 'regulatoryOptimizationPlans:APPROVE': 'OPTIMIZATION_PLAN_APPROVE',
       'regulatoryImprovementExecution:VIEW': 'IMPROVEMENT_EXECUTION_VIEW', 'regulatoryImprovementExecution:MANAGE': 'IMPROVEMENT_EXECUTION_MANAGE',
       'regulatoryImprovementEffectiveness:VIEW': 'EFFECTIVENESS_VIEW', 'regulatoryImprovementEffectiveness:VALIDATE': 'EFFECTIVENESS_VALIDATE',
-      'regulatoryOperatingCycles:VIEW': 'OPERATING_VIEW', 'regulatoryOperatingCycles:MANAGE': 'OPERATING_MANAGE'
+      'regulatoryOperatingCycles:VIEW': 'OPERATING_VIEW', 'regulatoryOperatingCycles:MANAGE': 'OPERATING_MANAGE',
+      'regulatoryOperatingRecommendations:MANAGE': 'OPERATING_MANAGE', 'regulatoryOperatingRecommendations:VIEW': 'OPERATING_VIEW'
     };
     if (map[resourceType + ':' + action]) return map[resourceType + ':' + action];
     if (action === 'APPROVE') return 'ACTION_APPROVE';

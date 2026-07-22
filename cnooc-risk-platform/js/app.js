@@ -134,6 +134,7 @@ const App = {
     if (this.initializeDomainClosure) this.initializeDomainClosure();
     if (this.initializeClosureVerification) this.initializeClosureVerification();
     if (this.initializeRegulatoryOperatingCycle) this.initializeRegulatoryOperatingCycle();
+    if (this.initializeRegulatoryOperatingRuntime) this.initializeRegulatoryOperatingRuntime();
     this.renderNav();
     this.renderGroupOverview();
     this.renderRegulatoryEvents();
