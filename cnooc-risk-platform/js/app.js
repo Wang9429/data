@@ -137,6 +137,7 @@ const App = {
     if (this.initializeRegulatoryOperatingRuntime) this.initializeRegulatoryOperatingRuntime();
     if (this.initializeRegulatoryCoordination) this.initializeRegulatoryCoordination();
     if (this.initializeRegulatoryOperationalScenarios) this.initializeRegulatoryOperationalScenarios();
+    if (this.initializeRegulatoryFinalAcceptance) this.initializeRegulatoryFinalAcceptance();
     this.renderNav();
     this.renderGroupOverview();
     this.renderRegulatoryEvents();

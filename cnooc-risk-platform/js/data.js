@@ -6406,3 +6406,30 @@ Object.assign(APP_DATA, {
     { permissionSetId: 'PS-OS-02', permissionCode: 'OPERATIONAL_MANAGE', resourceType: 'regulatoryOperationalScenarios', action: 'MANAGE', riskLevel: 'MEDIUM' }
   ];
 })();
+
+(function () {
+  APP_DATA.regulatoryFinalAcceptanceScenarioDefinitions = [
+    { scenarioCode: 'FA-01', scenarioName: '集团领导重大风险发现与决策', scenarioType: 'LEADER_DECISION', roleType: 'GROUP_LEADER' },
+    { scenarioCode: 'FA-02', scenarioName: '数据质量影响KRI与监管判断', scenarioType: 'DATA_QUALITY_IMPACT', roleType: 'GROUP_REGULATORY' },
+    { scenarioCode: 'FA-03', scenarioName: '规则变更完整治理', scenarioType: 'RULE_GOVERNANCE', roleType: 'GROUP_REGULATORY' },
+    { scenarioCode: 'FA-04', scenarioName: '跨法人监管协同', scenarioType: 'CROSS_ENTITY', roleType: 'GROUP_REGULATORY' },
+    { scenarioCode: 'FA-05', scenarioName: '跨领域监管协同', scenarioType: 'CROSS_DOMAIN', roleType: 'GROUP_REGULATORY' },
+    { scenarioCode: 'FA-06', scenarioName: '重大整改验证失败与改进', scenarioType: 'RECTIFICATION_IMPROVEMENT', roleType: 'GROUP_REGULATORY' },
+    { scenarioCode: 'FA-07', scenarioName: '集团监管运营周期', scenarioType: 'OPERATING_CYCLE', roleType: 'GROUP_REGULATORY' },
+    { scenarioCode: 'FA-08', scenarioName: '持续改进闭环', scenarioType: 'CONTINUOUS_IMPROVEMENT', roleType: 'GROUP_LEADER' },
+    { scenarioCode: 'FA-09', scenarioName: '全平台权限审计与数据追溯', scenarioType: 'PERMISSION_AUDIT', roleType: 'GROUP_REGULATORY' }
+  ];
+  APP_DATA.regulatoryFinalAcceptanceScenarios = APP_DATA.regulatoryFinalAcceptanceScenarios || [];
+  APP_DATA.regulatoryFinalAcceptanceResultIndexes = APP_DATA.regulatoryFinalAcceptanceResultIndexes || [];
+  APP_DATA.regulatoryFinalAcceptanceEvidenceIndexes = APP_DATA.regulatoryFinalAcceptanceEvidenceIndexes || [];
+  APP_DATA.regulatoryFinalAcceptanceIssues = APP_DATA.regulatoryFinalAcceptanceIssues || [];
+  APP_DATA.regulatoryFinalAcceptanceMetrics = APP_DATA.regulatoryFinalAcceptanceMetrics || {};
+  const rpmFa = APP_DATA.regulatoryRolePermissionMap || {};
+  ['ROLE-GROUP-LEADER', 'ROLE-GROUP-REG', 'ROLE-DOMAIN-REG', 'ROLE-ENTITY-REG'].forEach(r => {
+    rpmFa[r] = [...new Set([...(rpmFa[r] || []), 'ACCEPTANCE_VIEW'])];
+  });
+  APP_DATA.regulatoryRolePermissionMap = rpmFa;
+  APP_DATA.regulatoryPermissionSets = [...(APP_DATA.regulatoryPermissionSets || []),
+    { permissionSetId: 'PS-FA-01', permissionCode: 'ACCEPTANCE_VIEW', resourceType: 'regulatoryFinalAcceptanceScenarios', action: 'VIEW', riskLevel: 'LOW' }
+  ];
+})();
