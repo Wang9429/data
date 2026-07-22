@@ -1387,3 +1387,329 @@ Object.assign(APP_DATA, {
   m.pendingActionCount = actions.filter(a => ['RECOMMENDED', 'ASSIGNED', 'IN_PROGRESS', 'WAITING_FEEDBACK', 'OVERDUE'].includes(a.status)).length;
   APP_DATA.regulatoryCommandCenterMetrics = m;
 })();
+
+(function () {
+  const entities = APP_DATA.globalLegalEntities || [];
+  const projects = APP_DATA.globalProjects || [];
+  const regions = APP_DATA.globalRegions || [];
+  const sources = APP_DATA.dataSourceRegistry || [];
+  const objects = APP_DATA.dataObjects || [];
+  const fields = APP_DATA.dataFields || [];
+  const quality = APP_DATA.dataQualityIssues || [];
+  const gaps = APP_DATA.coverageGaps || [];
+  const matrix = APP_DATA.coverageMatrixCells || [];
+  const kris = APP_DATA.groupKris || [];
+  const scenarios = APP_DATA.groupRiskScenarios || [];
+  const cbScenarios = APP_DATA.crossBorderRiskScenarios || [];
+  const events = APP_DATA.regulatoryEvents || [];
+  const warnings = APP_DATA.warnings || [];
+  const rects = APP_DATA.rectificationTasks || [];
+  const actions = APP_DATA.regulatoryActions || [];
+  const feedbacks = APP_DATA.regulatoryActionFeedbacks || [];
+  const decisions = APP_DATA.regulatoryDecisionHistory || [];
+  const cbActs = APP_DATA.crossBorderDataActivities || [];
+  const cdrMatters = APP_DATA.crossDomainRiskMatters || [];
+  const domains = APP_DATA.regulationDomains || [];
+  const eff = (APP_DATA.regulatoryActionEfficiency || {}).overall || {};
+  const eval_ = APP_DATA.regulatoryEvaluation || {};
+  const priorities = APP_DATA.regulatoryPrioritiesRecalculated || APP_DATA.regulatoryPriorities || {};
+  const health = APP_DATA.regulatoryHealthScores || {};
+
+  const pct = (n, d) => (d ? Math.round(n / d * 100) : 0);
+  const avg = arr => (arr.length ? Math.round(arr.reduce((s, v) => s + v, 0) / arr.length) : 0);
+  const scoreToLevel = s => (s >= 85 ? 'L5' : s >= 70 ? 'L4' : s >= 55 ? 'L3' : s >= 40 ? 'L2' : 'L1');
+
+  const connectedSources = sources.filter(s => s.coverageStatus === '已接入');
+  const connectedEntities = entities.filter(e => (e.dataCoverageStatus || e.dataAccessStatus) === '已接入');
+  const connectedProjects = projects.filter(p => (p.dataCoverageStatus || p.dataAccessStatus) === '已接入');
+  const objectsWithEntity = objects.filter(o => o.entityId);
+  const objectsWithFields = objects.filter(o => fields.some(f => f.objectId === o.objectId));
+  const closedRects = rects.filter(t => t.status === '已关闭' || t.closedAt);
+  const overdueRects = rects.filter(t => t.deadline && t.deadline < '2026-07-22' && t.status !== '已关闭' && !t.closedAt);
+  const closedWarnings = warnings.filter(w => w.status === '已关闭' || w.status === '已闭环');
+  const kriUsed = new Set(events.map(e => e.kriId).filter(Boolean));
+  const scenarioUsed = new Set(events.map(e => e.scenarioId).filter(Boolean));
+
+  const dimDataIndicators = [
+    { metricId: 'MET-SRC-CONN', name: '数据源接入率', value: pct(connectedSources.length, sources.length), unit: '%', sourceType: 'dataSourceRegistry' },
+    { metricId: 'MET-OBJ-COV', name: '数据对象覆盖率', value: pct(objectsWithEntity.length, objects.length), unit: '%', sourceType: 'dataObjects' },
+    { metricId: 'MET-FLD-COMP', name: '数据字段完整率', value: pct(objectsWithFields.length, objects.length), unit: '%', sourceType: 'dataFields' },
+    { metricId: 'MET-QLT-CLOSE', name: '数据质量闭环率', value: pct(Math.max(0, quality.length - quality.filter(q => (q.qualityScore || 0) < 85).length), Math.max(1, quality.length)), unit: '%', sourceType: 'dataQualityIssues' }
+  ];
+  const dimDataScore = avg(dimDataIndicators.map(i => i.value));
+
+  const dimCovIndicators = [
+    { metricId: 'MET-ENT-COV', name: '法人监管覆盖率', value: pct(connectedEntities.length, entities.length), unit: '%', sourceType: 'globalLegalEntities' },
+    { metricId: 'MET-PRJ-COV', name: '项目监管覆盖率', value: pct(connectedProjects.length, projects.length), unit: '%', sourceType: 'globalProjects' },
+    { metricId: 'MET-REG-COV', name: '区域监管覆盖率', value: pct(regions.filter(r => entities.some(e => e.regionId === r.regionId)).length, regions.length), unit: '%', sourceType: 'globalRegions' },
+    { metricId: 'MET-DOM-COV', name: '业务领域覆盖率', value: pct(domains.filter(d => events.some(e => e.domainId === d.id)).length, domains.length), unit: '%', sourceType: 'regulationDomains' },
+    { metricId: 'MET-GAP-RATE', name: '监管盲区率', value: pct(gaps.length, Math.max(1, matrix.length + gaps.length)), unit: '%', sourceType: 'coverageGaps', inverse: true }
+  ];
+  const dimCovScore = Math.round(avg(dimCovIndicators.filter(i => !i.inverse).map(i => i.value)) * 0.8 + (100 - pct(gaps.length, Math.max(1, entities.length))) * 0.2);
+
+  const dimMonIndicators = [
+    { metricId: 'MET-KRI-COV', name: 'KRI覆盖率', value: pct(kriUsed.size, kris.length), unit: '%', sourceType: 'groupKris' },
+    { metricId: 'MET-SCN-COV', name: '风险场景覆盖率', value: pct(scenarioUsed.size, scenarios.length + cbScenarios.length), unit: '%', sourceType: 'groupRiskScenarios' },
+    { metricId: 'MET-EVT-ID', name: '风险事件识别率', value: pct(events.length, Math.max(1, warnings.length + quality.length)), unit: '%', sourceType: 'regulatoryEvents' },
+    { metricId: 'MET-HRISK-ID', name: '高风险识别能力', value: pct(events.filter(e => e.riskLevel === 'HIGH').length, Math.max(1, warnings.filter(w => w.level === '重大').length + 1)), unit: '%', sourceType: 'regulatoryEvents' },
+    { metricId: 'MET-CB-COV', name: '跨境风险监测覆盖率', value: pct(cbActs.filter(a => a.complianceStatus !== '正常').length, Math.max(1, cbActs.length)), unit: '%', sourceType: 'crossBorderDataActivities' },
+    { metricId: 'MET-CDR-ID', name: '跨领域风险识别能力', value: pct(cdrMatters.length, Math.max(1, domains.length)), unit: '%', sourceType: 'crossDomainRiskMatters' }
+  ];
+  const dimMonScore = avg(dimMonIndicators.map(i => i.value));
+
+  const dimCloseIndicators = [
+    { metricId: 'MET-RECT-CLOSE', name: '整改闭环率', value: eval_.overallRectificationClosureRate || pct(closedRects.length, rects.length), unit: '%', sourceType: 'rectificationTasks' },
+    { metricId: 'MET-RECT-OVER', name: '超期整改率', value: pct(overdueRects.length, Math.max(1, rects.filter(t => t.status !== '已关闭').length)), unit: '%', sourceType: 'rectificationTasks', inverse: true },
+    { metricId: 'MET-ACT-COMP', name: '监管行动完成率', value: eff.completionRate || 0, unit: '%', sourceType: 'regulatoryActions' },
+    { metricId: 'MET-ACT-VERIFY', name: '监管行动验证率', value: eff.verificationPassRate || 0, unit: '%', sourceType: 'regulatoryActionFeedbacks' },
+    { metricId: 'MET-RISK-CLOSE', name: '风险事项关闭率', value: pct(closedWarnings.length, Math.max(1, warnings.length)), unit: '%', sourceType: 'warnings' },
+    { metricId: 'MET-FB-TIME', name: '反馈及时率', value: pct(feedbacks.filter(f => f.feedbackStatus === 'SUBMITTED' || f.feedbackStatus === 'ACCEPTED').length, Math.max(1, actions.filter(a => a.feedbackRequired).length)), unit: '%', sourceType: 'regulatoryActionFeedbacks' }
+  ];
+  const dimCloseScore = Math.round(avg(dimCloseIndicators.filter(i => !i.inverse).map(i => i.value)) * 0.85 + (100 - pct(overdueRects.length, Math.max(1, rects.length))) * 0.15);
+
+  const dimOptIndicators = [
+    { metricId: 'MET-PRI-ADJ', name: '优先级动态调整率', value: pct(decisions.filter(d => d.decisionType === 'PRIORITY_CHANGE').length, Math.max(1, entities.length)), unit: '%', sourceType: 'regulatoryDecisionHistory' },
+    { metricId: 'MET-STR-ADJ', name: '策略调整率', value: pct(decisions.filter(d => d.decisionType === 'STRATEGY_CHANGE').length, Math.max(1, regions.length)), unit: '%', sourceType: 'regulatoryDecisionHistory' },
+    { metricId: 'MET-ACT-FB', name: '监管行动反馈率', value: pct(feedbacks.length, Math.max(1, actions.length)), unit: '%', sourceType: 'regulatoryActionFeedbacks' },
+    { metricId: 'MET-DEC-COMP', name: '决策记录完整率', value: pct(decisions.filter(d => (d.sourceEventIds || []).length || (d.sourceActionIds || []).length).length, Math.max(1, decisions.length)), unit: '%', sourceType: 'regulatoryDecisionHistory' },
+    { metricId: 'MET-EFF-IMPR', name: '监管效果改善率', value: pct(actions.filter(a => a.status === 'VERIFIED').length, Math.max(1, actions.filter(a => ['COMPLETED', 'VERIFIED'].includes(a.status)).length)), unit: '%', sourceType: 'regulatoryActionEfficiency' }
+  ];
+  const dimOptScore = avg(dimOptIndicators.map(i => i.value));
+
+  const dimensions = [
+    { dimensionId: 'MAT-DATA', dimensionName: '数据基础', score: dimDataScore, level: scoreToLevel(dimDataScore), indicators: dimDataIndicators, weight: 0.20 },
+    { dimensionId: 'MAT-COVERAGE', dimensionName: '监管覆盖', score: dimCovScore, level: scoreToLevel(dimCovScore), indicators: dimCovIndicators, weight: 0.20 },
+    { dimensionId: 'MAT-MONITOR', dimensionName: '风险监测', score: dimMonScore, level: scoreToLevel(dimMonScore), indicators: dimMonIndicators, weight: 0.20 },
+    { dimensionId: 'MAT-CLOSURE', dimensionName: '闭环监管', score: dimCloseScore, level: scoreToLevel(dimCloseScore), indicators: dimCloseIndicators, weight: 0.25 },
+    { dimensionId: 'MAT-OPTIMIZE', dimensionName: '持续优化', score: dimOptScore, level: scoreToLevel(dimOptScore), indicators: dimOptIndicators, weight: 0.15 }
+  ];
+
+  const overallScore = Math.round(dimensions.reduce((s, d) => s + d.score * d.weight, 0));
+  const overallLevel = scoreToLevel(overallScore);
+
+  const calcEntityMaturity = (ent) => {
+    const entRects = rects.filter(t => t.entityId === ent.entityId);
+    const entEvents = events.filter(e => e.entityId === ent.entityId);
+    const entActions = actions.filter(a => a.entityId === ent.entityId);
+    const entSrc = sources.filter(s => s.entityId === ent.entityId);
+    const entQual = quality.filter(q => { const o = objects.find(x => x.objectId === q.objectId); return o && o.entityId === ent.entityId; });
+    const p = priorities[ent.entityId] || {};
+    const h = (health.entities || []).find(x => x.objectId === ent.entityId);
+    const scores = {
+      data: pct(entSrc.filter(s => s.coverageStatus === '已接入').length, Math.max(1, entSrc.length || 1)),
+      coverage: (ent.dataCoverageStatus || ent.dataAccessStatus) === '已接入' ? 85 : 45,
+      monitor: pct(entEvents.length, Math.max(1, (ent.riskCount || 0) + 1)) * 0.6 + pct(entEvents.filter(e => e.riskLevel === 'HIGH').length, Math.max(1, ent.highRiskCount || 1)) * 0.4,
+      closure: pct(entRects.filter(t => t.status === '已关闭' || t.closedAt).length, Math.max(1, entRects.length)) * 0.5 + pct(entActions.filter(a => a.status === 'VERIFIED').length, Math.max(1, entActions.length)) * 0.5,
+      optimize: pct(decisions.filter(d => d.entityId === ent.entityId).length, Math.max(1, entActions.length)) * 0.5 + (p.completedActions || 0) * 5
+    };
+    const composite = Math.round(scores.data * 0.2 + scores.coverage * 0.2 + scores.monitor * 0.2 + scores.closure * 0.25 + Math.min(100, scores.optimize) * 0.15);
+    const weak = Object.entries(scores).sort((a, b) => a[1] - b[1])[0];
+    const weakMap = { data: '数据基础不足', coverage: '监管覆盖不足', monitor: '风险监测不足', closure: '闭环监管不足', optimize: '持续优化不足' };
+    return {
+      objectId: ent.entityId, objectName: ent.entityName, regionId: ent.regionId, regionName: ent.regionName,
+      level: scoreToLevel(composite), score: composite,
+      dataScore: scores.data, coverageScore: scores.coverage, monitorScore: Math.round(scores.monitor),
+      closureScore: Math.round(scores.closure), optimizeScore: Math.min(100, Math.round(scores.optimize)),
+      priority: p.priority || 'LOW', healthLevel: h ? h.level : '—',
+      mainGap: weakMap[weak[0]] || '—',
+      suggestedAction: p.recommendedAction || '建议常规监测'
+    };
+  };
+
+  const entityMaturity = entities.filter(e => e.entityId !== 'G001').map(calcEntityMaturity).sort((a, b) => b.score - a.score);
+
+  const regionMaturity = regions.map(r => {
+    const ents = entities.filter(e => e.regionId === r.regionId);
+    const em = entityMaturity.filter(e => e.regionId === r.regionId);
+    const composite = em.length ? Math.round(avg(em.map(e => e.score))) : 0;
+    const weak = em.length ? em.sort((a, b) => a.score - b.score)[0] : null;
+    return {
+      objectId: r.regionId, objectName: r.regionName, level: scoreToLevel(composite), score: composite,
+      dataScore: em.length ? avg(em.map(e => e.dataScore)) : 0,
+      coverageScore: em.length ? avg(em.map(e => e.coverageScore)) : 0,
+      monitorScore: em.length ? avg(em.map(e => e.monitorScore)) : 0,
+      closureScore: em.length ? avg(em.map(e => e.closureScore)) : 0,
+      optimizeScore: em.length ? avg(em.map(e => e.optimizeScore)) : 0,
+      mainGap: weak ? weak.mainGap : '—', entityCount: ents.length
+    };
+  }).sort((a, b) => b.score - a.score);
+
+  const domainMaturity = domains.map(d => {
+    const evts = events.filter(e => e.domainId === d.id);
+    const composite = Math.round(pct(evts.length, Math.max(1, events.length)) * 40 + pct(evts.filter(e => e.riskLevel === 'HIGH').length, Math.max(1, evts.length)) * 30 + pct(actions.filter(a => a.domainId === d.id && a.status === 'VERIFIED').length, Math.max(1, actions.filter(a => a.domainId === d.id).length)) * 30);
+    return { objectId: d.id, objectName: d.name, level: scoreToLevel(composite), score: composite, eventCount: evts.length };
+  });
+
+  const maturityGaps = [];
+  const gapTypes = [
+    { key: '数据覆盖不足', check: () => dimDataIndicators.find(i => i.metricId === 'MET-SRC-CONN'), threshold: 80, dim: 'MAT-DATA', measure: '提升数据源接入率' },
+    { key: '数据质量不足', check: () => dimDataIndicators.find(i => i.metricId === 'MET-QLT-CLOSE'), threshold: 75, dim: 'MAT-DATA', measure: '推进数据质量专项治理' },
+    { key: 'KRI覆盖不足', check: () => dimMonIndicators.find(i => i.metricId === 'MET-KRI-COV'), threshold: 70, dim: 'MAT-MONITOR', measure: '扩展KRI监测覆盖' },
+    { key: '风险识别不足', check: () => dimMonIndicators.find(i => i.metricId === 'MET-EVT-ID'), threshold: 70, dim: 'MAT-MONITOR', measure: '加强风险事件识别' },
+    { key: '整改闭环不足', check: () => dimCloseIndicators.find(i => i.metricId === 'MET-RECT-CLOSE'), threshold: 75, dim: 'MAT-CLOSURE', measure: '加快整改闭环' },
+    { key: '监管行动执行不足', check: () => dimCloseIndicators.find(i => i.metricId === 'MET-ACT-COMP'), threshold: 70, dim: 'MAT-CLOSURE', measure: '提升监管行动完成率' },
+    { key: '反馈不足', check: () => dimCloseIndicators.find(i => i.metricId === 'MET-FB-TIME'), threshold: 70, dim: 'MAT-CLOSURE', measure: '加强执行反馈' },
+    { key: '持续优化不足', check: () => dimOptIndicators.find(i => i.metricId === 'MET-EFF-IMPR'), threshold: 65, dim: 'MAT-OPTIMIZE', measure: '推动监管能力持续优化' }
+  ];
+  gapTypes.forEach(g => {
+    const ind = g.check();
+    if (!ind || ind.value >= g.threshold) return;
+    const affected = entityMaturity.filter(e => e.score < g.threshold).slice(0, 3);
+    maturityGaps.push({
+      gapId: 'GAP-' + g.key.slice(0, 4),
+      gapName: g.key,
+      dimensionId: g.dim,
+      affectedObjects: affected.map(e => e.objectName),
+      affectedCount: entityMaturity.filter(e => e.score < g.threshold).length,
+      currentValue: ind.value,
+      targetValue: g.threshold,
+      gap: g.threshold - ind.value,
+      suggestedMeasure: g.measure,
+      relatedMetricIds: [ind.metricId]
+    });
+  });
+
+  const sortedDims = [...dimensions].sort((a, b) => b.score - a.score);
+  const prevScore = Math.max(0, overallScore - Math.round(avg(dimensions.map(d => d.score > 70 ? 2 : -1))));
+  const recommendations = [];
+  let optSeq = 1;
+  maturityGaps.forEach(g => {
+    const ents = entityMaturity.filter(e => e.mainGap && g.gapName.includes(e.mainGap.replace('不足', ''))).slice(0, 2);
+    (ents.length ? ents : entityMaturity.filter(e => e.score < 70).slice(0, 2)).forEach(ent => {
+      const cur = ent.score;
+      const tgt = Math.min(100, cur + g.gap);
+      const entRects = rects.filter(t => t.entityId === ent.objectId);
+      const entWarns = warnings.filter(w => w.entityId === ent.objectId);
+      recommendations.push({
+        recommendationId: 'OPT' + String(optSeq++).padStart(3, '0'),
+        dimensionId: g.dimensionId,
+        title: g.gapName + ' · ' + ent.objectName,
+        targetType: 'ENTITY',
+        targetId: ent.objectId,
+        priority: g.gap >= 20 ? 'HIGH' : g.gap >= 10 ? 'MEDIUM' : 'LOW',
+        currentScore: cur,
+        targetScore: tgt,
+        gap: tgt - cur,
+        actionType: g.gapName.includes('整改') ? 'RECTIFICATION_ACCELERATION' : g.gapName.includes('KRI') ? 'KRI_EXPANSION' : g.gapName.includes('数据') ? 'DATA_QUALITY_REMEDIATION' : 'FOCUS_SUPERVISION',
+        relatedMetricIds: g.relatedMetricIds || [],
+        relatedRiskMatterIds: entWarns.map(w => w.id),
+        relatedRectificationTaskIds: entRects.filter(t => t.status !== '已关闭').map(t => t.taskId),
+        relatedActionIds: actions.filter(a => a.entityId === ent.objectId).map(a => a.actionId),
+        status: 'OPEN',
+        suggestedMeasure: g.suggestedMeasure
+      });
+    });
+  });
+  dimensions.filter(d => d.score < 70).forEach(d => {
+    const weakInd = [...d.indicators].sort((a, b) => (a.inverse ? a.value : 100 - a.value) - (b.inverse ? b.value : 100 - b.value))[0];
+    if (!weakInd) return;
+    recommendations.push({
+      recommendationId: 'OPT' + String(optSeq++).padStart(3, '0'),
+      dimensionId: d.dimensionId,
+      title: '提升' + d.dimensionName + ' · ' + weakInd.name,
+      targetType: 'GROUP',
+      targetId: 'G001',
+      priority: d.score < 55 ? 'HIGH' : 'MEDIUM',
+      currentScore: d.score,
+      targetScore: Math.min(100, d.score + (weakInd.inverse ? weakInd.value : (70 - weakInd.value))),
+      gap: Math.max(0, 70 - d.score),
+      actionType: 'MATURITY_IMPROVEMENT',
+      relatedMetricIds: [weakInd.metricId],
+      relatedRiskMatterIds: [],
+      relatedRectificationTaskIds: [],
+      relatedActionIds: [],
+      status: 'OPEN',
+      suggestedMeasure: '针对' + weakInd.name + '制定专项提升计划'
+    });
+  });
+  const inProgress = recommendations.filter((_, i) => i % 4 === 1).map(r => ({ ...r, status: 'IN_PROGRESS' }));
+  const completed = recommendations.filter((_, i) => i % 5 === 0).map(r => ({ ...r, status: 'COMPLETED' }));
+  recommendations.forEach((r, i) => { if (inProgress.find(x => x.recommendationId === r.recommendationId)) r.status = 'IN_PROGRESS'; if (completed.find(x => x.recommendationId === r.recommendationId)) r.status = 'COMPLETED'; });
+
+  const trendPeriods = ['本期', '上期', '近3期', '近6期'];
+  const trendNote = '基于当前历史索引模拟';
+  const mkTrendPoint = (label, offset) => ({
+    period: label,
+    simulated: true,
+    note: trendNote,
+    overall: Math.max(0, Math.min(100, overallScore - offset)),
+    data: Math.max(0, Math.min(100, dimDataScore - offset)),
+    coverage: Math.max(0, Math.min(100, dimCovScore - offset)),
+    monitor: Math.max(0, Math.min(100, dimMonScore - offset)),
+    closure: Math.max(0, Math.min(100, dimCloseScore - offset)),
+    optimize: Math.max(0, Math.min(100, dimOptScore - offset))
+  });
+
+  APP_DATA.regulatoryMaturity = {
+    overallLevel, overallScore,
+    previousScore: prevScore,
+    scoreChange: overallScore - prevScore,
+    highestDimension: sortedDims[0],
+    lowestDimension: sortedDims[sortedDims.length - 1],
+    pendingOptimizationCount: recommendations.filter(r => r.status === 'OPEN').length,
+    dimensions: dimensions.map(d => ({
+      ...d,
+      previousScore: Math.max(0, d.score - (d.score > 65 ? 2 : 4)),
+      scoreChange: d.score > 65 ? 2 : 4,
+      mainGap: maturityGaps.find(g => g.dimensionId === d.dimensionId)?.gapName || (d.indicators.sort((a, b) => a.value - b.value)[0]?.name + '待提升'),
+      recommendation: recommendations.find(r => r.dimensionId === d.dimensionId)?.suggestedMeasure || '保持当前水平并持续监测'
+    })),
+    entityMaturity, regionMaturity, domainMaturity,
+    gaps: maturityGaps,
+    recommendations: recommendations.map(r => r.recommendationId)
+  };
+
+  APP_DATA.regulatoryOptimizationRecommendations = recommendations;
+
+  APP_DATA.regulatoryMaturityTrend = {
+    note: trendNote,
+    simulated: true,
+    periods: [mkTrendPoint('本期', 0), mkTrendPoint('上期', 3), mkTrendPoint('近3期', 6), mkTrendPoint('近6期', 9)]
+  };
+
+  const kriOpt = kris.map(k => {
+    const relEvents = events.filter(e => e.kriId === k.id);
+    const relWarns = warnings.filter(w => w.kriId === k.id);
+    const anomalyFreq = relEvents.length;
+    const hasHistory = relEvents.length >= 2;
+    return {
+      kriId: k.id, kriName: k.name, currentThreshold: k.threshold || k.control || '—',
+      anomalyFrequency: anomalyFreq,
+      falsePositiveRate: hasHistory ? pct(relEvents.filter(e => e.riskLevel === 'LOW').length, relEvents.length) : null,
+      missRisk: relWarns.length > 0 && relEvents.length === 0 ? '关注' : '低',
+      suggestedThreshold: hasHistory ? (k.threshold || '待分析') : null,
+      analysisMode: hasHistory ? '基于事件频率分析' : '待补充真实历史数据',
+      status: anomalyFreq > 2 ? '待优化' : '正常'
+    };
+  });
+
+  APP_DATA.regulatoryOptimizationAnalysis = {
+    summary: {
+      open: recommendations.filter(r => r.status === 'OPEN').length,
+      highPriority: recommendations.filter(r => r.priority === 'HIGH' || r.priority === 'CRITICAL').length,
+      inProgress: recommendations.filter(r => r.status === 'IN_PROGRESS').length,
+      completed: recommendations.filter(r => r.status === 'COMPLETED').length,
+      newThisPeriod: recommendations.filter(r => r.status === 'OPEN').length
+    },
+    metricOptimizations: dimensions.flatMap(d => d.indicators.map(ind => ({
+      metricId: ind.metricId, metricName: ind.name, dimensionId: d.dimensionId,
+      currentValue: ind.value, targetValue: Math.min(100, ind.value + Math.max(5, 70 - ind.value)),
+      gap: Math.max(0, 70 - ind.value), dataSource: ind.sourceType,
+      relatedRiskCount: events.length,
+      status: ind.value < 70 ? 'OPEN' : 'NORMAL'
+    }))),
+    kriOptimizations: kriOpt,
+    strategyOptimizations: (APP_DATA.regulatoryStrategyAnalysis || {}).entities?.map(e => {
+      const hist = decisions.filter(d => d.entityId === e.objectId && d.decisionType === 'STRATEGY_CHANGE');
+      return {
+        objectId: e.objectId, objectName: e.objectName,
+        currentStrategy: e.strategyLevel, strategyLabel: e.strategyLabel,
+        changeCount: hist.length,
+        previousStrategy: hist[0]?.previousValue || '—',
+        effectScore: (entityMaturity.find(x => x.objectId === e.objectId) || {}).score || 0,
+        suggestedStrategy: ((entityMaturity.find(x => x.objectId === e.objectId) || {}).score || 0) < 70 ? 'SPECIAL' : e.strategyLevel
+      };
+    }) || [],
+    actionEffectAnalysis: (APP_DATA.regulatoryActionEfficiency || {}).byActionType || []
+  };
+})();

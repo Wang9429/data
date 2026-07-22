@@ -22,6 +22,8 @@ Object.assign(App, {
     { pageId: 'regulatory-actions', label: '集团监管行动中心', category: '决策层', entryFromGroupOverview: false, supportsPublicNavigation: true, supportsBackNavigation: true },
     { pageId: 'regulatory-action-execution', label: '监管行动执行', category: '决策层', entryFromGroupOverview: false, supportsPublicNavigation: true, supportsBackNavigation: true },
     { pageId: 'regulatory-strategy', label: '集团监管策略分析', category: '决策层', entryFromGroupOverview: false, supportsPublicNavigation: true, supportsBackNavigation: true },
+    { pageId: 'regulatory-maturity', label: '集团监管成熟度', category: '持续优化', entryFromGroupOverview: false, supportsPublicNavigation: true, supportsBackNavigation: true },
+    { pageId: 'regulatory-optimization', label: '集团监管持续优化', category: '持续优化', entryFromGroupOverview: false, supportsPublicNavigation: true, supportsBackNavigation: true },
     { pageId: 'major', label: '重大事项监管', category: '重大事项', entryFromGroupOverview: false, supportsPublicNavigation: false, supportsBackNavigation: false }
   ],
 
@@ -88,6 +90,7 @@ Object.assign(App, {
       ctx.actionId = this.regulatoryActionExecutionFocusId;
       ctx.feedbackId = this.regulatoryActionFeedbackFocusId;
     }
+    if (pageId === 'regulatory-optimization') ctx.recommendationId = this.regulatoryOptimizationFocusId;
     return ctx;
   },
 
@@ -356,6 +359,26 @@ Object.assign(App, {
       if (f.decisionType && d.decisionType !== f.decisionType) return false;
       return true;
     });
+  },
+
+  getRegulatoryMaturity(objectType, objectId) {
+    const m = APP_DATA.regulatoryMaturity || {};
+    if (objectType === 'entity') return (m.entityMaturity || []).find(e => e.objectId === objectId);
+    if (objectType === 'region') return (m.regionMaturity || []).find(r => r.objectId === objectId);
+    if (objectType === 'domain') return (m.domainMaturity || []).find(d => d.objectId === objectId);
+    return m;
+  },
+
+  renderPublicMaturityBadge(level) {
+    const cls = { L1: 'badge-danger', L2: 'badge-warning', L3: 'badge-info', L4: 'badge-success', L5: 'badge-success' };
+    const labels = { L1: 'L1 基础可见', L2: 'L2 数据覆盖', L3: 'L3 风险监测', L4: 'L4 闭环监管', L5: 'L5 智能优化' };
+    return `<span class="badge ${cls[level] || 'badge-info'}">${labels[level] || level || '—'}</span>`;
+  },
+
+  renderPublicMaturityRadar(items, labelKey) {
+    if (!items || !items.length) return this.renderPublicEmptyState('暂无成熟度对比数据');
+    const max = Math.max(...items.map(i => i.score || 0), 1);
+    return `<div style="margin-top:8px">${items.map(item => `<p style="display:flex;align-items:center;gap:8px;margin:4px 0"><span style="width:72px;font-size:12px">${this.escHtml(item[labelKey] || item.dimensionName || item.objectName)}</span><i style="flex:1;height:8px;background:#eef3f9;border-radius:4px;display:block"><b style="display:block;height:8px;background:#003d7a;border-radius:4px;width:${Math.round((item.score || 0) / max * 100)}%"></b></i><em style="width:36px;text-align:right;font-size:11px">${item.score || 0}</em>${this.renderPublicMaturityBadge(item.level)}</p>`).join('')}</div>`;
   },
 
   getRegulatoryRiskConcentration(dimension) {
@@ -708,7 +731,7 @@ Object.assign(App, {
   },
 
   renderGroupOverviewPageCatalog(m) {
-    const catalogIds = ['global-legal-entities', 'global-regions', 'coverage-gaps', 'platform-operations', 'data-governance', 'cross-border-compliance', 'cross-domain-risks', 'warnings', 'rectification', 'regulatory-events', 'rectification-operations', 'regulatory-evaluation', 'regulatory-command-center', 'regulatory-actions', 'regulatory-action-execution', 'regulatory-strategy'];
+    const catalogIds = ['global-legal-entities', 'global-regions', 'coverage-gaps', 'platform-operations', 'data-governance', 'cross-border-compliance', 'cross-domain-risks', 'warnings', 'rectification', 'regulatory-events', 'rectification-operations', 'regulatory-evaluation', 'regulatory-command-center', 'regulatory-actions', 'regulatory-action-execution', 'regulatory-strategy', 'regulatory-maturity', 'regulatory-optimization'];
     const metricMap = {
       'global-legal-entities': { core: `法人 ${m.entityCount}`, anomaly: `高风险 ${(m.entities || []).filter(e => (e.highRiskCount || 0) > 0).length}` },
       'global-regions': { core: `区域 ${m.regionCount} · 国家 ${m.countryCount}`, anomaly: `高风险区域 ${(m.regions || []).filter(r => (r.highRiskCount || 0) > 0).length}` },
@@ -725,7 +748,9 @@ Object.assign(App, {
       'regulatory-command-center': { core: `高风险 ${(APP_DATA.regulatoryCommandCenterMetrics || {}).highRiskObjectCount || 0}`, anomaly: `待行动 ${(APP_DATA.regulatoryCommandCenterMetrics || {}).pendingActionCount || 0}` },
       'regulatory-actions': { core: `行动 ${(APP_DATA.regulatoryActions || []).length}`, anomaly: `高优先级 ${(APP_DATA.regulatoryActions || []).filter(a => a.priority === 'CRITICAL' || a.priority === 'HIGH').length}` },
       'regulatory-action-execution': { core: `执行中 ${(APP_DATA.regulatoryActionExecutionMetrics || {}).inProgress || 0}`, anomaly: `逾期 ${(APP_DATA.regulatoryActionExecutionMetrics || {}).overdue || 0}` },
-      'regulatory-strategy': { core: `重点区域 ${((APP_DATA.regulatoryStrategyAnalysis || {}).regions || []).filter(r => r.strategyLevel === 'FOCUS').length}`, anomaly: `重点法人 ${((APP_DATA.regulatoryStrategyAnalysis || {}).entities || []).filter(e => e.strategyLevel === 'FOCUS').length}` }
+      'regulatory-strategy': { core: `重点区域 ${((APP_DATA.regulatoryStrategyAnalysis || {}).regions || []).filter(r => r.strategyLevel === 'FOCUS').length}`, anomaly: `重点法人 ${((APP_DATA.regulatoryStrategyAnalysis || {}).entities || []).filter(e => e.strategyLevel === 'FOCUS').length}` },
+      'regulatory-maturity': { core: `${(APP_DATA.regulatoryMaturity || {}).overallLevel || '—'}`, anomaly: `评分 ${(APP_DATA.regulatoryMaturity || {}).overallScore || 0}` },
+      'regulatory-optimization': { core: `待优化 ${((APP_DATA.regulatoryOptimizationAnalysis || {}).summary || {}).open || 0}`, anomaly: `高优先级 ${((APP_DATA.regulatoryOptimizationAnalysis || {}).summary || {}).highPriority || 0}` }
     };
     const pages = (this.publicRegulatoryPages || []).filter(p => catalogIds.includes(p.pageId));
     return `<div class="card"><div class="card-title">公共监管页面目录</div>
@@ -792,6 +817,8 @@ Object.assign(App, {
         <button onclick="App.navigatePublic('regulatory-evaluation')"><b>集团监管评价</b><span>区域排名 ${(APP_DATA.regulatoryEvaluation || {}).regionRankings?.length || 0}</span><em>闭环率 ${(APP_DATA.regulatoryEvaluation || {}).overallRectificationClosureRate || 0}%</em></button>
         <button onclick="App.navigatePublic('regulatory-command-center')"><b>集团监管决策驾驶舱</b><span>高风险对象 ${(APP_DATA.regulatoryCommandCenterMetrics || {}).highRiskObjectCount || 0}</span><em>待执行行动 ${(APP_DATA.regulatoryCommandCenterMetrics || {}).pendingActionCount || 0}</em></button>
         <button onclick="App.navigatePublic('regulatory-strategy')"><b>集团监管策略分析</b><span>重点区域 ${((APP_DATA.regulatoryStrategyAnalysis || {}).regions || []).filter(r => r.strategyLevel === 'FOCUS').length}</span><em>重点法人 ${((APP_DATA.regulatoryStrategyAnalysis || {}).entities || []).filter(e => e.strategyLevel === 'FOCUS').length}</em></button>
+        <button onclick="App.navigatePublic('regulatory-maturity')"><b>集团监管成熟度</b><span>${(APP_DATA.regulatoryMaturity || {}).overallLevel || '—'} · ${(APP_DATA.regulatoryMaturity || {}).overallScore || 0}分</span><em>待优化 ${(APP_DATA.regulatoryMaturity || {}).pendingOptimizationCount || 0}</em></button>
+        <button onclick="App.navigatePublic('regulatory-optimization')"><b>集团监管持续优化</b><span>待优化 ${((APP_DATA.regulatoryOptimizationAnalysis || {}).summary || {}).open || 0}</span><em>高优先级 ${((APP_DATA.regulatoryOptimizationAnalysis || {}).summary || {}).highPriority || 0}</em></button>
       </div>
     </div>`;
   },
@@ -1380,6 +1407,136 @@ Object.assign(App, {
     }, '监管决策记录');
   },
 
+  renderRegulatoryMaturity() {
+    const node = document.getElementById('regulatoryMaturity');
+    if (!node) return;
+    const m = APP_DATA.regulatoryMaturity || {};
+    const trend = APP_DATA.regulatoryMaturityTrend || {};
+    const compareType = this.maturityCompareType || 'group';
+    const compareItems = compareType === 'region' ? (m.regionMaturity || []).slice(0, 5)
+      : compareType === 'entity' ? (m.entityMaturity || []).slice(0, 5)
+      : compareType === 'domain' ? (m.domainMaturity || [])
+      : (m.dimensions || []);
+    const compareLabel = compareType === 'region' ? 'objectName' : compareType === 'entity' ? 'objectName' : compareType === 'domain' ? 'objectName' : 'dimensionName';
+    const regionRows = (m.regionMaturity || []).map(r => `<tr class="clickable" onclick="App.navigatePublic('global-regions',{regionId:'${r.objectId}'})"><td>${r.objectName}</td><td>${this.renderPublicMaturityBadge(r.level)}</td><td>${r.score}</td><td>${r.dataScore}</td><td>${r.coverageScore}</td><td>${r.monitorScore}</td><td>${r.closureScore}</td><td>${r.optimizeScore}</td><td>${r.mainGap}</td></tr>`).join('');
+    const entityRows = (m.entityMaturity || []).map(e => `<tr class="clickable" onclick="App.navigatePublic('global-legal-entities',{entityId:'${e.objectId}'})"><td>${e.objectName}</td><td>${e.regionName || e.regionId}</td><td>${this.renderPublicMaturityBadge(e.level)}</td><td>${e.score}</td><td>${this.renderPublicPriorityBadge(e.priority)}</td><td>${this.renderPublicHealthBadge(e.healthLevel)}</td><td>${e.mainGap}</td><td>${e.suggestedAction}</td></tr>`).join('');
+    const gapRows = (m.gaps || []).map(g => `<tr class="clickable" onclick="App.navigatePublic('regulatory-optimization')"><td>${g.gapName}</td><td>${(g.affectedObjects || []).join('、') || '—'}</td><td>${g.affectedCount}</td><td>${g.currentValue}</td><td>${g.targetValue}</td><td>${g.gap}</td><td>${g.suggestedMeasure}</td></tr>`).join('');
+    const dimCards = (m.dimensions || []).map(d => `<div class="card" style="margin-bottom:8px"><div class="card-title">${d.dimensionName} ${this.renderPublicMaturityBadge(d.level)}</div>
+      <p class="insight-note"><b>评分：</b>${d.score}（${d.scoreChange >= 0 ? '+' : ''}${d.scoreChange}） · <b>短板：</b>${d.mainGap}</p>
+      <p class="insight-note"><b>核心指标：</b>${d.indicators.slice(0, 3).map(i => `${i.name} ${i.value}${i.unit || ''}`).join(' · ')}</p>
+      <p class="insight-note"><b>优化建议：</b>${d.recommendation}</p>
+      ${this.renderPublicLinkButton('查看优化建议', `App.navigatePublic('regulatory-optimization')`)}
+    </div>`).join('');
+    const trendRows = (trend.periods || []).map(p => `<tr><td>${p.period}</td><td>${p.overall}</td><td>${p.data}</td><td>${p.coverage}</td><td>${p.monitor}</td><td>${p.closure}</td><td>${p.optimize}</td><td><em>${p.note || trend.note || ''}</em></td></tr>`).join('');
+    node.innerHTML = `${this.renderPublicBackButton()}
+      <div class="group-hero"><div><span>集团监管体系持续优化</span><h2>集团监管成熟度</h2><p>基于监管运行数据动态评价集团整体、区域、法人、业务领域监管成熟度。</p></div><div>${this.renderPublicMaturityBadge(m.overallLevel)} <b>${m.overallScore}</b>分</div></div>
+      <div class="group-metrics">${[
+        [m.overallScore, '集团整体评分', `App.navigatePublic('regulatory-maturity')`],
+        [(m.scoreChange >= 0 ? '+' : '') + m.scoreChange, '较上期变化', `App.navigatePublic('regulatory-maturity')`],
+        [m.highestDimension?.dimensionName || '—', '最高维度', `App.navigatePublic('regulatory-maturity')`],
+        [m.lowestDimension?.dimensionName || '—', '最低维度', `App.navigatePublic('regulatory-optimization')`],
+        [m.pendingOptimizationCount, '待优化能力', `App.navigatePublic('regulatory-optimization')`]
+      ].map(([v, l, nav]) => this.renderPublicKpiCard(l, v, nav)).join('')}</div>
+      <div class="card"><div class="card-title">五大能力维度</div>${dimCards}</div>
+      <div class="group-three">
+        <div class="card"><div class="card-title">成熟度对比
+          <select style="margin-left:8px" onchange="App.maturityCompareType=this.value;App.renderRegulatoryMaturity()"><option value="group" ${compareType==='group'?'selected':''}>集团维度</option><option value="region" ${compareType==='region'?'selected':''}>区域</option><option value="entity" ${compareType==='entity'?'selected':''}>法人</option><option value="domain" ${compareType==='domain'?'selected':''}>业务领域</option></select>
+        </div>${this.renderPublicMaturityRadar(compareItems, compareLabel)}</div>
+        <div class="card"><div class="card-title">成熟度趋势 <em style="font-size:11px;color:#888">${trend.note || '基于当前历史索引模拟'}</em></div>
+          <table class="data-table"><thead><tr><th>期间</th><th>整体</th><th>数据</th><th>覆盖</th><th>监测</th><th>闭环</th><th>优化</th><th>说明</th></tr></thead><tbody>${trendRows}</tbody></table>
+        </div>
+        <div class="card"><div class="card-title">优化建议入口</div>
+          ${(APP_DATA.regulatoryOptimizationRecommendations || []).slice(0, 4).map(r => `<button class="btn btn-outline" style="margin:4px;display:block;width:100%;text-align:left" onclick="App.showRegulatoryOptimizationDetail('${r.recommendationId}')">${r.title} · ${r.priority}</button>`).join('') || this.renderPublicEmptyState('暂无优化建议')}
+          <p>${this.renderPublicLinkButton('进入持续优化', `App.navigatePublic('regulatory-optimization')`)}</p>
+        </div>
+      </div>
+      <div class="card"><div class="card-title">区域成熟度排名</div>
+        <table class="data-table"><thead><tr><th>区域</th><th>等级</th><th>综合</th><th>数据</th><th>覆盖</th><th>监测</th><th>闭环</th><th>优化</th><th>短板</th></tr></thead><tbody>${regionRows || '<tr><td colspan="9">暂无</td></tr>'}</tbody></table>
+      </div>
+      <div class="card"><div class="card-title">法人成熟度排名</div>
+        <table class="data-table"><thead><tr><th>法人</th><th>区域</th><th>等级</th><th>综合</th><th>优先级</th><th>健康度</th><th>短板</th><th>建议行动</th></tr></thead><tbody>${entityRows || '<tr><td colspan="8">暂无</td></tr>'}</tbody></table>
+      </div>
+      <div class="card"><div class="card-title">成熟度短板分析</div>
+        ${gapRows ? `<table class="data-table"><thead><tr><th>短板</th><th>影响对象</th><th>范围</th><th>当前</th><th>目标</th><th>差距</th><th>建议措施</th></tr></thead><tbody>${gapRows}</tbody></table>` : this.renderPublicEmptyState('暂无短板')}
+      </div>
+      <div id="regulatoryOptimizationDetail"></div>`;
+    if (this.regulatoryOptimizationFocusId) setTimeout(() => this.showRegulatoryOptimizationDetail(this.regulatoryOptimizationFocusId), 0);
+  },
+
+  renderRegulatoryOptimization() {
+    const node = document.getElementById('regulatoryOptimization');
+    if (!node) return;
+    const analysis = APP_DATA.regulatoryOptimizationAnalysis || {};
+    const summary = analysis.summary || {};
+    const recs = APP_DATA.regulatoryOptimizationRecommendations || [];
+    const metricRows = (analysis.metricOptimizations || []).filter(m => m.status === 'OPEN').slice(0, 10).map(m => `<tr class="clickable" onclick="App.navigatePublic('data-governance')"><td>${m.metricName}</td><td>${m.currentValue}%</td><td>${m.targetValue}%</td><td>${m.gap}</td><td>${m.dataSource}</td><td>${m.status}</td></tr>`).join('');
+    const kriRows = (analysis.kriOptimizations || []).map(k => `<tr class="clickable" onclick="App.navigatePublic('data-governance')"><td>${k.kriName}</td><td>${k.currentThreshold}</td><td>${k.anomalyFrequency}</td><td>${k.falsePositiveRate !== null ? k.falsePositiveRate + '%' : '—'}</td><td>${k.missRisk}</td><td>${k.suggestedThreshold || '—'}</td><td><em>${k.analysisMode}</em></td><td>${k.status}</td></tr>`).join('');
+    const stratRows = (analysis.strategyOptimizations || []).map(s => `<tr class="clickable" onclick="App.navigatePublic('global-legal-entities',{entityId:'${s.objectId}'})"><td>${s.objectName}</td><td>${this.renderPublicStrategyBadge(s.currentStrategy)}</td><td>${s.previousStrategy}</td><td>${s.changeCount}</td><td>${s.effectScore}</td><td>${this.renderPublicStrategyBadge(s.suggestedStrategy)}</td></tr>`).join('');
+    const actRows = (analysis.actionEffectAnalysis || []).map(a => `<tr class="clickable" onclick="App.navigatePublic('regulatory-action-execution')"><td>${a.actionType}</td><td>${a.actionCount}</td><td>${a.completionRate}%</td><td>${a.verificationPassRate}%</td><td>${a.overdueRate}%</td></tr>`).join('');
+    const recRows = recs.map(r => `<tr class="clickable" onclick="App.showRegulatoryOptimizationDetail('${r.recommendationId}')"><td>${r.recommendationId}</td><td>${r.title}</td><td>${this.renderPublicPriorityBadge(r.priority)}</td><td>${r.currentScore}</td><td>${r.targetScore}</td><td>${r.gap}</td><td>${r.status}</td></tr>`).join('');
+    node.innerHTML = `${this.renderPublicBackButton()}
+      <div class="group-hero"><div><span>集团监管体系持续优化</span><h2>集团监管持续优化</h2><p>回答"下一步应该优化什么"——指标、KRI、策略与监管行动效果分析。</p></div><div>待优化 <b>${summary.open || 0}</b></div></div>
+      <div class="group-metrics">${[
+        [summary.open, '待优化事项', `App.navigatePublic('regulatory-optimization')`],
+        [summary.highPriority, '高优先级', `App.navigatePublic('regulatory-optimization')`],
+        [summary.inProgress, '进行中', `App.navigatePublic('regulatory-optimization')`],
+        [summary.completed, '已完成', `App.navigatePublic('regulatory-optimization')`],
+        [summary.newThisPeriod, '本期新增', `App.navigatePublic('regulatory-optimization')`]
+      ].map(([v, l, nav]) => this.renderPublicKpiCard(l, v, nav)).join('')}</div>
+      <div class="card"><div class="card-title">优化建议总览</div>
+        ${recRows ? `<table class="data-table"><thead><tr><th>编号</th><th>标题</th><th>优先级</th><th>当前分</th><th>目标分</th><th>差距</th><th>状态</th></tr></thead><tbody>${recRows}</tbody></table>` : this.renderPublicEmptyState('暂无优化建议')}
+      </div>
+      <div class="group-three">
+        <div class="card"><div class="card-title">指标优化</div>
+          <table class="data-table"><thead><tr><th>指标</th><th>当前</th><th>目标</th><th>差距</th><th>来源</th><th>状态</th></tr></thead><tbody>${metricRows || '<tr><td colspan="6">暂无待优化指标</td></tr>'}</tbody></table>
+          <p>${this.renderPublicLinkButton('数据治理', `App.navigatePublic('data-governance')`)}</p>
+        </div>
+        <div class="card"><div class="card-title">KRI 优化</div>
+          <table class="data-table"><thead><tr><th>KRI</th><th>阈值</th><th>异常频率</th><th>误报率</th><th>漏报</th><th>建议阈值</th><th>分析模式</th><th>状态</th></tr></thead><tbody>${kriRows || '<tr><td colspan="8">暂无</td></tr>'}</tbody></table>
+        </div>
+        <div class="card"><div class="card-title">监管策略优化</div>
+          <table class="data-table"><thead><tr><th>法人</th><th>当前策略</th><th>历史</th><th>变化次数</th><th>效果分</th><th>建议策略</th></tr></thead><tbody>${stratRows || '<tr><td colspan="6">暂无</td></tr>'}</tbody></table>
+          <p>${this.renderPublicLinkButton('决策历史', `App.navigatePublic('regulatory-strategy')`)}</p>
+        </div>
+      </div>
+      <div class="card"><div class="card-title">监管行动效果分析</div>
+        <table class="data-table"><thead><tr><th>行动类型</th><th>数量</th><th>完成率</th><th>验证率</th><th>逾期率</th></tr></thead><tbody>${actRows || '<tr><td colspan="5">暂无</td></tr>'}</tbody></table>
+        <p>${this.renderPublicLinkButton('监管行动执行', `App.navigatePublic('regulatory-action-execution')`)} ${this.renderPublicLinkButton('监管成熟度', `App.navigatePublic('regulatory-maturity')`)}</p>
+      </div>
+      <div id="regulatoryOptimizationDetail"></div>`;
+    if (this.regulatoryOptimizationFocusId) setTimeout(() => this.showRegulatoryOptimizationDetail(this.regulatoryOptimizationFocusId), 0);
+  },
+
+  showRegulatoryOptimizationDetail(recommendationId) {
+    const rec = (APP_DATA.regulatoryOptimizationRecommendations || []).find(r => r.recommendationId === recommendationId);
+    const node = document.getElementById('regulatoryOptimizationDetail');
+    this.regulatoryOptimizationFocusId = recommendationId;
+    this.showPublicDetailOrNotFound(node, rec, () => {
+      const dim = (APP_DATA.regulatoryMaturity || {}).dimensions?.find(d => d.dimensionId === rec.dimensionId);
+      const metrics = (rec.relatedMetricIds || []).map(id => (dim?.indicators || []).find(i => i.metricId === id) || (APP_DATA.regulatoryOptimizationAnalysis?.metricOptimizations || []).find(m => m.metricId === id)).filter(Boolean);
+      const risks = (rec.relatedRiskMatterIds || []).map(id => APP_DATA.warnings.find(w => w.id === id) || APP_DATA.crossDomainRiskMatters.find(m => m.riskMatterId === id)).filter(Boolean);
+      const rects = (rec.relatedRectificationTaskIds || []).map(id => APP_DATA.rectificationTasks.find(t => t.taskId === id)).filter(Boolean);
+      const acts = (rec.relatedActionIds || []).map(id => APP_DATA.regulatoryActions.find(a => a.actionId === id)).filter(Boolean);
+      const ent = rec.targetId && rec.targetType === 'ENTITY' ? APP_DATA.globalLegalEntities.find(e => e.entityId === rec.targetId) : null;
+      node.innerHTML = this.buildPublicDetailPanel({
+        objectType: '监管优化建议',
+        objectName: rec.title,
+        objectId: rec.recommendationId,
+        status: rec.status,
+        sections: [
+          { title: '一、建议信息', content: this.renderPublicMetaGrid([this.renderPublicIdField(rec.recommendationId, '建议 ID'), { label: '维度', value: dim ? dim.dimensionName : rec.dimensionId }, { label: '优先级', html: this.renderPublicPriorityBadge(rec.priority) }, { label: '行动类型', value: rec.actionType }, { label: '当前评分', value: rec.currentScore }, { label: '目标评分', value: rec.targetScore }, { label: '差距', value: rec.gap }, { label: '建议措施', value: rec.suggestedMeasure || '—' }]) },
+          { title: '二、优化对象', content: ent ? this.renderPublicLinkButton(ent.entityName, `App.navigatePublic('global-legal-entities',{entityId:'${ent.entityId}'})`) : (rec.targetType === 'GROUP' ? '集团整体' : rec.targetId || '—') },
+          { title: '三、关联指标', content: metrics.length ? metrics.map(m => this.renderPublicLinkButton((m.name || m.metricName) + ' · ' + (m.value !== undefined ? m.value + '%' : m.currentValue + '%'), `App.navigatePublic('data-governance')`)).join('') : this.renderPublicEmptyState('暂无关联指标') },
+          { title: '四、关联风险', content: risks.length ? risks.map(r => this.renderPublicLinkButton(r.name || r.riskMatterName, r.id ? `App.navigatePublic('warnings',{riskMatterId:'${r.id}'})` : `App.navigatePublic('cross-domain-risks',{riskMatterId:'${r.riskMatterId}'})`)).join('') : this.renderPublicEmptyState('暂无关联风险') },
+          { title: '五、关联整改', content: rects.length ? rects.map(t => this.renderPublicLinkButton(t.title, `App.navigatePublic('rectification',{rectificationTaskId:'${t.taskId}'})`)).join('') : this.renderPublicEmptyState('暂无关联整改') },
+          { title: '六、关联行动', content: acts.length ? acts.map(a => this.renderPublicLinkButton(a.actionId, `App.navigatePublic('regulatory-action-execution',{actionId:'${a.actionId}'})`)).join('') : this.renderPublicEmptyState('暂无关联行动') }
+        ],
+        footer: `${this.renderPublicLinkButton('监管成熟度', `App.navigatePublic('regulatory-maturity')`)}${acts[0] ? this.renderPublicLinkButton('进入行动执行', `App.navigatePublic('regulatory-action-execution',{actionId:'${acts[0].actionId}'})`) : ''}`
+      });
+      node.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }, '监管优化建议');
+  },
+
   renderRegulatoryStrategy() {
     const node = document.getElementById('regulatoryStrategy');
     if (!node) return;
@@ -1417,7 +1574,9 @@ Object.assign(App, {
       'regulatory-command-center': 'renderRegulatoryCommandCenter',
       'regulatory-actions': 'renderRegulatoryActions',
       'regulatory-action-execution': 'renderRegulatoryActionExecution',
-      'regulatory-strategy': 'renderRegulatoryStrategy'
+      'regulatory-strategy': 'renderRegulatoryStrategy',
+      'regulatory-maturity': 'renderRegulatoryMaturity',
+      'regulatory-optimization': 'renderRegulatoryOptimization'
     }[routeId];
     if (fn && this[fn]) this[fn]();
   }

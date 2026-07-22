@@ -72,7 +72,9 @@ const App = {
     'regulatory-command-center': '集团监管决策驾驶舱',
     'regulatory-actions': '集团监管行动中心',
     'regulatory-action-execution': '监管行动执行',
-    'regulatory-strategy': '集团监管策略分析'
+    'regulatory-strategy': '集团监管策略分析',
+    'regulatory-maturity': '集团监管成熟度',
+    'regulatory-optimization': '集团监管持续优化'
   },
 
   init() {
@@ -85,6 +87,8 @@ const App = {
     this.renderRegulatoryActions();
     this.renderRegulatoryActionExecution();
     this.renderRegulatoryStrategy();
+    this.renderRegulatoryMaturity();
+    this.renderRegulatoryOptimization();
     this.renderGlobalLegalEntities();
     this.renderGlobalRegions();
     this.renderCoverageGaps();
@@ -152,7 +156,7 @@ const App = {
       this.renderKriDetail(params.kriId, params.scenarioId);
     }
 
-    if (['global-group-overview', 'group', 'global-legal-entities', 'global-regions', 'coverage-gaps', 'platform-operations', 'data-governance', 'cross-border-compliance', 'cross-domain-risks', 'warnings', 'rectification', 'regulatory-events', 'rectification-operations', 'regulatory-evaluation', 'regulatory-command-center', 'regulatory-actions', 'regulatory-action-execution', 'regulatory-strategy'].includes(pageId) && Object.keys(params).length) {
+    if (['global-group-overview', 'group', 'global-legal-entities', 'global-regions', 'coverage-gaps', 'platform-operations', 'data-governance', 'cross-border-compliance', 'cross-domain-risks', 'warnings', 'rectification', 'regulatory-events', 'rectification-operations', 'regulatory-evaluation', 'regulatory-command-center', 'regulatory-actions', 'regulatory-action-execution', 'regulatory-strategy', 'regulatory-maturity', 'regulatory-optimization'].includes(pageId) && Object.keys(params).length) {
       setTimeout(() => this.applyPublicNavigationContext(pageId, params), 50);
     }
   },
@@ -224,6 +228,7 @@ const App = {
       if (ctx.actionId) this.showRegulatoryActionExecutionDetail(ctx.actionId);
       if (ctx.feedbackId) this.showRegulatoryActionFeedbackDetail(ctx.feedbackId);
     }
+    if (pageId === 'regulatory-optimization' && ctx.recommendationId) this.showRegulatoryOptimizationDetail(ctx.recommendationId);
   },
 
   applyPublicNavigationContext(pageId, params) {
@@ -281,6 +286,7 @@ const App = {
       if (params.feedbackId) { this.regulatoryActionFeedbackFocusId = params.feedbackId; this.showRegulatoryActionFeedbackDetail(params.feedbackId); }
       if (params.decisionId) this.showRegulatoryDecisionDetail(params.decisionId);
     }
+    if (pageId === 'regulatory-optimization' && params.recommendationId) { this.regulatoryOptimizationFocusId = params.recommendationId; this.showRegulatoryOptimizationDetail(params.recommendationId); }
   },
 
   renderNav() {

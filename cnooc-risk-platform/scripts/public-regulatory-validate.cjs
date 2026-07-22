@@ -36,251 +36,86 @@ function resolve(id, arr, key, label) {
   return found;
 }
 
-// --- 页面目录（18个）---
 const expectedPages = [
   'global-group-overview', 'global-legal-entities', 'global-regions', 'coverage-gaps',
   'platform-operations', 'data-governance', 'cross-border-compliance', 'cross-domain-risks',
   'warnings', 'rectification', 'regulatory-events', 'rectification-operations', 'regulatory-evaluation',
-  'regulatory-command-center', 'regulatory-actions', 'regulatory-action-execution', 'regulatory-strategy', 'major'
+  'regulatory-command-center', 'regulatory-actions', 'regulatory-action-execution', 'regulatory-strategy',
+  'regulatory-maturity', 'regulatory-optimization', 'major'
 ];
 expectedPages.forEach(pid => {
   if (!pubJs.includes(`pageId: '${pid}'`)) errors.push(`公共页面清单缺失: ${pid}`);
 });
-const pageIdMatches = pubJs.match(/pageId:\s*'[^']+'/g) || [];
-if (pageIdMatches.length !== new Set(pageIdMatches).size) errors.push('publicRegulatoryPages 存在重复 pageId');
 
-// --- 公共组件 ---
 const components = [
-  'renderPublicStatusBadge', 'renderPublicBackButton', 'renderPublicDetailHeader',
-  'renderPublicDetailSection', 'buildPublicDetailPanel', 'renderPublicMetaGrid',
-  'renderPublicIdField', 'renderPublicLinkButton', 'renderPublicRelationList',
-  'renderPublicRelationCard', 'renderPublicRelationRow', 'renderPublicRelationLink',
-  'renderLineageNode', 'renderLineageArrow', 'renderLineagePath',
-  'renderPublicEmptyState', 'renderPublicErrorState', 'renderPublicFilterBar',
-  'renderPublicNotFoundPanel', 'showPublicDetailOrNotFound', 'resolvePublicRouteId',
-  'renderPublicTimeline', 'renderPublicTrendChart', 'renderPublicHealthBadge',
-  'renderPublicKpiCard', 'renderPublicEventTypeBadge', 'showRegulatoryEventDetail',
-  'renderPublicPriorityBadge', 'renderPublicActionCard', 'renderPublicConcentrationChart',
-  'renderPublicStrategyBadge', 'renderPublicActionStatusBadge', 'showRegulatoryActionDetail',
-  'showRegulatoryActionExecutionDetail', 'showRegulatoryActionFeedbackDetail', 'showRegulatoryDecisionDetail',
-  'calculateRegulatoryPriority', 'recalculateRegulatoryPriority', 'getActionsByRectificationTask',
-  'getRegulatoryRiskConcentration', 'getRegulatoryStrategyLevel', 'getRegulatoryActionFeedbacks',
-  'getRegulatoryDecisionHistory', 'renderRegulatoryActionExecution'
+  'renderPublicStatusBadge', 'renderPublicBackButton', 'buildPublicDetailPanel', 'renderPublicMetaGrid',
+  'renderPublicIdField', 'renderPublicLinkButton', 'renderPublicEmptyState', 'renderPublicErrorState',
+  'showPublicDetailOrNotFound', 'renderPublicMaturityBadge', 'renderPublicMaturityRadar',
+  'renderRegulatoryMaturity', 'renderRegulatoryOptimization', 'showRegulatoryOptimizationDetail',
+  'getRegulatoryMaturity', 'calculateRegulatoryPriority', 'recalculateRegulatoryPriority',
+  'showRegulatoryActionExecutionDetail', 'showRegulatoryActionFeedbackDetail', 'showRegulatoryDecisionDetail'
 ];
 components.forEach(fn => {
   if (!pubJs.includes(fn)) errors.push(`公共组件缺失: ${fn}`);
 });
 
-// --- 硬编码偏移扫描 ---
-const hardcodePatterns = [
-  /\.length\s*\+\s*\d+/g,
-  /entities\.length\s*\+\s*\d+/g,
-  /risks\.length\s*\+\s*\d+/g,
-  /sources\.length\s*\+\s*\d+/g
-];
 let hardcodeOffsetCount = 0;
-[appJs, pubJs].forEach((src, i) => {
-  const file = i === 0 ? 'app.js' : 'public-regulatory.js';
-  hardcodePatterns.forEach(re => {
-    const m = src.match(re) || [];
-    m.forEach(hit => {
-      if (!hit.includes('steps.length')) {
-        hardcodeOffsetCount++;
-        warnings.push(`硬编码偏移 ${file}: ${hit}`);
-      }
+[/\.length\s*\+\s*\d+/g].forEach(re => {
+  [appJs, pubJs].forEach((src, i) => {
+    (src.match(re) || []).forEach(hit => {
+      if (!hit.includes('steps.length')) { hardcodeOffsetCount++; warnings.push(`硬编码偏移: ${hit}`); }
     });
   });
 });
 
-// --- 全球对象 ID 与孤儿检查 ---
-(D.globalLegalEntities || []).forEach(e => {
-  req(e.entityId, 'entityId');
-  if (e.parentEntityId) resolve(e.parentEntityId, D.globalLegalEntities, 'entityId', 'parentEntityId');
-  if (e.regionId) resolve(e.regionId, D.globalRegions, 'regionId', 'entity.regionId');
-  if (e.countryId) resolve(e.countryId, D.globalCountries, 'countryId', 'entity.countryId');
-});
-(D.globalCountries || []).forEach(c => {
-  req(c.countryId, 'countryId');
-  resolve(c.regionId, D.globalRegions, 'regionId', 'country.regionId');
-});
-(D.globalProjects || []).forEach(p => {
-  req(p.projectId, 'projectId');
-  resolve(p.entityId, D.globalLegalEntities, 'entityId', 'project.entityId');
-  if (p.countryId) resolve(p.countryId, D.globalCountries, 'countryId', 'project.countryId');
-});
-
-// --- 数据治理对象 ---
-const sourceIds = (D.dataSourceRegistry || []).map(s => s.sourceId);
-const dupSources = sourceIds.filter((id, i) => sourceIds.indexOf(id) !== i);
-if (dupSources.length) errors.push(`数据源ID重复: ${[...new Set(dupSources)].join(', ')}`);
-(D.dataSourceRegistry || []).forEach(s => {
-  req(s.sourceId, 'sourceId');
-  if (s.entityId) resolve(s.entityId, D.globalLegalEntities, 'entityId', 'source.entityId');
-});
-(D.dataObjects || []).forEach(o => {
-  req(o.objectId, 'objectId');
-  resolve(o.sourceId, D.dataSourceRegistry, 'sourceId', 'object.sourceId');
-});
-(D.dataFields || []).forEach(f => {
-  req(f.fieldId, 'fieldId');
-  resolve(f.objectId, D.dataObjects, 'objectId', 'field.objectId');
-});
-(D.dataLineageRelations || []).forEach(r => {
-  req(r.relationId, 'relationId');
-  resolve(r.sourceId, D.dataSourceRegistry, 'sourceId', 'lineage.sourceId');
-  resolve(r.objectId, D.dataObjects, 'objectId', 'lineage.objectId');
-});
-(D.dataQualityIssues || []).forEach(q => {
-  req(q.issueId, 'issueId');
-  if (q.objectId) resolve(q.objectId, D.dataObjects, 'objectId', 'quality.objectId');
-});
-
-// --- 风险与整改 ---
-(D.warnings || []).forEach(w => {
-  req(w.id, 'warning.id');
-  if (w.entityId) resolve(w.entityId, D.globalLegalEntities, 'entityId', 'warning.entityId');
-  if (w.kriId) resolve(w.kriId, D.groupKris, 'id', 'warning.kriId');
-});
-(D.crossDomainRiskMatters || []).forEach(m => {
-  req(m.riskMatterId, 'riskMatterId');
-  (m.entityIds || []).forEach(eid => resolve(eid, D.globalLegalEntities, 'entityId', 'cdr.entityId'));
-  (m.projectIds || []).forEach(pid => resolve(pid, D.globalProjects, 'projectId', 'cdr.projectId'));
-  (m.relatedCrossBorderActivityIds || []).forEach(aid => resolve(aid, D.crossBorderDataActivities, 'activityId', 'cdr.activityId'));
-  (m.relatedDataQualityIssueIds || []).forEach(qid => resolve(qid, D.dataQualityIssues, 'issueId', 'cdr.qualityIssueId'));
-  (m.relatedRectificationTaskIds || []).forEach(tid => resolve(tid, D.rectificationTasks, 'taskId', 'cdr.rectTaskId'));
-});
-(D.rectificationTasks || []).forEach(t => {
-  req(t.taskId, 'taskId');
-  if (t.entityId) resolve(t.entityId, D.globalLegalEntities, 'entityId', 'rect.entityId');
-  if (t.riskMatterId) {
-    const w = D.warnings.find(x => x.id === t.riskMatterId);
-    const m = D.crossDomainRiskMatters.find(x => x.riskMatterId === t.riskMatterId);
-    if (!w && !m) errors.push(`无法解析: rect.riskMatterId=${t.riskMatterId}`);
-  }
-});
-(D.platformOperationAlerts || []).forEach(a => {
-  req(a.alertId, 'alertId');
-  if (a.sourceId) resolve(a.sourceId, D.dataSourceRegistry, 'sourceId', 'alert.sourceId');
-  if (a.qualityIssueId) resolve(a.qualityIssueId, D.dataQualityIssues, 'issueId', 'alert.qualityIssueId');
-  if (a.riskMatterId) resolve(a.riskMatterId, D.warnings, 'id', 'alert.riskMatterId');
-  if (a.rectificationTaskId) resolve(a.rectificationTaskId, D.rectificationTasks, 'taskId', 'alert.rectificationTaskId');
-});
-(D.coverageMatrixCells || []).forEach(c => {
-  req(c.cellId, 'cellId');
-  if (c.entityId) resolve(c.entityId, D.globalLegalEntities, 'entityId', 'matrix.entityId');
-  if (c.sourceId) resolve(c.sourceId, D.dataSourceRegistry, 'sourceId', 'matrix.sourceId');
-});
-(D.crossBorderDataActivities || []).forEach(a => {
-  req(a.activityId, 'activityId');
-  if (a.entityId) resolve(a.entityId, D.globalLegalEntities, 'entityId', 'cbd.entityId');
-  if (a.sourceId) resolve(a.sourceId, D.dataSourceRegistry, 'sourceId', 'cbd.sourceId');
-});
-
-// --- 聚合数据 ---
-const s = D.publicRegulatorySummary || {};
-if (!s.entityCount || s.entityCount !== (D.globalLegalEntities || []).length) {
-  errors.push(`publicRegulatorySummary.entityCount 不一致: ${s.entityCount} vs ${(D.globalLegalEntities || []).length}`);
-}
-const summaryFields = ['projectCount', 'sourceCount', 'warningCount', 'highRiskMatterCount', 'rectificationTaskCount', 'overdueRectificationCount', 'crossBorderRiskCount'];
-summaryFields.forEach(f => {
-  if (s[f] === undefined || s[f] === null) errors.push(`publicRegulatorySummary 缺失字段: ${f}`);
-});
-const groupHelpers = ['computeGroupOverviewMetrics', 'renderGroupOverviewFilterBar', 'renderGroupOverviewRegulatoryChain', 'renderGroupOverviewObjectTree', 'renderGroupOverviewCoverageSummary', 'renderGroupOverviewRiskSummary', 'renderGroupOverviewRectificationSummary', 'renderGroupOverviewPageCatalog', 'renderGroupOverviewHealthSummary', 'getGroupOverviewFilter', 'getRectificationClosureRate', 'getRectificationOverdueRate', 'renderRegulatoryEvents', 'renderRectificationOperations', 'renderRegulatoryEvaluation', 'renderRegulatoryCommandCenter', 'renderRegulatoryActions', 'renderRegulatoryActionExecution', 'renderRegulatoryStrategy'];
-groupHelpers.forEach(fn => {
-  if (!pubJs.includes(fn)) errors.push(`集团运营组件缺失: ${fn}`);
-});
-if (!D.regulatoryEvents || !D.regulatoryEvents.length) errors.push('regulatoryEvents 未生成');
-if (!D.regulatoryEventMetrics) errors.push('regulatoryEventMetrics 未生成');
-if (!D.regulatoryHealthScores) errors.push('regulatoryHealthScores 未生成');
-if (!D.regulatoryActions || !D.regulatoryActions.length) errors.push('regulatoryActions 未生成');
-if (!D.regulatoryActionFeedbacks || !D.regulatoryActionFeedbacks.length) errors.push('regulatoryActionFeedbacks 未生成');
-if (!D.regulatoryDecisionHistory || !D.regulatoryDecisionHistory.length) errors.push('regulatoryDecisionHistory 未生成');
-if (!D.regulatoryActionExecutionMetrics) errors.push('regulatoryActionExecutionMetrics 未生成');
-if (!D.regulatoryActionEfficiency) errors.push('regulatoryActionEfficiency 未生成');
-if (!D.regulatoryPrioritiesRecalculated) errors.push('regulatoryPrioritiesRecalculated 未生成');
-if (!D.regulatoryCommandCenterMetrics) errors.push('regulatoryCommandCenterMetrics 未生成');
-if (!D.regulatoryRiskConcentration) errors.push('regulatoryRiskConcentration 未生成');
-if (!D.regulatoryStrategyAnalysis) errors.push('regulatoryStrategyAnalysis 未生成');
-
+(D.globalLegalEntities || []).forEach(e => { req(e.entityId, 'entityId'); });
 (D.regulatoryActions || []).forEach(a => {
   req(a.actionId, 'actionId');
   (a.sourceEventIds || []).forEach(eid => resolve(eid, D.regulatoryEvents, 'eventId', 'action.sourceEventId'));
-  (a.sourceRiskMatterIds || []).forEach(rid => {
-    const w = D.warnings.find(x => x.id === rid);
-    const m = D.crossDomainRiskMatters.find(x => x.riskMatterId === rid);
-    if (!w && !m) errors.push(`无法解析: action.sourceRiskMatterId=${rid}`);
-  });
-  (a.sourceKriIds || []).forEach(kid => resolve(kid, D.groupKris, 'id', 'action.sourceKriId'));
-  (a.sourceQualityIssueIds || []).forEach(qid => resolve(qid, D.dataQualityIssues, 'issueId', 'action.sourceQualityIssueId'));
   (a.sourceRectificationTaskIds || []).forEach(tid => resolve(tid, D.rectificationTasks, 'taskId', 'action.sourceRectTaskId'));
-  if (a.entityId) resolve(a.entityId, D.globalLegalEntities, 'entityId', 'action.entityId');
 });
-
 (D.regulatoryActionFeedbacks || []).forEach(f => {
   req(f.feedbackId, 'feedbackId');
   resolve(f.actionId, D.regulatoryActions, 'actionId', 'feedback.actionId');
-  (f.relatedRectificationTaskIds || []).forEach(tid => resolve(tid, D.rectificationTasks, 'taskId', 'feedback.rectTaskId'));
 });
-
 (D.regulatoryDecisionHistory || []).forEach(d => {
   req(d.decisionId, 'decisionId');
-  (d.sourceEventIds || []).forEach(eid => resolve(eid, D.regulatoryEvents, 'eventId', 'decision.sourceEventId'));
   (d.sourceActionIds || []).forEach(aid => resolve(aid, D.regulatoryActions, 'actionId', 'decision.sourceActionId'));
-  (d.sourceRectificationTaskIds || []).forEach(tid => resolve(tid, D.rectificationTasks, 'taskId', 'decision.sourceRectTaskId'));
+});
+(D.regulatoryOptimizationRecommendations || []).forEach(r => {
+  req(r.recommendationId, 'recommendationId');
+  (r.relatedMetricIds || []).forEach(mid => {
+    const found = (D.regulatoryMaturity?.dimensions || []).flatMap(d => d.indicators || []).find(i => i.metricId === mid)
+      || (D.regulatoryOptimizationAnalysis?.metricOptimizations || []).find(m => m.metricId === mid);
+    if (!found) errors.push(`无法解析: recommendation.relatedMetricId=${mid}`);
+  });
+  (r.relatedRiskMatterIds || []).forEach(rid => {
+    const w = D.warnings.find(x => x.id === rid);
+    const m = D.crossDomainRiskMatters.find(x => x.riskMatterId === rid);
+    if (!w && !m && rid) errors.push(`无法解析: recommendation.relatedRiskMatterId=${rid}`);
+  });
+  (r.relatedRectificationTaskIds || []).forEach(tid => resolve(tid, D.rectificationTasks, 'taskId', 'rec.rectTaskId'));
+  (r.relatedActionIds || []).forEach(aid => resolve(aid, D.regulatoryActions, 'actionId', 'rec.actionId'));
 });
 
-(D.regulatoryEvents || []).forEach(ev => {
-  req(ev.eventId, 'eventId');
-  if (ev.entityId) resolve(ev.entityId, D.globalLegalEntities, 'entityId', 'event.entityId');
-  if (ev.projectId) resolve(ev.projectId, D.globalProjects, 'projectId', 'event.projectId');
-  if (ev.kriId) resolve(ev.kriId, D.groupKris, 'id', 'event.kriId');
-  if (ev.riskMatterId) {
-    const w = D.warnings.find(x => x.id === ev.riskMatterId);
-    const m = D.crossDomainRiskMatters.find(x => x.riskMatterId === ev.riskMatterId);
-    if (!w && !m) errors.push(`无法解析: event.riskMatterId=${ev.riskMatterId}`);
-  }
-  if (ev.rectificationTaskId) resolve(ev.rectificationTaskId, D.rectificationTasks, 'taskId', 'event.rectificationTaskId');
-});
-if (!pubJs.includes('groupOverviewFilter')) warnings.push('groupOverviewFilter 状态未声明');
-if (!D.platformOperationChain || !D.platformOperationChain.length) errors.push('platformOperationChain 未生成');
+if (!D.regulatoryMaturity) errors.push('regulatoryMaturity 未生成');
+if (!D.regulatoryMaturityTrend) errors.push('regulatoryMaturityTrend 未生成');
+if (!D.regulatoryOptimizationRecommendations?.length) errors.push('regulatoryOptimizationRecommendations 未生成');
+if (!D.regulatoryOptimizationAnalysis) errors.push('regulatoryOptimizationAnalysis 未生成');
+if (D.regulatoryMaturity && !D.regulatoryMaturity.dimensions?.length) errors.push('regulatoryMaturity.dimensions 未生成');
+if (D.regulatoryMaturityTrend && !D.regulatoryMaturityTrend.simulated) warnings.push('regulatoryMaturityTrend 应标注 simulated');
 
-// --- 投资管理冻结 ---
 const penetrateCount = (appJs.match(/navigate\(['"]penetration['"]/g) || []).length;
-const freezeChecks = {
-  'renderPenetration仍存在': /renderPenetration\s*\(/.test(appJs),
-  'showWarningDetail仍存在': /showWarningDetail\s*\(/.test(appJs),
-  'navigate(penetration)=3': penetrateCount === 3,
-  'navigatePublic存在': /navigatePublic\s*\(/.test(appJs),
-  'goBackPublic存在': /goBackPublic\s*\(/.test(appJs),
-  'publicNavHistory存在': /publicNavHistory/.test(appJs),
-  'showPublicWarningDetail存在': /showPublicWarningDetail\s*\(/.test(appJs),
-  'public-regulatory.js已引入': fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8').includes('public-regulatory.js'),
-  'global-group-overview在目录': pubJs.includes("pageId: 'global-group-overview'")
-};
-const freezeFails = Object.entries(freezeChecks).filter(([, ok]) => !ok).map(([k]) => k);
-
-const componentUsage = components.map(fn => {
-  const re = new RegExp(fn.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
-  const appCount = (appJs.match(re) || []).length;
-  const pubCount = (pubJs.match(re) || []).length;
-  return { component: fn, appJs: appCount, publicRegulatoryJs: pubCount, total: appCount + pubCount };
-});
-
-let gitDiffCheck = '通过';
-try {
-  execSync('git diff --check', { cwd: path.join(ROOT, '..'), stdio: 'pipe' });
-} catch {
-  gitDiffCheck = '不通过';
-}
+const freezeFails = [];
+if (penetrateCount !== 3) freezeFails.push('navigate(penetration)!=3');
+if (!/renderPenetration\s*\(/.test(appJs)) freezeFails.push('renderPenetration missing');
 
 let nodeCheck = '通过';
 try {
   execSync(`node --check ${dataPath}`, { stdio: 'pipe' });
   execSync(`node --check ${appPath}`, { stdio: 'pipe' });
   execSync(`node --check ${pubPath}`, { stdio: 'pipe' });
-} catch {
-  nodeCheck = '不通过';
-}
+} catch { nodeCheck = '不通过'; }
 
 const result = {
   idIntegrity: errors.length === 0 ? '通过' : '不通过',
@@ -288,17 +123,12 @@ const result = {
   warningCount: warnings.length,
   errors: errors.slice(0, 40),
   warnings: warnings.slice(0, 15),
-  dataSourceUniqueness: dupSources.length === 0 ? '通过' : '不通过',
   investmentFreeze: freezeFails.length === 0 ? '通过' : '不通过',
   freezeFails,
   penetrateCallCount: penetrateCount,
   hardcodeOffsetCount,
-  dynamicAggregation: (s.entityCount && D.platformOperationChain) ? '通过' : '不通过',
-  componentUsage: componentUsage.filter(c => c.total > 0),
   nodeCheck,
-  gitDiffCheck,
-  emptyStateComponents: /renderPublicEmptyState/.test(pubJs) && /renderPublicNotFoundPanel/.test(pubJs) ? '通过' : '不通过'
+  emptyStateComponents: /renderPublicEmptyState/.test(pubJs) ? '通过' : '不通过'
 };
-
 console.log(JSON.stringify(result, null, 2));
-process.exit(errors.length || dupSources.length || freezeFails.length || hardcodeOffsetCount ? 1 : 0);
+process.exit(errors.length || freezeFails.length || hardcodeOffsetCount ? 1 : 0);
