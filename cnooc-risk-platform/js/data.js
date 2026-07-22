@@ -602,3 +602,76 @@ Object.assign(APP_DATA, {
     if (!w.responsibleDepartment && ext.responsibleDepartment) w.responsibleDepartment = ext.responsibleDepartment;
   });
 })();
+
+(function () {
+  const entities = APP_DATA.globalLegalEntities || [];
+  const overseas = entities.filter(e => e.regionId !== 'CN');
+  const gaps = APP_DATA.coverageGaps || [];
+  const alerts = APP_DATA.platformOperationAlerts || [];
+  const quality = APP_DATA.dataQualityIssues || [];
+  const highRiskEntities = entities.filter(e => (e.highRiskCount || 0) > 0);
+  const openRects = (APP_DATA.rectificationTasks || []).filter(t => t.status !== '已关闭' && !t.closedAt);
+  const connected = entities.filter(e => (e.dataCoverageStatus || e.dataAccessStatus) === '已接入');
+  APP_DATA.publicRegulatorySummary = {
+    entityCount: entities.length,
+    overseasEntityCount: overseas.length,
+    highRiskEntityCount: highRiskEntities.length,
+    countryCount: (APP_DATA.globalCountries || []).length,
+    regionCount: (APP_DATA.globalRegions || []).length,
+    coverageGapCount: gaps.length,
+    platformAlertCount: alerts.length,
+    qualityIssueCount: quality.length,
+    openRectificationCount: openRects.length,
+    crossDomainMatterCount: (APP_DATA.crossDomainRiskMetrics || {}).crossDomainMatterCount || (APP_DATA.crossDomainRiskMatters || []).length,
+    crossBorderActivityCount: (APP_DATA.crossBorderComplianceMetrics || {}).crossBorderDataActivityCount || (APP_DATA.crossBorderDataActivities || []).length,
+    dataCoverageRate: entities.length ? (connected.length / entities.length * 100).toFixed(1) + '%' : '—',
+    laggingEntityCount: entities.filter(e => e.dataQualityStatus === '关注' || e.dataQualityStatus === '待提升').length
+  };
+  (APP_DATA.globalRegions || []).forEach(r => {
+    if (!r.lastDataUpdateTime) {
+      const ents = entities.filter(e => e.regionId === r.regionId);
+      r.lastDataUpdateTime = ents.map(e => e.lastDataUpdateTime).filter(Boolean).sort().reverse()[0] || '2026-07-22 08:00';
+    }
+  });
+  (APP_DATA.globalCountries || []).forEach(c => {
+    if (!c.lastDataUpdateTime) {
+      const ents = entities.filter(e => e.countryId === c.countryId);
+      c.lastDataUpdateTime = ents.map(e => e.lastDataUpdateTime).filter(Boolean).sort().reverse()[0] || '2026-07-22 08:00';
+    }
+  });
+  (APP_DATA.dataQualityIssues || []).forEach(q => {
+    if (!q.lastDataUpdateTime) {
+      const obj = (APP_DATA.dataObjects || []).find(o => o.objectId === q.objectId);
+      q.lastDataUpdateTime = (obj && obj.lastUpdateTime) || '2026-07-22 08:00';
+    }
+  });
+  (APP_DATA.crossDomainRiskMatters || []).forEach(m => {
+    if (!m.lastDataUpdateTime) m.lastDataUpdateTime = m.lastUpdateTime || '2026-07-22 08:00';
+  });
+  (APP_DATA.crossBorderDataActivities || []).forEach(a => {
+    if (!a.lastDataUpdateTime) a.lastDataUpdateTime = a.lastReviewDate || '2026-07-22 08:00';
+  });
+  (APP_DATA.rectificationTasks || []).forEach(t => {
+    if (!t.lastDataUpdateTime) t.lastDataUpdateTime = t.closedAt || t.deadline || '2026-07-22 08:00';
+  });
+  const sources = APP_DATA.dataSourceRegistry || [];
+  const connectedSrc = sources.filter(s => s.coverageStatus === '已接入');
+  const metrics = APP_DATA.platformOperationMetrics || [];
+  const metricVal = (label) => (metrics.find(m => m[0] === label) || [])[1] || '—';
+  const openAlerts = alerts.filter(a => a.status !== '已关闭');
+  const allRects = APP_DATA.rectificationTasks || [];
+  const closedRects = allRects.filter(t => t.status === '已关闭' || t.closedAt);
+  const kris = APP_DATA.groupKris || [];
+  const kriOk = kris.filter(k => k.status === '正常' || k.status === '良好');
+  APP_DATA.platformOperationChain = [
+    ['监管对象', entities.length, `已覆盖${connected.length}`, `待完善${entities.length - connected.length}`],
+    ['数据接入', metricVal('数据源接入率'), `已接入${connectedSrc.length}个`, `待接入${sources.length - connectedSrc.length}个`],
+    ['数据质量', metricVal('数据完整率'), `正常${sources.filter(s => (s.qualityScore || 0) >= 90).length}个`, `异常${quality.length}项`],
+    ['指标计算', metricVal('KRI更新成功率'), `指标${(APP_DATA.dataIndicators || []).length}项`, `异常${quality.filter(q => q.indicatorId).length}项`],
+    ['KRI更新', metricVal('KRI更新成功率'), `正常${kriOk.length}项`, `异常${kris.length - kriOk.length}项`],
+    ['规则执行', metricVal('规则执行率'), '正常执行', `异常${openAlerts.filter(a => a.alertType === '规则执行').length}项`],
+    ['风险预警', metricVal('风险预警触达率'), `触达${(APP_DATA.warnings || []).length}项`, `待处理${openAlerts.length}项`],
+    ['责任处置', metricVal('异常处置及时率'), '及时处置', `超期${allRects.filter(t => t.status === '逾期').length}项`],
+    ['整改闭环', metricVal('整改闭环率'), `已关闭${closedRects.length}项`, `未闭环${openRects.length}项`]
+  ];
+})();
