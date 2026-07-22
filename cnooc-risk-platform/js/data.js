@@ -4127,3 +4127,374 @@ Object.assign(APP_DATA, {
   APP_DATA.regulatoryDecisionContext = decisionContexts;
   APP_DATA.regulatoryWorkbenchMetrics = workbenchMetrics;
 })();
+
+(function () {
+  const TODAY = '2026-07-22';
+  const entities = APP_DATA.globalLegalEntities || [];
+  const regions = APP_DATA.globalRegions || [];
+  const countries = APP_DATA.globalCountries || [];
+  const projects = APP_DATA.globalProjects || [];
+  const domains = APP_DATA.regulationDomains || [];
+  const events = APP_DATA.regulatoryEvents || [];
+  const warnings = APP_DATA.warnings || [];
+  const cdrMatters = APP_DATA.crossDomainRiskMatters || [];
+  const rects = APP_DATA.rectificationTasks || [];
+  const actions = APP_DATA.regulatoryActions || [];
+  const supTasks = APP_DATA.regulatorySupervisionTasks || [];
+  const queue = APP_DATA.regulatoryQueue || [];
+  const priorities = APP_DATA.regulatoryPrioritiesRecalculated || APP_DATA.regulatoryPriorities || {};
+  const health = APP_DATA.regulatoryHealthScores || {};
+  const entityHealth = health.entities || [];
+  const strategy = APP_DATA.regulatoryStrategyAnalysis || {};
+  const maturity = APP_DATA.regulatoryMaturity || {};
+  const perfSummary = APP_DATA.regulatoryPerformanceSummary || {};
+  const objectives = APP_DATA.regulatoryStrategicObjectives || [];
+  const annualPlans = APP_DATA.regulatoryAnnualPlans || [];
+  const anomalies = APP_DATA.regulatoryRuleRuntimeAnomalies || [];
+  const rules = APP_DATA.regulatoryRules || [];
+  const versions = APP_DATA.regulatoryRuleVersions || [];
+  const sources = APP_DATA.dataSources || [];
+  const kris = APP_DATA.groupKris || [];
+  const quality = APP_DATA.dataQualityIssues || [];
+  const priorityObjects = APP_DATA.regulatoryPriorityObjects || [];
+  const decisionContexts = APP_DATA.regulatoryDecisionContext || [];
+  const decisions = APP_DATA.regulatoryDecisionHistory || [];
+  const wbM = APP_DATA.regulatoryWorkbenchMetrics || {};
+  const cbActs = APP_DATA.crossBorderDataActivities || [];
+
+  const entityRegulator = entities.find(e => e.entityId !== 'G001') || entities[0];
+  const domainRegulator = domains.find(d => d.id === 'investment') || domains[0];
+
+  const roleProfiles = [
+    {
+      roleId: 'ROLE-GROUP-LEADER',
+      roleType: 'GROUP_LEADER',
+      roleName: '集团领导',
+      description: '关注集团整体监管状态、重大风险与战略决策',
+      defaultPageId: 'regulatory-role-workbench',
+      visibleModules: ['kpi', 'urgent', 'focus', 'performance', 'strategy'],
+      visiblePages: ['group', 'regulatory-command-center', 'regulatory-role-workbench', 'regulatory-my-work', 'regulatory-search', 'regulatory-decision-room', 'regulatory-strategic-review'],
+      defaultScopeType: 'GROUP',
+      defaultScopeId: 'G001',
+      kpiConfig: ['majorRisk', 'highPriorityEntity', 'overdueRect', 'pendingDecision', 'crossBorder', 'crossDomain', 'closureRate', 'strategyDeviation'],
+      priorityConfig: { minLevel: 'HIGH' },
+      quickActions: [
+        { label: '决策工作室', pageId: 'regulatory-decision-room' },
+        { label: '战略复盘', pageId: 'regulatory-strategic-review' },
+        { label: '监管绩效', pageId: 'regulatory-performance' }
+      ],
+      notificationTypes: ['MAJOR_RISK', 'OVERDUE_RECT', 'STRATEGY_DEVIATION', 'CROSS_BORDER', 'DECISION']
+    },
+    {
+      roleId: 'ROLE-GROUP-REG',
+      roleType: 'GROUP_REGULATORY',
+      roleName: '集团监管部门',
+      description: '统筹监管事件、待办、行动、任务与规则运行',
+      defaultPageId: 'regulatory-role-workbench',
+      visibleModules: ['kpi', 'queue', 'action', 'rule', 'performance'],
+      visiblePages: ['regulatory-workbench', 'regulatory-queue', 'regulatory-events', 'regulatory-actions', 'regulatory-supervision-tasks', 'regulatory-rule-runtime'],
+      defaultScopeType: 'GROUP',
+      defaultScopeId: 'G001',
+      kpiConfig: ['pendingEvent', 'pendingAction', 'pendingTask', 'pendingVerification', 'overdue', 'ruleAnomaly', 'ruleApproval', 'performance'],
+      priorityConfig: { minLevel: 'MEDIUM' },
+      quickActions: [
+        { label: '待办队列', pageId: 'regulatory-queue' },
+        { label: '监管行动', pageId: 'regulatory-actions' },
+        { label: '规则运行', pageId: 'regulatory-rule-runtime' }
+      ],
+      notificationTypes: ['EVENT', 'ACTION', 'TASK', 'RULE_ANOMALY', 'VERIFICATION']
+    },
+    {
+      roleId: 'ROLE-DOMAIN-REG',
+      roleType: 'DOMAIN_REGULATOR',
+      roleName: '专业领域监管部门',
+      description: '关注领域风险、KRI、数据质量与领域整改',
+      defaultPageId: 'regulatory-role-workbench',
+      visibleModules: ['kpi', 'domainRisk', 'kri', 'dataQuality', 'domainAction'],
+      visiblePages: ['warnings', 'data-governance', 'regulatory-actions', 'rectification', 'regulatory-performance'],
+      defaultScopeType: 'DOMAIN',
+      defaultScopeId: domainRegulator?.id || 'investment',
+      kpiConfig: ['domainRisk', 'kriException', 'dataQuality', 'domainAction', 'domainRect', 'domainClosure'],
+      priorityConfig: { domainId: domainRegulator?.id || 'investment' },
+      quickActions: [
+        { label: '领域风险', pageId: 'warnings' },
+        { label: '数据治理', pageId: 'data-governance' },
+        { label: '整改督办', pageId: 'rectification' }
+      ],
+      notificationTypes: ['DOMAIN_RISK', 'KRI', 'DATA_QUALITY', 'RECTIFICATION']
+    },
+    {
+      roleId: 'ROLE-ENTITY-REG',
+      roleType: 'ENTITY_REGULATOR',
+      roleName: '法人监管用户',
+      description: '关注本法人风险、KRI、整改、行动与健康度',
+      defaultPageId: 'regulatory-role-workbench',
+      visibleModules: ['kpi', 'entityRisk', 'entityQueue', 'entityHealth'],
+      visiblePages: ['global-legal-entities', 'warnings', 'rectification', 'regulatory-actions', 'regulatory-my-work'],
+      defaultScopeType: 'ENTITY',
+      defaultScopeId: entityRegulator?.entityId || 'A001',
+      kpiConfig: ['entityHighRisk', 'entityQueue', 'entityOverdueRect', 'entityKri', 'entityAction', 'entityHealth', 'entityPriority'],
+      priorityConfig: { entityId: entityRegulator?.entityId },
+      quickActions: [
+        { label: '法人详情', pageId: 'global-legal-entities' },
+        { label: '我的待办', pageId: 'regulatory-my-work' },
+        { label: '决策上下文', pageId: 'regulatory-decision-room' }
+      ],
+      notificationTypes: ['ENTITY_RISK', 'ENTITY_RECT', 'ENTITY_ACTION', 'ENTITY_KRI']
+    }
+  ];
+
+  const filterQueueForRole = (role, scopeType, scopeId) => {
+    let list = [...queue];
+    if (scopeType === 'ENTITY' && scopeId) list = list.filter(q => q.entityId === scopeId);
+    else if (scopeType === 'DOMAIN' && scopeId) list = list.filter(q => q.domainId === scopeId);
+    if (role.roleType === 'GROUP_LEADER') list = list.filter(q => q.priority === 'CRITICAL' || q.priority === 'HIGH');
+    return list;
+  };
+
+  const buildRoleKpis = (role, scopeType, scopeId) => {
+    const eids = scopeType === 'ENTITY' && scopeId ? [scopeId]
+      : scopeType === 'DOMAIN' && scopeId
+        ? [...new Set(events.filter(e => e.domainId === scopeId).map(e => e.entityId).filter(Boolean))]
+        : entities.filter(e => e.entityId !== 'G001').map(e => e.entityId);
+    const entWarnings = warnings.filter(w => scopeType === 'GROUP' || eids.includes(w.entityId));
+    const entRects = rects.filter(t => scopeType === 'GROUP' || eids.includes(t.entityId));
+    const entActions = actions.filter(a => scopeType === 'GROUP' || eids.includes(a.entityId));
+    const overdueRects = entRects.filter(t => t.deadline && t.deadline < TODAY && t.status !== '已关闭');
+    const majorRisks = entWarnings.filter(w => w.level === '重大').length;
+    const highPriEntities = priorityObjects.filter(o => o.priority === 'CRITICAL' || o.priority === 'HIGH').length;
+    const cbRisk = cbActs.filter(a => a.complianceStatus === '异常' || a.riskLevel === 'HIGH').length;
+    const cdrHigh = cdrMatters.filter(m => m.riskLevel === '高').length;
+    const stratDev = objectives.filter(o => o.status === 'BEHIND' || o.status === 'AT_RISK').length;
+    const domainKri = scopeType === 'DOMAIN' && scopeId
+      ? kris.filter(k => (k.domainId || 'investment') === scopeId && (k.status === '红色' || k.status === '黄色')).length
+      : kris.filter(k => k.status === '红色' || k.status === '黄色').length;
+    const domainQual = scopeType === 'DOMAIN' && scopeId
+      ? quality.filter(q => {
+        const obj = (APP_DATA.dataObjects || []).find(o => o.objectId === q.objectId);
+        return obj && (obj.domainId || 'investment') === scopeId;
+      }).length
+      : quality.length;
+    const closureRate = entRects.length
+      ? Math.round(entRects.filter(t => t.status === '已关闭').length / entRects.length * 100)
+      : 100;
+    const entityPri = scopeType === 'ENTITY' && scopeId ? priorities[scopeId] : null;
+    const entityH = scopeType === 'ENTITY' && scopeId ? entityHealth.find(h => h.objectId === scopeId) : null;
+
+    const kpiMap = {
+      majorRisk: { label: '重大风险事项', value: majorRisks, nav: `App.navigatePublic('warnings')` },
+      highPriorityEntity: { label: '高优先级法人', value: highPriEntities, nav: `App.navigatePublic('global-legal-entities')` },
+      overdueRect: { label: '超期整改', value: overdueRects.length, nav: `App.navigatePublic('rectification-operations')` },
+      pendingDecision: { label: '待决策事项', value: wbM.pendingDecisionCount || 0, nav: `App.navigatePublic('regulatory-queue',{queueType:'DECISION'})` },
+      crossBorder: { label: '跨境合规风险', value: cbRisk, nav: `App.navigatePublic('cross-border-compliance')` },
+      crossDomain: { label: '跨领域风险', value: cdrHigh, nav: `App.navigatePublic('cross-domain-risks')` },
+      closureRate: { label: '监管闭环率', value: closureRate + '%', nav: `App.navigatePublic('regulatory-evaluation')` },
+      strategyDeviation: { label: '战略目标偏差', value: stratDev, nav: `App.navigatePublic('regulatory-strategy-planning',{status:'BEHIND'})` },
+      pendingEvent: { label: '待处理事件', value: events.filter(e => e.status !== 'CLOSED').length, nav: `App.navigatePublic('regulatory-events')` },
+      pendingAction: { label: '待执行行动', value: wbM.pendingActionCount || 0, nav: `App.navigatePublic('regulatory-queue',{queueType:'ACTION'})` },
+      pendingTask: { label: '待协同任务', value: wbM.pendingTaskCount || 0, nav: `App.navigatePublic('regulatory-queue',{queueType:'SUPERVISION_TASK'})` },
+      pendingVerification: { label: '待验证事项', value: wbM.pendingVerificationCount || 0, nav: `App.navigatePublic('regulatory-queue',{queueType:'VERIFICATION'})` },
+      overdue: { label: '超期事项', value: wbM.overdueCount || 0, nav: `App.navigatePublic('regulatory-queue',{overdue:'true'})` },
+      ruleAnomaly: { label: '规则运行异常', value: wbM.ruleAnomalyCount || 0, nav: `App.navigatePublic('regulatory-queue',{queueType:'RULE_ANOMALY'})` },
+      ruleApproval: { label: '待审批事项', value: queue.filter(q => q.queueType === 'RULE_APPROVAL').length, nav: `App.navigatePublic('regulatory-queue',{queueType:'RULE_APPROVAL'})` },
+      performance: { label: '监管绩效', value: perfSummary.regulatoryEffectivenessScore || 0, nav: `App.navigatePublic('regulatory-performance')` },
+      domainRisk: { label: '领域风险', value: entWarnings.length, nav: `App.navigatePublic('warnings')` },
+      kriException: { label: '领域 KRI 异常', value: domainKri, nav: `App.navigatePublic('data-governance')` },
+      dataQuality: { label: '数据质量问题', value: domainQual, nav: `App.navigatePublic('data-governance')` },
+      domainAction: { label: '领域监管行动', value: entActions.length, nav: `App.navigatePublic('regulatory-actions')` },
+      domainRect: { label: '领域整改', value: entRects.filter(t => t.status !== '已关闭').length, nav: `App.navigatePublic('rectification')` },
+      domainClosure: { label: '领域闭环率', value: closureRate + '%', nav: `App.navigatePublic('regulatory-evaluation')` },
+      entityHighRisk: { label: '本法人高风险', value: majorRisks, nav: `App.navigatePublic('warnings',{entityId:scopeId})` },
+      entityQueue: { label: '本法人待办', value: filterQueueForRole(role, scopeType, scopeId).length, nav: `App.navigatePublic('regulatory-my-work')` },
+      entityOverdueRect: { label: '本法人超期整改', value: overdueRects.length, nav: `App.navigatePublic('rectification',{entityId:scopeId})` },
+      entityKri: { label: '本法人 KRI 异常', value: entityRegulator?.kriExceptionCount || domainKri, nav: `App.navigatePublic('data-governance')` },
+      entityAction: { label: '本法人监管行动', value: entActions.filter(a => !['VERIFIED', 'CANCELLED'].includes(a.status)).length, nav: `App.navigatePublic('regulatory-actions',{entityId:scopeId})` },
+      entityHealth: { label: '本法人健康度', value: entityH?.level || '—', nav: `App.navigatePublic('global-legal-entities',{entityId:scopeId})` },
+      entityPriority: { label: '本法人监管优先级', value: entityPri?.priority || '—', nav: `App.navigatePublic('regulatory-strategy')` }
+    };
+    return (role.kpiConfig || []).map(k => ({ key: k, ...kpiMap[k] })).filter(k => k.label);
+  };
+
+  const buildUrgentItems = (role, scopeType, scopeId) => {
+    const items = [];
+    if (role.roleType === 'GROUP_LEADER') {
+      warnings.filter(w => w.level === '重大').slice(0, 3).forEach(w => {
+        items.push({ title: w.name, sourceType: 'RISK', priority: 'HIGH', nav: `warnings`, params: { riskMatterId: w.id } });
+      });
+      priorityObjects.filter(o => o.priority === 'CRITICAL').slice(0, 2).forEach(o => {
+        items.push({ title: o.objectName + ' 高优先级', sourceType: 'ENTITY', priority: 'CRITICAL', nav: 'regulatory-decision-room', params: { entityId: o.objectId } });
+      });
+      objectives.filter(o => o.status === 'BEHIND').slice(0, 2).forEach(o => {
+        items.push({ title: o.objectiveName + ' 战略偏差', sourceType: 'OBJECTIVE', priority: 'HIGH', nav: 'regulatory-strategy-planning', params: { objectiveId: o.objectiveId } });
+      });
+    } else if (role.roleType === 'GROUP_REGULATORY') {
+      events.filter(e => e.riskLevel === 'HIGH').slice(0, 3).forEach(ev => {
+        items.push({ title: ev.eventTitle || ev.eventId, sourceType: 'EVENT', priority: 'HIGH', nav: 'regulatory-events', params: { eventId: ev.eventId } });
+      });
+      queue.filter(q => q.isOverdue).slice(0, 3).forEach(q => {
+        items.push({ title: q.title, sourceType: 'QUEUE', priority: q.priority, nav: 'regulatory-queue', params: { queueItemId: q.queueItemId } });
+      });
+    } else if (role.roleType === 'DOMAIN_REGULATOR') {
+      warnings.filter(w => (w.domainId || 'investment') === scopeId && w.level === '重大').slice(0, 3).forEach(w => {
+        items.push({ title: w.name, sourceType: 'RISK', priority: 'HIGH', nav: 'warnings', params: { riskMatterId: w.id } });
+      });
+      quality.slice(0, 2).forEach(q => {
+        items.push({ title: q.issueId + ' 数据质量', sourceType: 'DATA', priority: 'MEDIUM', nav: 'data-governance', params: { qualityIssueId: q.issueId } });
+      });
+    } else {
+      const eid = scopeId;
+      warnings.filter(w => w.entityId === eid).filter(w => w.level === '重大').slice(0, 2).forEach(w => {
+        items.push({ title: w.name, sourceType: 'RISK', priority: 'HIGH', nav: 'warnings', params: { riskMatterId: w.id } });
+      });
+      filterQueueForRole(role, scopeType, scopeId).slice(0, 3).forEach(q => {
+        items.push({ title: q.title, sourceType: 'QUEUE', priority: q.priority, nav: 'regulatory-my-work', params: { queueItemId: q.queueItemId } });
+      });
+    }
+    return items;
+  };
+
+  const buildFocusObjects = (role, scopeType, scopeId) => {
+    if (role.roleType === 'GROUP_LEADER') {
+      return {
+        entities: (wbM.topEntityIds || []).slice(0, 5).map(id => ({ objectId: id, objectType: 'ENTITY', name: (entities.find(e => e.entityId === id) || {}).entityName })),
+        regions: (wbM.topRegionIds || []).slice(0, 3).map(id => ({ objectId: id, objectType: 'REGION', name: (regions.find(r => r.regionId === id) || {}).regionName })),
+        projects: (wbM.topProjectIds || []).slice(0, 3).map(id => ({ objectId: id, objectType: 'PROJECT', name: (projects.find(p => p.projectId === id) || {}).projectName })),
+        domains: (wbM.topDomainIds || []).slice(0, 3).map(id => ({ objectId: id, objectType: 'DOMAIN', name: (domains.find(d => d.id === id) || {}).name }))
+      };
+    }
+    if (role.roleType === 'GROUP_REGULATORY') {
+      return {
+        objects: priorityObjects.slice(0, 5).map(o => ({ objectId: o.objectId, objectType: o.objectType, name: o.objectName, priority: o.priority }))
+      };
+    }
+    if (role.roleType === 'DOMAIN_REGULATOR') {
+      const eids = [...new Set(events.filter(e => e.domainId === scopeId).map(e => e.entityId))];
+      return {
+        entities: eids.slice(0, 5).map(id => ({ objectId: id, objectType: 'ENTITY', name: (entities.find(e => e.entityId === id) || {}).entityName })),
+        risks: warnings.filter(w => (w.domainId || 'investment') === scopeId).slice(0, 5).map(w => ({ objectId: w.id, objectType: 'RISK', name: w.name }))
+      };
+    }
+    const eid = scopeId;
+    return {
+      risks: warnings.filter(w => w.entityId === eid).slice(0, 5).map(w => ({ objectId: w.id, objectType: 'RISK', name: w.name })),
+      kris: kris.filter(k => k.entityId === eid || !k.entityId).slice(0, 3).map(k => ({ objectId: k.id, objectType: 'KRI', name: k.name })),
+      rects: rects.filter(t => t.entityId === eid).slice(0, 3).map(t => ({ objectId: t.taskId, objectType: 'RECT', name: t.title }))
+    };
+  };
+
+  const roleWorkbenches = roleProfiles.map((role, idx) => {
+    const scopeType = role.defaultScopeType;
+    const scopeId = role.defaultScopeId;
+    const roleQueue = filterQueueForRole(role, scopeType, scopeId);
+    return {
+      workbenchId: 'RW-' + String(idx + 1).padStart(3, '0'),
+      roleId: role.roleId,
+      roleType: role.roleType,
+      scopeType,
+      scopeId,
+      title: role.roleName + '工作台',
+      subtitle: role.description,
+      kpis: buildRoleKpis(role, scopeType, scopeId),
+      urgentItems: buildUrgentItems(role, scopeType, scopeId),
+      pendingItems: roleQueue.slice(0, 8).map(q => ({
+        queueItemId: q.queueItemId, queueType: q.queueType, title: q.title,
+        priority: q.priority, dueDate: q.dueDate, isOverdue: q.isOverdue,
+        sourceType: q.sourceType, recommendedAction: q.recommendedAction
+      })),
+      focusObjects: buildFocusObjects(role, scopeType, scopeId),
+      riskSummary: { major: warnings.filter(w => w.level === '重大').length, high: warnings.filter(w => w.level === '较大').length },
+      actionSummary: { pending: actions.filter(a => !['VERIFIED', 'CANCELLED'].includes(a.status)).length },
+      rectificationSummary: { open: rects.filter(t => t.status !== '已关闭').length, overdue: rects.filter(t => t.deadline && t.deadline < TODAY && t.status !== '已关闭').length },
+      performanceSummary: { score: perfSummary.regulatoryEffectivenessScore || 0 },
+      quickActions: role.quickActions || [],
+      recommendedPages: role.visiblePages || [],
+      updatedAt: TODAY + 'T08:00:00'
+    };
+  });
+
+  const searchIndex = [];
+  let resSeq = 1;
+  const addSearch = (item) => {
+    searchIndex.push({
+      resultId: 'SR-' + String(resSeq++).padStart(4, '0'),
+      objectType: item.objectType,
+      objectId: item.objectId,
+      title: item.title,
+      subtitle: item.subtitle || '',
+      regionId: item.regionId || null,
+      countryId: item.countryId || null,
+      entityId: item.entityId || null,
+      projectId: item.projectId || null,
+      domainId: item.domainId || null,
+      priority: item.priority || null,
+      status: item.status || null,
+      matchedFields: item.matchedFields || ['title'],
+      targetPageId: item.targetPageId,
+      targetParams: item.targetParams || {},
+      category: item.category
+    });
+  };
+
+  regions.forEach(r => addSearch({ objectType: 'REGION', objectId: r.regionId, title: r.regionName, subtitle: '区域', category: '监管对象', targetPageId: 'global-regions', targetParams: { regionId: r.regionId }, regionId: r.regionId }));
+  countries.forEach(c => addSearch({ objectType: 'COUNTRY', objectId: c.countryId, title: c.countryName, subtitle: c.regionName, category: '监管对象', targetPageId: 'global-regions', targetParams: { regionId: c.regionId, countryId: c.countryId }, regionId: c.regionId, countryId: c.countryId }));
+  entities.filter(e => e.entityId !== 'G001').forEach(e => addSearch({ objectType: 'ENTITY', objectId: e.entityId, title: e.entityName, subtitle: e.entityType, category: '监管对象', targetPageId: 'global-legal-entities', targetParams: { entityId: e.entityId }, entityId: e.entityId, regionId: e.regionId }));
+  projects.forEach(p => addSearch({ objectType: 'PROJECT', objectId: p.projectId, title: p.projectName, subtitle: p.projectType, category: '监管对象', targetPageId: 'global-regions', targetParams: { projectId: p.projectId }, projectId: p.projectId, entityId: p.entityId }));
+  warnings.forEach(w => addSearch({ objectType: 'RISK', objectId: w.id, title: w.name, subtitle: w.level, category: '风险与事件', targetPageId: 'warnings', targetParams: { riskMatterId: w.id }, entityId: w.entityId, priority: w.level, status: w.status }));
+  cdrMatters.forEach(m => addSearch({ objectType: 'CROSS_DOMAIN_RISK', objectId: m.riskMatterId, title: m.riskMatterName, subtitle: m.riskLevel, category: '风险与事件', targetPageId: 'cross-domain-risks', targetParams: { riskMatterId: m.riskMatterId }, priority: m.riskLevel }));
+  events.forEach(ev => addSearch({ objectType: 'EVENT', objectId: ev.eventId, title: ev.eventTitle || ev.eventId, subtitle: ev.eventType, category: '风险与事件', targetPageId: 'regulatory-events', targetParams: { eventId: ev.eventId }, entityId: ev.entityId, priority: ev.riskLevel, status: ev.status }));
+  kris.forEach(k => addSearch({ objectType: 'KRI', objectId: k.id, title: k.name, subtitle: k.status, category: '数据与指标', targetPageId: 'data-governance', targetParams: { indicatorId: k.id }, domainId: k.domainId, status: k.status }));
+  sources.forEach(s => addSearch({ objectType: 'DATA_SOURCE', objectId: s.sourceId, title: s.systemName, subtitle: s.accessStatus, category: '数据与指标', targetPageId: 'data-governance', targetParams: { sourceId: s.sourceId }, status: s.accessStatus }));
+  actions.forEach(a => addSearch({ objectType: 'ACTION', objectId: a.actionId, title: a.actionId + ' · ' + a.actionType, subtitle: a.status, category: '监管行动', targetPageId: 'regulatory-actions', targetParams: { actionId: a.actionId }, entityId: a.entityId, priority: a.priority, status: a.status }));
+  supTasks.forEach(t => addSearch({ objectType: 'SUPERVISION_TASK', objectId: t.supervisionTaskId, title: t.supervisionTaskId, subtitle: t.taskStatus, category: '监管行动', targetPageId: 'regulatory-supervision-tasks', targetParams: { supervisionTaskId: t.supervisionTaskId }, entityId: t.entityId, status: t.taskStatus }));
+  rects.forEach(t => addSearch({ objectType: 'RECTIFICATION', objectId: t.taskId, title: t.title, subtitle: t.status, category: '整改与任务', targetPageId: 'rectification', targetParams: { rectificationTaskId: t.taskId }, entityId: t.entityId, priority: t.level, status: t.status }));
+  queue.forEach(q => addSearch({ objectType: 'QUEUE', objectId: q.queueItemId, title: q.title, subtitle: q.queueType, category: '整改与任务', targetPageId: 'regulatory-queue', targetParams: { queueItemId: q.queueItemId }, entityId: q.entityId, priority: q.priority, status: q.status }));
+  rules.forEach(r => addSearch({ objectType: 'RULE', objectId: r.ruleId, title: r.ruleName || r.ruleId, subtitle: r.status, category: '规则治理', targetPageId: 'regulatory-rule-config', targetParams: { ruleId: r.ruleId }, status: r.status }));
+  versions.forEach(v => addSearch({ objectType: 'RULE_VERSION', objectId: v.versionId, title: v.versionNo || v.versionId, subtitle: v.ruleName, category: '规则治理', targetPageId: 'regulatory-rule-versions', targetParams: { versionId: v.versionId }, status: v.status }));
+  objectives.forEach(o => addSearch({ objectType: 'OBJECTIVE', objectId: o.objectiveId, title: o.objectiveName, subtitle: o.status, category: '战略规划', targetPageId: 'regulatory-strategy-planning', targetParams: { objectiveId: o.objectiveId }, priority: o.priority, status: o.status }));
+  annualPlans.forEach(p => addSearch({ objectType: 'ANNUAL_PLAN', objectId: p.planId, title: p.planName, subtitle: p.planStatus, category: '战略规划', targetPageId: 'regulatory-annual-plan', targetParams: { planId: p.planId }, status: p.planStatus }));
+
+  const notifications = [];
+  let nSeq = 1;
+  const mkNotif = (n) => notifications.push({
+    notificationId: 'NTF-' + String(nSeq++).padStart(3, '0'),
+    notificationType: n.notificationType,
+    sourceType: n.sourceType,
+    sourceId: n.sourceId,
+    title: n.title,
+    description: n.description || '',
+    priority: n.priority || 'MEDIUM',
+    isRead: false,
+    createdAt: n.createdAt || TODAY + 'T08:00:00',
+    targetPageId: n.targetPageId,
+    targetParams: n.targetParams || {}
+  });
+
+  events.filter(e => e.riskLevel === 'HIGH' && e.status !== 'CLOSED').slice(0, 5).forEach(ev => {
+    mkNotif({ notificationType: 'EVENT', sourceType: 'regulatoryEvents', sourceId: ev.eventId, title: '重大监管事件 · ' + (ev.eventTitle || ev.eventId), description: ev.description, priority: 'HIGH', targetPageId: 'regulatory-events', targetParams: { eventId: ev.eventId } });
+  });
+  rects.filter(t => t.deadline && t.deadline < TODAY && t.status !== '已关闭').slice(0, 5).forEach(t => {
+    mkNotif({ notificationType: 'OVERDUE_RECT', sourceType: 'rectificationTasks', sourceId: t.taskId, title: '超期整改 · ' + t.title, description: t.measure, priority: 'HIGH', targetPageId: 'rectification', targetParams: { rectificationTaskId: t.taskId } });
+  });
+  anomalies.slice(0, 3).forEach(a => {
+    mkNotif({ notificationType: 'RULE_ANOMALY', sourceType: 'regulatoryRuleRuntimeAnomalies', sourceId: a.anomalyId, title: '规则异常 · ' + a.anomalyType, description: a.description, priority: a.severity === 'HIGH' ? 'CRITICAL' : 'HIGH', targetPageId: 'regulatory-rule-runtime' });
+  });
+  queue.filter(q => q.queueType === 'FEEDBACK').slice(0, 3).forEach(q => {
+    mkNotif({ notificationType: 'ACTION_FEEDBACK', sourceType: q.sourceType, sourceId: q.sourceId, title: '待反馈 · ' + q.title, description: q.description, priority: q.priority, targetPageId: q.nextPageId || 'regulatory-action-execution', targetParams: { feedbackId: q.sourceId } });
+  });
+  queue.filter(q => q.queueType === 'VERIFICATION').slice(0, 2).forEach(q => {
+    mkNotif({ notificationType: 'VERIFICATION', sourceType: q.sourceType, sourceId: q.sourceId, title: '待验证 · ' + q.title, description: q.description, priority: q.priority, targetPageId: q.nextPageId });
+  });
+  objectives.filter(o => o.status === 'BEHIND').slice(0, 3).forEach(o => {
+    mkNotif({ notificationType: 'STRATEGY_DEVIATION', sourceType: 'regulatoryStrategicObjectives', sourceId: o.objectiveId, title: '战略偏差 · ' + o.objectiveName, description: '完成率 ' + Math.round(o.completionRate * 100) + '%', priority: 'HIGH', targetPageId: 'regulatory-strategy-planning', targetParams: { objectiveId: o.objectiveId } });
+  });
+  annualPlans.filter(p => p.planStatus === 'AT_RISK').slice(0, 2).forEach(p => {
+    mkNotif({ notificationType: 'PLAN_VARIANCE', sourceType: 'regulatoryAnnualPlans', sourceId: p.planId, title: '计划偏差 · ' + p.planName, description: '完成率 ' + Math.round(p.completionRate * 100) + '%', priority: 'HIGH', targetPageId: 'regulatory-annual-plan', targetParams: { planId: p.planId } });
+  });
+
+  APP_DATA.regulatoryRoleProfiles = roleProfiles;
+  APP_DATA.regulatoryRoleWorkbenches = roleWorkbenches;
+  APP_DATA.regulatorySearchIndex = searchIndex;
+  APP_DATA.regulatoryNotifications = notifications;
+  APP_DATA.regulatoryRecentViews = [];
+  APP_DATA.regulatoryFavorites = [];
+})();
