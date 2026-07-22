@@ -1111,3 +1111,279 @@ Object.assign(APP_DATA, {
   rankedObjects.forEach((o, i) => { o.rank = i + 1; });
   APP_DATA.regulatoryPriorityObjects = rankedObjects;
 })();
+
+(function () {
+  const TODAY = '2026-07-22';
+  const actions = APP_DATA.regulatoryActions || [];
+  const entities = APP_DATA.globalLegalEntities || [];
+  const rects = APP_DATA.rectificationTasks || [];
+  const events = APP_DATA.regulatoryEvents || [];
+  const warnings = APP_DATA.warnings || [];
+  const quality = APP_DATA.dataQualityIssues || [];
+  const strategy = APP_DATA.regulatoryStrategyAnalysis || {};
+  const dayDiff = (a, b) => {
+    if (!a || !b) return null;
+    return Math.round((new Date(b) - new Date(a)) / 86400000);
+  };
+
+  actions.forEach((act, idx) => {
+    const ent = entities.find(e => e.entityId === act.entityId);
+    const strat = (strategy.entities || []).find(s => s.objectId === act.entityId);
+    const evts = (act.sourceEventIds || []).map(id => events.find(e => e.eventId === id)).filter(Boolean);
+    const linkedRect = rects.find(t => (act.sourceRectificationTaskIds || []).includes(t.taskId));
+    const statusMap = {
+      PENDING: idx % 3 === 0 ? 'RECOMMENDED' : 'ASSIGNED',
+      IN_PROGRESS: idx % 2 === 0 ? 'IN_PROGRESS' : 'WAITING_FEEDBACK',
+      COMPLETED: idx % 2 === 0 ? 'VERIFIED' : 'COMPLETED',
+      OVERDUE: 'OVERDUE'
+    };
+    let newStatus = statusMap[act.status] || act.status || 'RECOMMENDED';
+    act.countryId = act.countryId || (ent ? ent.countryId : null);
+    act.strategyLevel = strat ? strat.strategyLevel : 'OBSERVE';
+    act.sourceKriIds = [...new Set(evts.map(e => e.kriId).filter(Boolean))];
+    act.sourceQualityIssueIds = evts.filter(e => e.eventType === 'DATA_QUALITY').map(e => e.sourceObjectId).filter(Boolean);
+    act.responsibleEntity = act.responsibleEntity || act.entityId;
+    act.responsibleDepartment = (warnings.find(w => w.entityId === act.entityId) || {}).responsibleDepartment || (ent ? ent.responsibleDepartment : null) || '投资管理部';
+    act.collaboratingDepartments = (APP_DATA.crossDomainResponsibilities || []).filter(r => r.entityId === act.entityId).flatMap(r => r.collaboratingDepartments || []);
+    act.createdAt = act.createdAt || '2026-07-01';
+    act.dueDate = act.dueDate || (linkedRect ? linkedRect.deadline : '2026-08-30');
+    act.completedAt = ['COMPLETED', 'VERIFIED'].includes(newStatus) ? '2026-07-20' : null;
+    act.verifiedAt = newStatus === 'VERIFIED' ? '2026-07-21' : null;
+    act.executionProgress = newStatus === 'VERIFIED' ? 100 : newStatus === 'COMPLETED' ? 95 : newStatus === 'IN_PROGRESS' ? 55 : newStatus === 'WAITING_FEEDBACK' ? 80 : newStatus === 'ASSIGNED' ? 15 : 0;
+    act.verificationStatus = newStatus === 'VERIFIED' ? 'PASSED' : newStatus === 'COMPLETED' ? 'PENDING' : 'PENDING';
+    act.feedbackRequired = ['IN_PROGRESS', 'WAITING_FEEDBACK', 'COMPLETED'].includes(newStatus);
+    act.feedbackStatus = newStatus === 'WAITING_FEEDBACK' ? 'SUBMITTED' : newStatus === 'VERIFIED' ? 'ACCEPTED' : 'DRAFT';
+    act.status = newStatus;
+    if (act.dueDate && act.dueDate < TODAY && !['COMPLETED', 'VERIFIED', 'CANCELLED'].includes(act.status)) act.status = 'OVERDUE';
+  });
+  if (actions[0]) { actions[0].status = 'IN_PROGRESS'; actions[0].executionProgress = 60; actions[0].feedbackRequired = true; actions[0].feedbackStatus = 'DRAFT'; }
+  if (actions[1]) { actions[1].status = 'VERIFIED'; actions[1].executionProgress = 100; actions[1].completedAt = '2026-07-20'; actions[1].verifiedAt = '2026-07-21'; actions[1].verificationStatus = 'PASSED'; actions[1].feedbackStatus = 'ACCEPTED'; }
+  if (actions[2]) { actions[2].status = 'WAITING_FEEDBACK'; actions[2].executionProgress = 80; actions[2].feedbackStatus = 'SUBMITTED'; }
+  if (actions[3]) { actions[3].status = 'OVERDUE'; actions[3].executionProgress = 40; }
+
+  const feedbacks = [];
+  let fSeq = 1;
+  actions.forEach(act => {
+    if (!['RECOMMENDED', 'ASSIGNED', 'CANCELLED'].includes(act.status)) {
+      feedbacks.push({
+        feedbackId: 'FB' + String(fSeq++).padStart(3, '0'),
+        actionId: act.actionId,
+        feedbackType: act.status === 'VERIFIED' ? 'VERIFICATION_RESULT' : act.status === 'COMPLETED' ? 'COMPLETION_SUBMISSION' : act.status === 'REOPENED' ? 'REOPEN_REASON' : 'PROGRESS_UPDATE',
+        feedbackStatus: act.feedbackStatus || 'SUBMITTED',
+        submittedBy: act.responsibleDepartment,
+        submittedAt: act.status === 'VERIFIED' ? '2026-07-21' : '2026-07-18',
+        progressBefore: Math.max(0, (act.executionProgress || 0) - 20),
+        progressAfter: act.executionProgress || 0,
+        resultSummary: act.recommendedAction,
+        evidenceDescription: '执行记录与佐证材料已上传',
+        verificationStatus: act.verificationStatus || 'PENDING',
+        verifiedBy: act.verificationStatus === 'PASSED' ? '集团监管部' : null,
+        verifiedAt: act.verifiedAt,
+        relatedRectificationTaskIds: act.sourceRectificationTaskIds || []
+      });
+    }
+  });
+  APP_DATA.regulatoryActionFeedbacks = feedbacks;
+
+  const decisions = [];
+  let dSeq = 1;
+  entities.filter(e => e.entityId !== 'G001').forEach(ent => {
+    const p = APP_DATA.regulatoryPriorities[ent.entityId];
+    if (!p || p.priority === 'LOW') return;
+    decisions.push({
+      decisionId: 'DEC' + String(dSeq++).padStart(3, '0'),
+      entityId: ent.entityId,
+      regionId: ent.regionId,
+      countryId: ent.countryId,
+      decisionType: 'PRIORITY_CHANGE',
+      previousValue: 'MEDIUM',
+      currentValue: p.priority,
+      reason: (p.factors || []).join('；'),
+      sourceEventIds: events.filter(e => e.entityId === ent.entityId).map(e => e.eventId),
+      sourceActionIds: actions.filter(a => a.entityId === ent.entityId).map(a => a.actionId),
+      sourceRectificationTaskIds: rects.filter(t => t.entityId === ent.entityId).map(t => t.taskId),
+      occurredAt: '2026-07-20'
+    });
+  });
+  actions.forEach(act => {
+    decisions.push({
+      decisionId: 'DEC' + String(dSeq++).padStart(3, '0'),
+      entityId: act.entityId,
+      regionId: act.regionId,
+      countryId: act.countryId,
+      decisionType: act.status === 'VERIFIED' ? 'ACTION_CLOSED' : 'ACTION_CREATED',
+      previousValue: act.status === 'VERIFIED' ? 'COMPLETED' : null,
+      currentValue: act.status,
+      reason: act.triggerReason || act.recommendedAction,
+      sourceEventIds: act.sourceEventIds || [],
+      sourceActionIds: [act.actionId],
+      sourceRectificationTaskIds: act.sourceRectificationTaskIds || [],
+      occurredAt: act.createdAt
+    });
+  });
+  (strategy.regions || []).filter(r => r.strategyLevel !== 'OBSERVE').forEach(r => {
+    decisions.push({
+      decisionId: 'DEC' + String(dSeq++).padStart(3, '0'),
+      regionId: r.objectId,
+      decisionType: 'STRATEGY_CHANGE',
+      previousValue: 'ROUTINE',
+      currentValue: r.strategyLevel,
+      reason: `区域风险事件${r.eventCount}项`,
+      sourceEventIds: r.sourceEventIds || [],
+      sourceActionIds: [],
+      sourceRectificationTaskIds: [],
+      occurredAt: '2026-07-19'
+    });
+  });
+  (APP_DATA.regulatoryHealthScores || {}).entities?.filter(h => h.level === 'WARNING' || h.level === 'CRITICAL').forEach(h => {
+    decisions.push({
+      decisionId: 'DEC' + String(dSeq++).padStart(3, '0'),
+      entityId: h.objectId,
+      decisionType: 'HEALTH_CHANGE',
+      previousValue: 'ATTENTION',
+      currentValue: h.level,
+      reason: `健康度降至${h.level}`,
+      sourceEventIds: events.filter(e => e.entityId === h.objectId).map(e => e.eventId),
+      sourceActionIds: actions.filter(a => a.entityId === h.objectId).map(a => a.actionId),
+      sourceRectificationTaskIds: [],
+      occurredAt: '2026-07-21'
+    });
+  });
+  APP_DATA.regulatoryDecisionHistory = decisions;
+
+  const statusCount = s => actions.filter(a => a.status === s).length;
+  APP_DATA.regulatoryActionExecutionMetrics = {
+    total: actions.length,
+    recommended: statusCount('RECOMMENDED'),
+    assigned: statusCount('ASSIGNED'),
+    inProgress: statusCount('IN_PROGRESS'),
+    waitingFeedback: statusCount('WAITING_FEEDBACK'),
+    completed: statusCount('COMPLETED'),
+    verified: statusCount('VERIFIED'),
+    cancelled: statusCount('CANCELLED'),
+    overdue: statusCount('OVERDUE'),
+    reopened: statusCount('REOPENED')
+  };
+
+  const completedActions = actions.filter(a => ['COMPLETED', 'VERIFIED'].includes(a.status));
+  const onTimeActions = completedActions.filter(a => a.completedAt && a.dueDate && a.completedAt <= a.dueDate);
+  const verifiedActions = actions.filter(a => a.status === 'VERIFIED');
+  const reopenedActions = actions.filter(a => a.status === 'REOPENED' || a.verificationStatus === 'REOPENED');
+  const execDays = completedActions.map(a => dayDiff(a.createdAt, a.completedAt)).filter(d => d !== null);
+  const fbDays = feedbacks.map(f => {
+    const act = actions.find(a => a.actionId === f.actionId);
+    return act ? dayDiff(act.createdAt, f.submittedAt) : null;
+  }).filter(d => d !== null);
+  const mkEff = (list, keyFn, labelKey) => {
+    const map = {};
+    list.forEach(a => {
+      const k = keyFn(a);
+      if (!k) return;
+      if (!map[k]) map[k] = { [labelKey]: k, actionCount: 0, completedCount: 0, overdueCount: 0, verifiedCount: 0 };
+      map[k].actionCount++;
+      if (['COMPLETED', 'VERIFIED'].includes(a.status)) map[k].completedCount++;
+      if (a.status === 'OVERDUE') map[k].overdueCount++;
+      if (a.status === 'VERIFIED') map[k].verifiedCount++;
+    });
+    return Object.values(map).map(x => ({
+      ...x,
+      completionRate: x.actionCount ? Math.round(x.completedCount / x.actionCount * 100) : 0,
+      onTimeRate: x.completedCount ? Math.round(x.verifiedCount / Math.max(1, x.completedCount) * 100) : 0,
+      overdueRate: x.actionCount ? Math.round(x.overdueCount / x.actionCount * 100) : 0,
+      verificationPassRate: x.completedCount ? Math.round(x.verifiedCount / x.completedCount * 100) : 0,
+      reopenRate: x.actionCount ? Math.round(actions.filter(a => keyFn(a) === x[labelKey] && (a.status === 'REOPENED' || a.verificationStatus === 'REOPENED')).length / x.actionCount * 100) : 0
+    }));
+  };
+  APP_DATA.regulatoryActionEfficiency = {
+    overall: {
+      completionRate: actions.length ? Math.round(completedActions.length / actions.length * 100) : 0,
+      onTimeRate: completedActions.length ? Math.round(onTimeActions.length / completedActions.length * 100) : 0,
+      avgExecutionDays: execDays.length ? Math.round(execDays.reduce((s, d) => s + d, 0) / execDays.length) : 0,
+      avgFeedbackDays: fbDays.length ? Math.round(fbDays.reduce((s, d) => s + d, 0) / fbDays.length) : 0,
+      verificationPassRate: completedActions.length ? Math.round(verifiedActions.length / completedActions.length * 100) : 0,
+      reopenRate: actions.length ? Math.round(reopenedActions.length / actions.length * 100) : 0,
+      overdueRate: actions.length ? Math.round(statusCount('OVERDUE') / actions.length * 100) : 0
+    },
+    byRegion: mkEff(actions, a => {
+      const r = APP_DATA.globalRegions.find(x => x.regionId === a.regionId);
+      return r ? r.regionName : null;
+    }, 'regionName'),
+    byEntity: mkEff(actions, a => {
+      const e = entities.find(x => x.entityId === a.entityId);
+      return e ? e.entityName : null;
+    }, 'entityName'),
+    byDepartment: mkEff(actions, a => a.responsibleDepartment, 'department'),
+    byActionType: mkEff(actions, a => a.actionType, 'actionType'),
+    byPriority: mkEff(actions, a => a.priority, 'priority')
+  };
+
+  const recalcPriority = (entityId) => {
+    const base = APP_DATA.regulatoryPriorities[entityId] || { priority: 'LOW', score: 0, factors: [], recommendedAction: '—' };
+    const entActions = actions.filter(a => a.entityId === entityId);
+    const verified = entActions.filter(a => a.status === 'VERIFIED').length;
+    const overdue = entActions.filter(a => a.status === 'OVERDUE').length;
+    const pending = entActions.filter(a => ['RECOMMENDED', 'ASSIGNED', 'IN_PROGRESS', 'WAITING_FEEDBACK'].includes(a.status)).length;
+    const reopened = entActions.filter(a => a.status === 'REOPENED').length;
+    const openRects = rects.filter(t => t.entityId === entityId && t.status !== '已关闭' && !t.closedAt);
+    const verifiedRects = rects.filter(t => t.entityId === entityId && (t.status === '已关闭' || t.closedAt));
+    let score = base.score;
+    const factors = [...(base.factors || [])];
+    const hist = decisions.filter(d => d.entityId === entityId && d.decisionType === 'PRIORITY_CHANGE');
+    if (verified > 0) { score = Math.max(0, score - verified * 5); factors.push(`已完成验证行动${verified}项`); }
+    if (verifiedRects.length) { score = Math.max(0, score - verifiedRects.length * 3); factors.push(`整改验证通过${verifiedRects.length}项`); }
+    if (overdue > 0) { score += overdue * 10; factors.push(`逾期行动${overdue}项`); }
+    if (reopened > 0) { score += reopened * 8; factors.push(`重开行动${reopened}项`); }
+    if (pending > 0 && verified === 0) factors.push(`待完成行动${pending}项`);
+    const newEvents = events.filter(e => e.entityId === entityId && e.reopened);
+    if (newEvents.length) { score += newEvents.length * 6; factors.push(`风险重新发生${newEvents.length}项`); }
+    const priority = score >= 55 ? 'CRITICAL' : score >= 35 ? 'HIGH' : score >= 18 ? 'MEDIUM' : 'LOW';
+    return {
+      ...base,
+      entityId,
+      priority,
+      score,
+      factors: [...new Set(factors)],
+      previousPriority: hist[0] ? hist[0].previousValue : base.priority,
+      priorityChangeReason: factors.join('；'),
+      completedActions: verified,
+      pendingActions: pending,
+      openRectificationCount: openRects.length,
+      relatedActionIds: entActions.map(a => a.actionId),
+      triggerEventIds: events.filter(e => e.entityId === entityId).map(e => e.eventId).slice(0, 5),
+      recommendedAction: priority === 'CRITICAL' ? '建议集团重点监管' : priority === 'HIGH' ? '建议专项督办' : priority === 'MEDIUM' ? '建议加强监测' : '建议常规监测'
+    };
+  };
+  const recalcPriorities = {};
+  entities.forEach(e => { recalcPriorities[e.entityId] = recalcPriority(e.entityId); });
+  APP_DATA.regulatoryPrioritiesRecalculated = recalcPriorities;
+  (APP_DATA.regulatoryPriorityObjects || []).forEach(o => {
+    const r = recalcPriorities[o.objectId];
+    if (r) { o.priority = r.priority; o.priorityScore = r.score; o.previousPriority = r.previousPriority; }
+  });
+
+  const m = APP_DATA.regulatoryCommandCenterMetrics || {};
+  const eff = APP_DATA.regulatoryActionEfficiency.overall;
+  m.actionCompletionRate = eff.completionRate;
+  m.actionOnTimeRate = eff.onTimeRate;
+  m.actionVerificationPassRate = eff.verificationPassRate;
+  m.actionOverdueRate = eff.overdueRate;
+  m.actionReopenRate = eff.reopenRate;
+  m.pendingDecisionCount = actions.filter(a => ['RECOMMENDED', 'ASSIGNED', 'OVERDUE'].includes(a.status)).length;
+  m.waitingVerificationCount = actions.filter(a => a.status === 'COMPLETED').length;
+  m.newActionsThisPeriod = actions.filter(a => a.createdAt >= '2026-07-15').length;
+  m.completedActionsThisPeriod = completedActions.filter(a => a.completedAt && a.completedAt >= '2026-07-15').length;
+  m.closedActionsThisPeriod = verifiedActions.filter(a => a.verifiedAt && a.verifiedAt >= '2026-07-15').length;
+  m.reopenedActionsThisPeriod = reopenedActions.length;
+  m.strategyChangesThisPeriod = decisions.filter(d => d.decisionType === 'STRATEGY_CHANGE').length;
+  m.priorityChangesThisPeriod = decisions.filter(d => d.decisionType === 'PRIORITY_CHANGE').length;
+  m.decisionLoop = {
+    discover: events.length,
+    judge: Object.keys(APP_DATA.regulatoryPriorities || {}).filter(k => APP_DATA.regulatoryPriorities[k].priority !== 'LOW').length,
+    decide: actions.length,
+    execute: actions.filter(a => ['IN_PROGRESS', 'WAITING_FEEDBACK', 'COMPLETED', 'VERIFIED'].includes(a.status)).length,
+    verify: feedbacks.filter(f => f.verificationStatus === 'PASSED').length,
+    evaluate: Object.keys(recalcPriorities).filter(k => recalcPriorities[k].priority !== 'LOW').length
+  };
+  m.pendingActionCount = actions.filter(a => ['RECOMMENDED', 'ASSIGNED', 'IN_PROGRESS', 'WAITING_FEEDBACK', 'OVERDUE'].includes(a.status)).length;
+  APP_DATA.regulatoryCommandCenterMetrics = m;
+})();
