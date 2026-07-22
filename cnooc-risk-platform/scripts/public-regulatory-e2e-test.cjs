@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * 公共监管底座 Phase 17 端到端验收（18 条链路）
+ * 公共监管底座 Phase 18 端到端验收（22 条链路）
  */
 const fs = require('fs');
 const path = require('path');
@@ -20,85 +20,113 @@ const D = loadAppData();
 function ok(step, cond, msg) { return { step, pass: !!cond, msg: cond ? 'OK' : msg }; }
 
 const chains = [
-  { name: '测试1：总览→角色工作台→权限中心', steps: [
-    () => ok('角色', (D.regulatoryRoleProfiles || []).length >= 4),
-    () => ok('权限中心数据', (D.regulatoryUsers || []).length > 0)
+  { name: '测试1：总览→数据源中心', steps: [
+    () => ok('数据源', (D.regulatoryDataSources || []).length > 0)
   ]},
-  { name: '测试2：权限中心→用户→角色→数据范围', steps: [
+  { name: '测试2：数据源→数据集', steps: [
     () => {
-      const u = (D.regulatoryUsers || [])[0];
-      const asg = (D.regulatoryRoleAssignments || []).find(a => a.userId === u.userId);
-      return ok('用户角色链', u && asg && asg.scopeType);
+      const src = (D.regulatoryDataSources || [])[0];
+      const ds = (D.regulatoryDataSets || []).find(d => d.sourceId === src?.sourceId);
+      return ok('源数据集链', src && ds);
     }
   ]},
-  { name: '测试3：角色→可见法人', steps: [
-    () => ok('法人', (D.globalLegalEntities || []).filter(e => e.entityId !== 'G001').length > 0)
-  ]},
-  { name: '测试4：法人→权限校验', steps: [
-    () => ok('权限集合', (D.regulatoryPermissionSets || []).length > 0)
-  ]},
-  { name: '测试5：待审批授权→原始对象', steps: [
+  { name: '测试3：数据集→接入任务', steps: [
     () => {
-      const a = (D.regulatoryAuthorizationRequests || [])[0];
-      const src = a && ((D.regulatoryActions || []).find(x => x.actionId === a.targetObjectId)
-        || (D.rectificationTasks || []).find(x => x.taskId === a.targetObjectId)
-        || (D.regulatoryRuleChangeRequests || []).find(x => x.changeRequestId === a.targetObjectId));
-      return ok('授权追溯', a && (src || a.sourceId));
+      const ds = (D.regulatoryDataSets || [])[0];
+      const job = (D.regulatoryDataIntegrationJobs || []).find(j => j.dataSetId === ds?.dataSetId);
+      return ok('数据集接入链', ds && job);
     }
   ]},
-  { name: '测试6：授权审批→状态变更', steps: [
-    () => ok('授权申请', (D.regulatoryAuthorizationRequests || []).some(a => ['SUBMITTED', 'IN_REVIEW'].includes(a.status)))
-  ]},
-  { name: '测试7：状态变更→审计日志', steps: [
-    () => ok('审计机制', Array.isArray(D.regulatoryAuditLogs))
-  ]},
-  { name: '测试8：审计日志→原始对象', steps: [
-    () => ok('授权索引', (D.regulatoryAuthorizationRequests || []).length > 0)
-  ]},
-  { name: '测试9：规则变更→权限→审批', steps: [
+  { name: '测试4：接入任务→质量校验', steps: [
     () => {
-      const a = (D.regulatoryAuthorizationRequests || []).find(x => x.requestType === 'RULE_CHANGE' || x.requestType === 'RULE_APPROVAL');
-      return ok('规则审批链', a);
+      const job = (D.regulatoryDataIntegrationJobs || [])[0];
+      const issue = (D.regulatoryDataQualityIssues || []).find(i => i.dataSetId === job?.dataSetId);
+      return ok('质量校验链', job && (issue || job.status === 'SUCCESS'));
     }
   ]},
-  { name: '测试10：规则审批→发布→部署', steps: [
-    () => ok('规则部署索引', (D.regulatoryAuthorizationRequests || []).some(a => a.requestType === 'RULE_DEPLOY') || (D.regulatoryRuleDeployments || []).length > 0)
-  ]},
-  { name: '测试11：关闭整改→权限校验→审批→审计', steps: [
+  { name: '测试5：质量问题→治理任务', steps: [
     () => {
-      const a = (D.regulatoryAuthorizationRequests || []).find(x => x.requestType === 'RECTIFICATION_CLOSE');
-      const perm = (D.regulatoryPermissionSets || []).find(p => p.permissionCode === 'RECTIFICATION_CLOSE');
-      return ok('整改关闭链', a && perm);
+      const issue = (D.regulatoryDataQualityIssues || []).find(i => i.relatedGovernanceTaskId);
+      const gov = issue ? (D.regulatoryDataGovernanceTasks || []).find(t => t.governanceTaskId === issue.relatedGovernanceTaskId) : null;
+      return ok('治理任务链', issue && gov);
     }
   ]},
-  { name: '测试12：法人用户→越权对象→拒绝', steps: [
+  { name: '测试6：治理任务→整改任务', steps: [
+    () => {
+      const gov = (D.regulatoryDataGovernanceTasks || []).find(t => t.relatedRectificationTaskId);
+      const rect = gov ? (D.rectificationTasks || []).find(t => t.taskId === gov.relatedRectificationTaskId) : null;
+      return ok('整改关联链', gov && rect);
+    }
+  ]},
+  { name: '测试7：整改→验证→数据质量恢复', steps: [
+    () => ok('质量快照', (D.regulatoryDataQualitySnapshots || []).length > 0)
+  ]},
+  { name: '测试8：指标→KRI→数据字段', steps: [
+    () => {
+      const lin = (D.regulatoryDataLineage || []).find(l => l.relationType === 'FIELD_TO_METRIC' || l.relationType === 'METRIC_TO_KRI');
+      return ok('指标KRI链', lin);
+    }
+  ]},
+  { name: '测试9：KRI→风险→规则', steps: [
+    () => {
+      const lin = (D.regulatoryDataLineage || []).find(l => l.relationType === 'KRI_TO_RISK');
+      const rule = (D.regulatoryDataLineage || []).find(l => l.relationType === 'RISK_TO_RULE');
+      return ok('KRI风险规则链', lin && rule);
+    }
+  ]},
+  { name: '测试10：规则→数据源', steps: [
+    () => ok('血缘索引', (D.regulatoryDataLineage || []).some(l => l.sourceType === 'regulatoryDataSources'))
+  ]},
+  { name: '测试11：数据源→受影响指标', steps: [
+    () => {
+      const src = (D.regulatoryDataSources || []).find(s => s.sourceId === 'SRC002') || (D.regulatoryDataSources || [])[0];
+      const lin = (D.regulatoryDataLineage || []).filter(l => l.sourceId === src?.sourceId || (l.sourceType === 'regulatoryDataSources' && l.sourceId === src?.sourceId));
+      return ok('源影响链', lin.length > 0);
+    }
+  ]},
+  { name: '测试12：数据质量异常→指标可信度', steps: [
+    () => ok('KRI关联', (D.regulatoryDataQualityIssues || []).some(i => i.kriId))
+  ]},
+  { name: '测试13：指标可信度→监管优先级', steps: [
+    () => ok('优先级对象', (D.regulatoryPriorityObjects || []).length > 0)
+  ]},
+  { name: '测试14：法人权限→本法人数据', steps: [
     () => ok('法人用户', (D.regulatoryUsers || []).some(u => u.userType === 'ENTITY_REGULATOR'))
   ]},
-  { name: '测试13：专业监管→授权领域→可见对象', steps: [
+  { name: '测试15：法人权限→越权数据拒绝', steps: [
+    () => ok('数据权限码', (D.regulatoryPermissionSets || []).some(p => p.permissionCode === 'DATA_VIEW'))
+  ]},
+  { name: '测试16：专业监管→授权领域数据', steps: [
     () => {
       const asg = (D.regulatoryRoleAssignments || []).find(a => a.roleId === 'ROLE-DOMAIN-REG');
       return ok('领域授权', asg && asg.scopeType === 'DOMAIN');
     }
   ]},
-  { name: '测试14：系统配置→配置变更→审计', steps: [
-    () => ok('系统配置', (D.regulatorySystemConfigurations || []).length > 0)
+  { name: '测试17：接入失败→重试→质量问题', steps: [
+    () => {
+      const failed = (D.regulatoryDataIntegrationJobs || []).find(j => j.status === 'FAILED' || j.status === 'PARTIAL_SUCCESS' || j.retryCount > 0);
+      return ok('失败重试', failed);
+    }
   ]},
-  { name: '测试15：驾驶舱→权限治理', steps: [
-    () => ok('权限指标', !!(D.regulatoryAccessControlMetrics || {}).userCount)
+  { name: '测试18：数据治理→审计日志', steps: [
+    () => ok('审计机制', Array.isArray(D.regulatoryAuditLogs))
   ]},
-  { name: '测试16：驾驶舱→待审批事项', steps: [
-    () => ok('待审批', (D.regulatoryAccessControlMetrics || {}).pendingAuthorizationCount > 0)
+  { name: '测试19：驾驶舱→数据质量健康', steps: [
+    () => ok('数据指标', !!(D.regulatoryDataGovernanceMetrics || {}).overallQualityScore || D.regulatoryDataGovernanceMetrics?.qualityDataStatus)
   ]},
-  { name: '测试17：驾驶舱→审计异常', steps: [
-    () => ok('审计异常计数', (D.regulatoryAccessControlMetrics || {}).auditAnomalyCount >= 0)
+  { name: '测试20：工作台→我的数据治理任务', steps: [
+    () => ok('治理任务', (D.regulatoryDataGovernanceTasks || []).length > 0)
   ]},
-  { name: '测试18：A→B→C→D→E→F多跳返回', steps: [
-    () => ok('用户', (D.regulatoryUsers || []).length > 0),
-    () => ok('授权', (D.regulatoryAuthorizationRequests || []).length > 0),
-    () => ok('权限', (D.regulatoryPermissionSets || []).length > 0),
-    () => ok('配置', (D.regulatorySystemConfigurations || []).length > 0),
-    () => ok('角色工作台', (D.regulatoryRoleWorkbenches || []).length > 0),
-    () => ok('搜索', (D.regulatorySearchIndex || []).length > 0)
+  { name: '测试21：无效dataSourceId→错误态', steps: [
+    () => ok('数据源校验', !(D.regulatoryDataSources || []).find(s => s.sourceId === 'INVALID-SRC'))
+  ]},
+  { name: '测试22：A→B→C→D→E→F多跳返回', steps: [
+    () => ok('数据源', (D.regulatoryDataSources || []).length > 0),
+    () => ok('接入', (D.regulatoryDataIntegrationJobs || []).length > 0),
+    () => ok('质量', (D.regulatoryDataQualityIssues || []).length > 0),
+    () => ok('治理', (D.regulatoryDataGovernanceTasks || []).length > 0),
+    () => ok('血缘', (D.regulatoryDataLineage || []).length > 0),
+    () => ok('快照', (D.regulatoryDataQualitySnapshots || []).length > 0)
   ]}
 ];
 
@@ -126,66 +154,73 @@ async function browserTests() {
   const browser = await playwright.chromium.launch({ headless: true });
   const page = await browser.newPage();
   await page.goto(`http://127.0.0.1:${port}/index.html`, { waitUntil: 'networkidle' });
-  await page.waitForFunction(() => typeof App !== 'undefined' && App.canRegulatoryAccess, { timeout: 10000 });
+  await page.waitForFunction(() => typeof App !== 'undefined' && App.getKriDataCredibility, { timeout: 10000 });
   await page.evaluate(() => { document.getElementById('domainGateway').style.display = 'none'; if (App.enterDomain) App.enterDomain('investment', false); });
 
-  const accessNav = await page.evaluate(async () => {
+  const dataSourceNav = await page.evaluate(async () => {
     App.publicNavHistory = [];
-    App.navigatePublic('regulatory-role-workbench');
-    await new Promise(r => setTimeout(r, 100));
-    App.navigatePublic('regulatory-access-control');
+    App.navigatePublic('group');
+    await new Promise(r => setTimeout(r, 80));
+    App.navigatePublic('regulatory-data-sources');
     await new Promise(r => setTimeout(r, 150));
-    const text = document.getElementById('regulatoryAccessControl')?.innerText || '';
-    return { hasAccess: text.includes('访问控制中心') || text.includes('权限矩阵') };
+    const text = document.getElementById('regulatoryDataSources')?.innerText || '';
+    return { ok: text.includes('数据源中心') || text.includes('数据源清单') };
   });
 
   const permissionCheck = await page.evaluate(() => {
     App.setCurrentRegulatoryUser('U-ENTITY-REG');
-    const ent = (APP_DATA.globalLegalEntities || []).find(e => e.entityId !== 'G001');
-    const other = (APP_DATA.globalLegalEntities || []).find(e => e.entityId !== 'G001' && e.entityId !== ent?.entityId);
-    const own = App.canRegulatoryAccess('U-ENTITY-REG', 'globalLegalEntities', ent?.entityId, 'VIEW');
-    const deny = other ? App.canRegulatoryAccess('U-ENTITY-REG', 'globalLegalEntities', other.entityId, 'ASSIGN') : { allowed: false };
-    return { ownOk: own.allowed, denyOk: !deny.allowed };
+    const own = (APP_DATA.regulatoryDataSources || []).find(s => s.ownerOrganizationId === 'A001');
+    const other = (APP_DATA.regulatoryDataSources || []).find(s => s.ownerOrganizationId && s.ownerOrganizationId !== 'A001' && s.ownerOrganizationId !== 'G001');
+    const ownOk = own ? App.canRegulatoryAccess('U-ENTITY-REG', 'regulatoryDataSources', own.sourceId, 'VIEW').allowed : true;
+    const denyOk = other ? !App.canRegulatoryAccess('U-ENTITY-REG', 'regulatoryDataSources', other.sourceId, 'VIEW').allowed : true;
+    return { ownOk, denyOk, ownId: own?.sourceId, otherId: other?.sourceId };
   });
 
-  const authFlow = await page.evaluate(async () => {
+  const lineageFlow = await page.evaluate(() => {
+    const chain = App.getDataLineageChain('regulatoryDataSources', 'SRC002', 'DOWN');
+    const impact = App.getDataSourceImpactAnalysis('SRC002');
+    const cred = App.getKriDataCredibility('kri-capex');
+    return { chainLen: chain.length, hasKri: impact.affectedKris.includes('kri-capex'), credOk: cred.dataStatus === 'OK' || cred.dataStatus === 'INSUFFICIENT_DATA' };
+  });
+
+  const retryFlow = await page.evaluate(() => {
     App.setCurrentRegulatoryUser('U-GROUP-REG');
-    const auth = (APP_DATA.regulatoryAuthorizationRequests || []).find(a => a.requestType === 'RECTIFICATION_CLOSE' && ['SUBMITTED', 'IN_REVIEW'].includes(a.status));
-    if (!auth) return { hasAuth: false };
-    App.navigatePublic('regulatory-authorization', { authorizationId: auth.authorizationId });
-    await new Promise(r => setTimeout(r, 150));
-    const detail = document.getElementById('regulatoryAuthorizationDetail')?.innerText || '';
-    App.setCurrentRegulatoryUser('U-GROUP-LEADER');
-    const result = App.approveRegulatoryAuthorization(auth.authorizationId);
-    const auditCount = (APP_DATA.regulatoryAuditLogs || []).length;
-    return { hasAuth: detail.includes('授权') || detail.includes(auth.authorizationId), approved: result.success, auditWritten: auditCount > 0 };
+    const job = (APP_DATA.regulatoryDataIntegrationJobs || []).find(j => j.status === 'FAILED' || j.status === 'PARTIAL_SUCCESS');
+    if (!job) return { hasJob: false };
+    const before = job.status;
+    const result = App.retryDataIntegrationJob(job.integrationJobId);
+    const auditWritten = (APP_DATA.regulatoryAuditLogs || []).some(l => l.objectId === job.integrationJobId && l.actionType === 'RETRY');
+    return { hasJob: true, retried: result.success, statusChanged: job.status !== before || job.retryCount > 0, auditWritten };
   });
 
-  const stateMutation = await page.evaluate(() => {
-    const auth = (APP_DATA.regulatoryAuthorizationRequests || []).find(a => a.requestType === 'RECTIFICATION_CLOSE' && a.status === 'APPROVED');
-    if (!auth) return { mutated: false };
+  const governanceFlow = await page.evaluate(() => {
     App.setCurrentRegulatoryUser('U-GROUP-REG');
-    const before = (APP_DATA.rectificationTasks || []).find(t => t.taskId === auth.targetObjectId);
-    const exec = App.executeRegulatoryStateChange({ resourceType: 'rectificationTasks', resourceId: auth.targetObjectId, action: 'CLOSE', reason: 'E2E测试关闭', skipApproval: true });
-    const after = (APP_DATA.rectificationTasks || []).find(t => t.taskId === auth.targetObjectId);
-    return { mutated: exec.success && after?.status === '已关闭', exec };
+    const task = (APP_DATA.regulatoryDataGovernanceTasks || []).find(t => t.status !== 'CLOSED' && t.status !== 'VERIFIED');
+    if (!task) return { hasTask: false };
+    App.assignDataGovernanceTask(task.governanceTaskId, task.responsibleOrganizationId);
+    const close = App.closeDataGovernanceTask(task.governanceTaskId, 'E2E验证关闭');
+    const auditWritten = (APP_DATA.regulatoryAuditLogs || []).some(l => l.objectType === 'regulatoryDataGovernanceTasks' && l.objectId === task.governanceTaskId);
+    return { hasTask: true, closed: close.success, auditWritten };
   });
 
-  const auditPage = await page.evaluate(async () => {
-    App.navigatePublic('regulatory-audit-trail');
-    await new Promise(r => setTimeout(r, 100));
-    const text = document.getElementById('regulatoryAuditTrail')?.innerText || '';
-    return { hasAudit: text.includes('审计') && (APP_DATA.regulatoryAuditLogs || []).length > 0 };
-  });
-
-  const searchAndSettings = await page.evaluate(async () => {
-    App.navigatePublic('regulatory-system-settings');
-    await new Promise(r => setTimeout(r, 100));
-    const cfg = document.getElementById('regulatorySystemSettings')?.innerText || '';
+  const commandCenter = await page.evaluate(async () => {
     App.navigatePublic('regulatory-command-center');
-    await new Promise(r => setTimeout(r, 100));
-    const cc = document.getElementById('regulatoryCommandCenter')?.innerText || '';
-    return { settingsOk: cfg.includes('系统配置') && cfg.includes('规则治理'), commandCenterOk: cc.includes('权限治理') };
+    await new Promise(r => setTimeout(r, 150));
+    const text = document.getElementById('regulatoryCommandCenter')?.innerText || '';
+    return { ok: text.includes('数据接入健康') && text.includes('数据质量健康') && text.includes('数据血缘影响') };
+  });
+
+  const workbench = await page.evaluate(async () => {
+    App.navigatePublic('regulatory-workbench');
+    await new Promise(r => setTimeout(r, 150));
+    const text = document.getElementById('regulatoryWorkbench')?.innerText || '';
+    return { ok: text.includes('我的数据治理任务') || text.includes('数据运行异常') };
+  });
+
+  const invalidSource = await page.evaluate(() => {
+    App.navigatePublic('regulatory-data-sources', { sourceId: 'INVALID-SRC' });
+    const detail = document.getElementById('regulatoryDataSourceDetail');
+    return { hasError: detail?.innerText?.includes('未找到') || detail?.innerText?.includes('不存在') || detail?.innerText?.includes('无权') || !APP_DATA.regulatoryDataSources.find(s => s.sourceId === 'INVALID-SRC') };
   });
 
   const multiHop = await page.evaluate(async () => {
@@ -193,15 +228,15 @@ async function browserTests() {
     App.navigatePublic('group');
     App.publicNavHistory = [];
     await new Promise(r => setTimeout(r, 80));
-    App.navigatePublic('regulatory-role-workbench');
+    App.navigatePublic('regulatory-data-sources');
     await new Promise(r => setTimeout(r, 80));
-    App.navigatePublic('regulatory-access-control');
+    App.navigatePublic('regulatory-data-integration');
     await new Promise(r => setTimeout(r, 80));
-    App.navigatePublic('regulatory-authorization');
+    App.navigatePublic('regulatory-data-quality');
     await new Promise(r => setTimeout(r, 80));
-    App.navigatePublic('regulatory-audit-trail');
+    App.navigatePublic('regulatory-data-governance');
     await new Promise(r => setTimeout(r, 80));
-    App.navigatePublic('regulatory-system-settings');
+    App.navigatePublic('regulatory-data-lineage');
     await new Promise(r => setTimeout(r, 80));
     for (let i = 0; i < 6; i++) { App.goBackPublic(); await new Promise(r => setTimeout(r, 180)); }
     return { finalPage: App.currentPage };
@@ -209,29 +244,32 @@ async function browserTests() {
 
   const catalog = await page.evaluate(() => ({
     count: (App.publicRegulatoryPages || []).length,
-    hasAccess: (App.publicRegulatoryPages || []).some(p => p.pageId === 'regulatory-access-control'),
-    hasAuth: (App.publicRegulatoryPages || []).some(p => p.pageId === 'regulatory-authorization'),
-    hasAudit: (App.publicRegulatoryPages || []).some(p => p.pageId === 'regulatory-audit-trail'),
-    hasSettings: (App.publicRegulatoryPages || []).some(p => p.pageId === 'regulatory-system-settings')
+    hasSources: (App.publicRegulatoryPages || []).some(p => p.pageId === 'regulatory-data-sources'),
+    hasIntegration: (App.publicRegulatoryPages || []).some(p => p.pageId === 'regulatory-data-integration'),
+    hasQuality: (App.publicRegulatoryPages || []).some(p => p.pageId === 'regulatory-data-quality'),
+    hasGovernance: (App.publicRegulatoryPages || []).some(p => p.pageId === 'regulatory-data-governance'),
+    hasLineage: (App.publicRegulatoryPages || []).some(p => p.pageId === 'regulatory-data-lineage')
   }));
 
   await browser.close();
   server.close();
 
   return {
-    accessNav: accessNav.hasAccess ? '通过' : '不通过',
+    dataSourceNav: dataSourceNav.ok ? '通过' : '不通过',
     permissionCheck: (permissionCheck.ownOk && permissionCheck.denyOk) ? '通过' : '不通过',
     permissionDetail: permissionCheck,
-    authFlow: (authFlow.hasAuth && authFlow.approved && authFlow.auditWritten) ? '通过' : '不通过',
-    authFlowDetail: authFlow,
-    stateMutation: stateMutation.mutated ? '通过' : '不通过',
-    stateMutationDetail: stateMutation,
-    auditPage: auditPage.hasAudit ? '通过' : '不通过',
-    searchAndSettings: (searchAndSettings.settingsOk && searchAndSettings.commandCenterOk) ? '通过' : '不通过',
-    searchAndSettingsDetail: searchAndSettings,
-    multiHop: ['regulatory-system-settings', 'regulatory-audit-trail', 'regulatory-authorization', 'regulatory-access-control', 'regulatory-role-workbench', 'group'].includes(multiHop.finalPage) ? '通过' : '不通过',
+    lineageFlow: (lineageFlow.chainLen > 2 && lineageFlow.hasKri) ? '通过' : '不通过',
+    lineageFlowDetail: lineageFlow,
+    retryFlow: (retryFlow.hasJob && retryFlow.retried && retryFlow.auditWritten) ? '通过' : '不通过',
+    retryFlowDetail: retryFlow,
+    governanceFlow: (governanceFlow.hasTask && governanceFlow.closed && governanceFlow.auditWritten) ? '通过' : '不通过',
+    governanceFlowDetail: governanceFlow,
+    commandCenter: commandCenter.ok ? '通过' : '不通过',
+    workbench: workbench.ok ? '通过' : '不通过',
+    invalidSource: invalidSource.hasError ? '通过' : '不通过',
+    multiHop: ['regulatory-data-lineage', 'regulatory-data-governance', 'regulatory-data-quality', 'regulatory-data-integration', 'regulatory-data-sources', 'group'].includes(multiHop.finalPage) ? '通过' : '不通过',
     multiHopDetail: multiHop,
-    pageCatalog: (catalog.count === 50 && catalog.hasAccess && catalog.hasAuth && catalog.hasAudit && catalog.hasSettings) ? '通过' : '不通过',
+    pageCatalog: (catalog.count === 55 && catalog.hasSources && catalog.hasIntegration && catalog.hasQuality && catalog.hasGovernance && catalog.hasLineage) ? '通过' : '不通过',
     pageCatalogDetail: catalog
   };
 }
@@ -243,10 +281,10 @@ async function browserTests() {
   }));
   let browserResult;
   try { browserResult = await browserTests(); } catch (e) {
-    browserResult = { error: String(e), accessNav: '不通过', permissionCheck: '不通过', authFlow: '不通过', stateMutation: '不通过', auditPage: '不通过', searchAndSettings: '不通过', multiHop: '不通过', pageCatalog: '不通过' };
+    browserResult = { error: String(e), dataSourceNav: '不通过', permissionCheck: '不通过', lineageFlow: '不通过', retryFlow: '不通过', governanceFlow: '不通过', commandCenter: '不通过', workbench: '不通过', invalidSource: '不通过', multiHop: '不通过', pageCatalog: '不通过' };
   }
   const allDataPass = summary.every(s => s.result === '通过');
-  const browserKeys = ['accessNav', 'permissionCheck', 'authFlow', 'stateMutation', 'auditPage', 'searchAndSettings', 'multiHop', 'pageCatalog'];
+  const browserKeys = ['dataSourceNav', 'permissionCheck', 'lineageFlow', 'retryFlow', 'governanceFlow', 'commandCenter', 'workbench', 'invalidSource', 'multiHop', 'pageCatalog'];
   const allBrowserPass = browserKeys.every(k => browserResult[k] === '通过' || browserResult[k] === 'skipped');
   const output = { dataChainTests: summary, browserTests: browserResult, allPass: allDataPass && allBrowserPass };
   console.log(JSON.stringify(output, null, 2));

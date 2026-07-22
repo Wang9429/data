@@ -4652,3 +4652,275 @@ Object.assign(APP_DATA, {
     auditAnomalyCount: 0
   };
 })();
+
+(function () {
+  const TODAY = '2026-07-22';
+  const registry = APP_DATA.dataSourceRegistry || [];
+  const objects = APP_DATA.dataObjects || [];
+  const fields = APP_DATA.dataFields || [];
+  const indicators = APP_DATA.dataIndicators || [];
+  const legacyIssues = APP_DATA.dataQualityIssues || [];
+  const legacyLineage = APP_DATA.dataLineageRelations || [];
+  const rects = APP_DATA.rectificationTasks || [];
+  const kris = APP_DATA.groupKris || [];
+  const warnings = APP_DATA.warnings || [];
+
+  const sourceTypeMap = {
+    '投资管理系统': 'ERP', '财务系统': '财务系统', '合同系统': '合同系统', '采购系统': '供应链系统',
+    '资金系统': '资金系统', '项目系统': '项目系统', '经营分析系统': '境外业务系统'
+  };
+  const domainMap = { '投资管理': 'investment', '财务管理': 'finance', '合同管理': 'contract', '工程项目': 'engineering', '供应链管理': 'supply', '产权管理': 'equity', '境外业务': 'overseas' };
+
+  const parsePct = (v) => {
+    if (v == null) return null;
+    const n = parseFloat(String(v).replace('%', ''));
+    return Number.isFinite(n) ? n : null;
+  };
+
+  const connStatus = (src) => {
+    if (src.interfaceStatus === '异常' || src.syncStatus === '中断') return 'OFFLINE';
+    if (src.interfaceStatus === '延迟' || src.syncStatus === '延迟') return 'DEGRADED';
+    return 'ONLINE';
+  };
+
+  const regulatoryDataSources = registry.map(src => ({
+    sourceId: src.sourceId,
+    sourceName: src.systemName,
+    sourceType: sourceTypeMap[src.systemName] || '外部数据源',
+    ownerOrganizationId: src.entityId,
+    ownerOrganizationName: src.ownerEntity,
+    status: src.coverageStatus === '已接入' ? 'ACTIVE' : 'PARTIAL',
+    connectionStatus: connStatus(src),
+    lastSyncAt: src.lastSyncTime,
+    dataSetCount: objects.filter(o => o.sourceId === src.sourceId).length,
+    qualityScore: src.qualityScore,
+    regionId: src.regionId,
+    countryId: src.countryId,
+    businessDomains: src.businessDomains || [],
+    legacyObjectId: src.sourceId
+  }));
+
+  const regulatoryDataSets = objects.map(obj => {
+    const src = registry.find(s => s.sourceId === obj.sourceId);
+    const objFields = fields.filter(f => f.objectId === obj.objectId);
+    const completeness = parsePct(src?.dataCompleteness);
+    const timeliness = parsePct(src?.dataTimeliness);
+    const fieldScores = objFields.map(f => f.qualityStatus === '正常' ? 98 : f.qualityStatus === '关注' ? 85 : 72);
+    const accuracy = fieldScores.length ? fieldScores.reduce((a, b) => a + b, 0) / fieldScores.length : null;
+    const hasData = completeness != null && timeliness != null;
+    const overall = hasData ? Math.round((completeness * 0.2 + (accuracy || 90) * 0.2 + timeliness * 0.2 + 88 * 0.15 + 92 * 0.15 + 90 * 0.1) * 10) / 10 : null;
+    return {
+      dataSetId: obj.objectId,
+      sourceId: obj.sourceId,
+      dataSetName: obj.objectName,
+      domain: domainMap[obj.businessDomain] || obj.businessDomain,
+      ownerOrganizationId: obj.entityId,
+      recordCount: obj.downstreamIndicatorCount ? obj.downstreamIndicatorCount * 1200 : 500,
+      lastUpdatedAt: obj.lastUpdateTime,
+      qualityScore: overall,
+      dataStatus: hasData ? 'OK' : 'INSUFFICIENT_DATA',
+      fieldCount: objFields.length,
+      legacyObjectId: obj.objectId
+    };
+  });
+
+  let jobSeq = 1;
+  const regulatoryDataIntegrationJobs = [];
+  const regulatoryDataIntegrationLogs = [];
+  regulatoryDataSets.forEach(ds => {
+    const src = regulatoryDataSources.find(s => s.sourceId === ds.sourceId);
+    const legacyIssue = legacyIssues.find(i => i.objectId === ds.dataSetId);
+    let status = 'SUCCESS';
+    if (src?.connectionStatus === 'OFFLINE') status = 'FAILED';
+    else if (src?.connectionStatus === 'DEGRADED' || legacyIssue?.anomalyType === '数据延迟' || legacyIssue?.anomalyType === '数据缺失') status = 'PARTIAL_SUCCESS';
+    const failed = status === 'FAILED' ? Math.floor(ds.recordCount * 0.12) : status === 'PARTIAL_SUCCESS' ? Math.floor(ds.recordCount * 0.05) : 0;
+    const success = ds.recordCount - failed;
+    const jobId = 'JOB-' + String(jobSeq++).padStart(3, '0');
+    regulatoryDataIntegrationJobs.push({
+      integrationJobId: jobId,
+      sourceId: ds.sourceId,
+      dataSetId: ds.dataSetId,
+      status,
+      startedAt: TODAY + ' 06:00:00',
+      completedAt: status === 'RUNNING' ? null : TODAY + ' 08:00:00',
+      recordCount: ds.recordCount,
+      successCount: success,
+      failedCount: failed,
+      retryCount: status === 'FAILED' ? 3 : status === 'PARTIAL_SUCCESS' ? 1 : 0,
+      errorMessage: status === 'FAILED' ? '数据源连接中断，超过最大重试次数' : status === 'PARTIAL_SUCCESS' ? '部分记录质量校验未通过' : null
+    });
+    if (status === 'FAILED' || status === 'PARTIAL_SUCCESS') {
+      regulatoryDataIntegrationLogs.push({
+        logId: 'LOG-' + jobId,
+        integrationJobId: jobId,
+        eventType: status === 'FAILED' ? 'JOB_FAILED' : 'QUALITY_CHECK',
+        status,
+        message: status === 'FAILED' ? '接入失败，已触发数据质量问题' : '部分记录未通过质量校验',
+        timestamp: TODAY + ' 08:00:00'
+      });
+    }
+  });
+
+  const dimFromAnomaly = { '数据缺失': 'COMPLETENESS', '数据延迟': 'TIMELINESS', '数据口径不一致': 'CONSISTENCY', '数据格式异常': 'VALIDITY', '数据异常波动': 'ACCURACY' };
+  const regulatoryDataQualityRules = legacyIssues.map((issue, i) => ({
+    qualityRuleId: 'QR-' + String(i + 1).padStart(3, '0'),
+    ruleName: issue.anomalyType + '校验',
+    dimension: dimFromAnomaly[issue.anomalyType] || 'COMPLETENESS',
+    targetDataSetId: issue.objectId,
+    fieldName: issue.fieldId ? (fields.find(f => f.fieldId === issue.fieldId) || {}).fieldName : null,
+    threshold: 90,
+    severity: parsePct(issue.qualityScore) < 80 ? 'HIGH' : 'MEDIUM',
+    status: 'ACTIVE',
+    legacyIssueId: issue.issueId
+  }));
+
+  let govSeq = 1;
+  const regulatoryDataGovernanceTasks = [];
+  const regulatoryDataQualityIssues = legacyIssues.map((issue, i) => {
+    const rel = legacyLineage.find(l => l.objectId === issue.objectId && l.kriId === issue.kriId) || legacyLineage.find(l => l.objectId === issue.objectId);
+    const rectId = rel?.rectificationId || warnings.find(w => w.id === issue.riskMatterId)?.rectificationTaskId;
+    const rect = rectId ? rects.find(r => r.taskId === rectId) : null;
+    const rule = regulatoryDataQualityRules[i];
+    let governanceTaskId = null;
+    if (issue.rectificationStatus && issue.rectificationStatus !== '已关闭') {
+      governanceTaskId = 'GOV-' + String(govSeq++).padStart(3, '0');
+      const govStatus = rect ? (rect.status === '已关闭' ? 'CLOSED' : rect.status === '整改验证' ? 'PENDING_VERIFICATION' : rect.status === '整改执行' ? 'IN_PROGRESS' : 'ASSIGNED') : 'IDENTIFIED';
+      regulatoryDataGovernanceTasks.push({
+        governanceTaskId,
+        qualityIssueId: 'QI-' + issue.issueId.replace('DQ', ''),
+        responsibleOrganizationId: (objects.find(o => o.objectId === issue.objectId) || {}).entityId || 'G001',
+        status: govStatus,
+        relatedRectificationTaskId: rect?.taskId || null,
+        dueDate: rect?.deadline || '2026-08-30',
+        verificationStatus: rect?.verificationStatus || '待处理',
+        legacyIssueId: issue.issueId
+      });
+    }
+    return {
+      qualityIssueId: 'QI-' + issue.issueId.replace('DQ', ''),
+      qualityRuleId: rule.qualityRuleId,
+      dataSetId: issue.objectId,
+      sourceId: (objects.find(o => o.objectId === issue.objectId) || {}).sourceId,
+      issueType: issue.anomalyType,
+      severity: parsePct(issue.qualityScore) < 80 ? 'HIGH' : 'MEDIUM',
+      issueCount: 12 + i * 7,
+      affectedRecords: issue.fieldId ? 1 : 0,
+      status: issue.rectificationStatus === '已关闭' ? 'CLOSED' : issue.rectificationStatus === '整改中' ? 'IN_PROGRESS' : 'OPEN',
+      relatedGovernanceTaskId: governanceTaskId,
+      relatedRectificationTaskId: rect?.taskId || null,
+      legacyIssueId: issue.issueId,
+      kriId: issue.kriId,
+      indicatorId: issue.indicatorId
+    };
+  });
+
+  const regulatoryDataLineage = [];
+  let linSeq = 1;
+  const addLineage = (sourceType, sourceId, targetType, targetId, relationType, transformationRule, ownerOrganizationId) => {
+    regulatoryDataLineage.push({
+      lineageId: 'DL-' + String(linSeq++).padStart(3, '0'),
+      sourceType, sourceId, targetType, targetId, relationType, transformationRule, ownerOrganizationId
+    });
+  };
+  legacyLineage.forEach(rel => {
+    const obj = objects.find(o => o.objectId === rel.objectId);
+    const owner = obj?.entityId || 'G001';
+    addLineage('regulatoryDataSources', rel.sourceId, 'regulatoryDataSets', rel.objectId, 'SOURCE_TO_DATASET', '系统接入同步', owner);
+    if (rel.fieldId) addLineage('regulatoryDataSets', rel.objectId, 'dataFields', rel.fieldId, 'DATASET_TO_FIELD', '字段映射', owner);
+    if (rel.indicatorId) addLineage('dataFields', rel.fieldId, 'dataIndicators', rel.indicatorId, 'FIELD_TO_METRIC', '指标计算', owner);
+    if (rel.kriId) addLineage('dataIndicators', rel.indicatorId, 'groupKris', rel.kriId, 'METRIC_TO_KRI', 'KRI聚合', owner);
+    if (rel.riskMatterId) addLineage('groupKris', rel.kriId, 'warnings', rel.riskMatterId, 'KRI_TO_RISK', '风险识别', owner);
+    if (rel.controlRule) addLineage('warnings', rel.riskMatterId, 'regulatoryRules', rel.controlRule, 'RISK_TO_RULE', '规则触发', owner);
+    if (rel.rectificationId) addLineage('warnings', rel.riskMatterId, 'rectificationTasks', rel.rectificationId, 'RULE_TO_ACTION', '整改联动', owner);
+  });
+
+  const calcDims = (dsId) => {
+    const ds = regulatoryDataSets.find(d => d.dataSetId === dsId);
+    const regSrc = registry.find(s => s.sourceId === ds?.sourceId);
+    const legacyIssue = legacyIssues.find(i => i.objectId === dsId);
+    const objFields = fields.filter(f => f.objectId === dsId);
+    const completeness = parsePct(regSrc?.dataCompleteness ?? legacyIssue?.completeness);
+    const timeliness = parsePct(regSrc?.dataTimeliness ?? legacyIssue?.timeliness);
+    const accuracy = parsePct(legacyIssue?.accuracy) ?? (objFields.length ? objFields.filter(f => f.qualityStatus === '正常').length / objFields.length * 100 : null);
+    const consistency = objFields.length ? 88 : null;
+    const uniqueness = objFields.length ? 92 : null;
+    const validity = objFields.length ? (objFields.filter(f => f.qualityStatus !== '异常').length / objFields.length * 100) : null;
+    if (completeness == null && accuracy == null) return { dataStatus: 'INSUFFICIENT_DATA' };
+    const c = completeness ?? 90, a = accuracy ?? 90, t = timeliness ?? 90, co = consistency ?? 88, u = uniqueness ?? 92, v = validity ?? 90;
+    const overallScore = Math.round((c * 0.2 + a * 0.2 + t * 0.2 + co * 0.15 + u * 0.15 + v * 0.1) * 10) / 10;
+    return { completeness: c, accuracy: a, timeliness: t, consistency: co, uniqueness: u, validity: v, overallScore, dataStatus: 'OK' };
+  };
+
+  const regulatoryDataQualitySnapshots = regulatoryDataSets.slice(0, 6).map(ds => {
+    const dims = calcDims(ds.dataSetId);
+    return {
+      snapshotId: 'SNAP-' + ds.dataSetId,
+      snapshotDate: TODAY,
+      scopeType: 'DATASET',
+      scopeId: ds.dataSetId,
+      ...dims,
+      trendStatus: 'INSUFFICIENT_HISTORY'
+    };
+  });
+
+  const groupSnapshot = (() => {
+    const scores = regulatoryDataQualitySnapshots.filter(s => s.dataStatus === 'OK');
+    if (!scores.length) return { snapshotId: 'SNAP-GROUP', snapshotDate: TODAY, scopeType: 'GROUP', scopeId: 'G001', dataStatus: 'INSUFFICIENT_DATA', trendStatus: 'INSUFFICIENT_HISTORY' };
+    const avg = (k) => Math.round(scores.reduce((s, x) => s + (x[k] || 0), 0) / scores.length * 10) / 10;
+    return {
+      snapshotId: 'SNAP-GROUP', snapshotDate: TODAY, scopeType: 'GROUP', scopeId: 'G001',
+      completeness: avg('completeness'), accuracy: avg('accuracy'), timeliness: avg('timeliness'),
+      consistency: avg('consistency'), uniqueness: avg('uniqueness'), validity: avg('validity'),
+      overallScore: avg('overallScore'), dataStatus: 'OK', trendStatus: 'INSUFFICIENT_HISTORY'
+    };
+  })();
+  regulatoryDataQualitySnapshots.unshift(groupSnapshot);
+
+  APP_DATA.regulatoryDataSources = regulatoryDataSources;
+  APP_DATA.regulatoryDataSets = regulatoryDataSets;
+  APP_DATA.regulatoryDataIntegrationJobs = regulatoryDataIntegrationJobs;
+  APP_DATA.regulatoryDataQualityRules = regulatoryDataQualityRules;
+  APP_DATA.regulatoryDataQualityIssues = regulatoryDataQualityIssues;
+  APP_DATA.regulatoryDataGovernanceTasks = regulatoryDataGovernanceTasks;
+  APP_DATA.regulatoryDataLineage = regulatoryDataLineage;
+  APP_DATA.regulatoryDataQualitySnapshots = regulatoryDataQualitySnapshots;
+  APP_DATA.regulatoryDataIntegrationLogs = regulatoryDataIntegrationLogs;
+  APP_DATA.regulatoryDataGovernanceMetrics = {
+    sourceCount: regulatoryDataSources.length,
+    onlineSourceCount: regulatoryDataSources.filter(s => s.connectionStatus === 'ONLINE').length,
+    offlineSourceCount: regulatoryDataSources.filter(s => s.connectionStatus === 'OFFLINE').length,
+    integrationSuccessRate: Math.round(regulatoryDataIntegrationJobs.filter(j => j.status === 'SUCCESS').length / regulatoryDataIntegrationJobs.length * 1000) / 10,
+    failedJobCount: regulatoryDataIntegrationJobs.filter(j => j.status === 'FAILED').length,
+    partialJobCount: regulatoryDataIntegrationJobs.filter(j => j.status === 'PARTIAL_SUCCESS').length,
+    pendingRetryCount: regulatoryDataIntegrationJobs.filter(j => j.retryCount > 0 && j.status === 'FAILED').length,
+    dataDelayHours: regulatoryDataSources.filter(s => s.connectionStatus !== 'ONLINE').length * 6,
+    overallQualityScore: groupSnapshot.overallScore || null,
+    qualityDataStatus: groupSnapshot.dataStatus,
+    anomalyDataSetCount: regulatoryDataSets.filter(d => d.qualityScore != null && d.qualityScore < 85).length,
+    openIssueCount: regulatoryDataQualityIssues.filter(i => i.status !== 'CLOSED').length,
+    severeIssueCount: regulatoryDataQualityIssues.filter(i => i.severity === 'HIGH' && i.status !== 'CLOSED').length,
+    openGovernanceCount: regulatoryDataGovernanceTasks.filter(t => t.status !== 'CLOSED' && t.status !== 'VERIFIED').length,
+    overdueGovernanceCount: regulatoryDataGovernanceTasks.filter(t => t.dueDate < TODAY && !['CLOSED', 'VERIFIED'].includes(t.status)).length,
+    qualityTrendStatus: 'INSUFFICIENT_HISTORY',
+    impactedKriCount: [...new Set(regulatoryDataQualityIssues.filter(i => i.kriId && i.status !== 'CLOSED').map(i => i.kriId))].length,
+    impactedRiskCount: legacyLineage.filter(l => l.riskMatterId).length,
+    impactedEntityCount: [...new Set(regulatoryDataQualityIssues.map(i => (regulatoryDataSets.find(d => d.dataSetId === i.dataSetId) || {}).ownerOrganizationId).filter(Boolean))].length
+  };
+
+  const extraPerms = [
+    { permissionSetId: 'PS-017', permissionCode: 'DATA_VIEW', resourceType: 'regulatoryDataSources', action: 'VIEW', riskLevel: 'LOW' },
+    { permissionSetId: 'PS-018', permissionCode: 'DATA_MANAGE', resourceType: 'regulatoryDataSources', action: 'UPDATE', riskLevel: 'HIGH' },
+    { permissionSetId: 'PS-019', permissionCode: 'DATA_INTEGRATION_RETRY', resourceType: 'regulatoryDataIntegrationJobs', action: 'RETRY', riskLevel: 'MEDIUM' },
+    { permissionSetId: 'PS-020', permissionCode: 'DATA_GOVERNANCE_ASSIGN', resourceType: 'regulatoryDataGovernanceTasks', action: 'ASSIGN', riskLevel: 'MEDIUM' },
+    { permissionSetId: 'PS-021', permissionCode: 'DATA_GOVERNANCE_CLOSE', resourceType: 'regulatoryDataGovernanceTasks', action: 'CLOSE', riskLevel: 'HIGH' },
+    { permissionSetId: 'PS-022', permissionCode: 'DATA_EXPORT', resourceType: 'regulatoryDataSets', action: 'EXPORT', riskLevel: 'HIGH' },
+    { permissionSetId: 'PS-023', permissionCode: 'DATA_LINEAGE_VIEW', resourceType: 'regulatoryDataLineage', action: 'VIEW', riskLevel: 'LOW' }
+  ];
+  APP_DATA.regulatoryPermissionSets = [...(APP_DATA.regulatoryPermissionSets || []), ...extraPerms];
+  const rpm = APP_DATA.regulatoryRolePermissionMap || {};
+  rpm['ROLE-GROUP-LEADER'] = [...new Set([...(rpm['ROLE-GROUP-LEADER'] || []), 'DATA_VIEW', 'DATA_LINEAGE_VIEW', 'DATA_EXPORT'])];
+  rpm['ROLE-GROUP-REG'] = [...new Set([...(rpm['ROLE-GROUP-REG'] || []), 'DATA_VIEW', 'DATA_MANAGE', 'DATA_INTEGRATION_RETRY', 'DATA_GOVERNANCE_ASSIGN', 'DATA_GOVERNANCE_CLOSE', 'DATA_LINEAGE_VIEW', 'DATA_EXPORT'])];
+  rpm['ROLE-DOMAIN-REG'] = [...new Set([...(rpm['ROLE-DOMAIN-REG'] || []), 'DATA_VIEW', 'DATA_GOVERNANCE_ASSIGN', 'DATA_LINEAGE_VIEW'])];
+  rpm['ROLE-ENTITY-REG'] = [...new Set([...(rpm['ROLE-ENTITY-REG'] || []), 'DATA_VIEW', 'DATA_GOVERNANCE_ASSIGN'])];
+  APP_DATA.regulatoryRolePermissionMap = rpm;
+})();

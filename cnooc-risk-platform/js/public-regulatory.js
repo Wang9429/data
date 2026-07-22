@@ -54,6 +54,11 @@ Object.assign(App, {
     { pageId: 'regulatory-authorization', label: '集团监管授权审批中心', category: '权限治理', entryFromGroupOverview: false, supportsPublicNavigation: true, supportsBackNavigation: true },
     { pageId: 'regulatory-audit-trail', label: '集团监管操作审计中心', category: '权限治理', entryFromGroupOverview: false, supportsPublicNavigation: true, supportsBackNavigation: true },
     { pageId: 'regulatory-system-settings', label: '集团监管平台系统配置中心', category: '权限治理', entryFromGroupOverview: false, supportsPublicNavigation: true, supportsBackNavigation: true },
+    { pageId: 'regulatory-data-sources', label: '集团监管数据源中心', category: '数据运行', entryFromGroupOverview: false, supportsPublicNavigation: true, supportsBackNavigation: true },
+    { pageId: 'regulatory-data-integration', label: '集团监管数据接入中心', category: '数据运行', entryFromGroupOverview: false, supportsPublicNavigation: true, supportsBackNavigation: true },
+    { pageId: 'regulatory-data-quality', label: '集团监管数据质量中心', category: '数据运行', entryFromGroupOverview: false, supportsPublicNavigation: true, supportsBackNavigation: true },
+    { pageId: 'regulatory-data-governance', label: '集团监管数据治理中心', category: '数据运行', entryFromGroupOverview: false, supportsPublicNavigation: true, supportsBackNavigation: true },
+    { pageId: 'regulatory-data-lineage', label: '集团监管数据血缘中心', category: '数据运行', entryFromGroupOverview: false, supportsPublicNavigation: true, supportsBackNavigation: true },
     { pageId: 'major', label: '重大事项监管', category: '重大事项', entryFromGroupOverview: false, supportsPublicNavigation: false, supportsBackNavigation: false }
   ],
 
@@ -111,6 +116,11 @@ Object.assign(App, {
     if (pageId === 'regulatory-authorization') return { ...(this.regulatoryAuthorizationFilter || {}) };
     if (pageId === 'regulatory-audit-trail') return { ...(this.regulatoryAuditTrailFilter || {}) };
     if (pageId === 'regulatory-system-settings') return { ...(this.regulatorySystemSettingsFilter || {}) };
+    if (pageId === 'regulatory-data-sources') return { ...(this.regulatoryDataSourcesFilter || {}) };
+    if (pageId === 'regulatory-data-integration') return { ...(this.regulatoryDataIntegrationFilter || {}) };
+    if (pageId === 'regulatory-data-quality') return { ...(this.regulatoryDataQualityFilter || {}) };
+    if (pageId === 'regulatory-data-governance') return { ...(this.regulatoryDataGovernanceFilter || {}) };
+    if (pageId === 'regulatory-data-lineage') return { ...(this.regulatoryDataLineageFilter || {}) };
     if (pageId === 'regulatory-actions') return { ...(this.regulatoryActionFilter || {}) };
     if (pageId === 'regulatory-action-execution') return { ...(this.regulatoryActionExecutionFilter || {}) };
     if (pageId === 'data-governance') return { ...(this.dataGovFilter || {}) };
@@ -186,6 +196,11 @@ Object.assign(App, {
     if (pageId === 'regulatory-authorization') ctx.authorizationId = this.regulatoryAuthorizationFocusId;
     if (pageId === 'regulatory-audit-trail') ctx.auditId = this.regulatoryAuditFocusId;
     if (pageId === 'regulatory-system-settings') ctx.configId = this.regulatorySystemConfigFocusId;
+    if (pageId === 'regulatory-data-sources') ctx.sourceId = this.regulatoryDataSourceFocusId;
+    if (pageId === 'regulatory-data-integration') ctx.integrationJobId = this.regulatoryDataIntegrationFocusId;
+    if (pageId === 'regulatory-data-quality') ctx.qualityIssueId = this.regulatoryDataQualityFocusId;
+    if (pageId === 'regulatory-data-governance') ctx.governanceTaskId = this.regulatoryDataGovernanceFocusId;
+    if (pageId === 'regulatory-data-lineage') { ctx.lineageId = this.regulatoryDataLineageFocusId; ctx.sourceId = this.regulatoryDataLineageSourceId; }
     return ctx;
   },
 
@@ -214,6 +229,11 @@ Object.assign(App, {
     if (pageId === 'regulatory-authorization') this.regulatoryAuthorizationFilter = { ...filters };
     if (pageId === 'regulatory-audit-trail') this.regulatoryAuditTrailFilter = { ...filters };
     if (pageId === 'regulatory-system-settings') this.regulatorySystemSettingsFilter = { ...filters };
+    if (pageId === 'regulatory-data-sources') this.regulatoryDataSourcesFilter = { ...filters };
+    if (pageId === 'regulatory-data-integration') this.regulatoryDataIntegrationFilter = { ...filters };
+    if (pageId === 'regulatory-data-quality') this.regulatoryDataQualityFilter = { ...filters };
+    if (pageId === 'regulatory-data-governance') this.regulatoryDataGovernanceFilter = { ...filters };
+    if (pageId === 'regulatory-data-lineage') this.regulatoryDataLineageFilter = { ...filters };
     if (pageId === 'regulatory-actions') this.regulatoryActionFilter = { ...filters };
     if (pageId === 'regulatory-action-execution') this.regulatoryActionExecutionFilter = { ...filters };
     if (pageId === 'data-governance') this.dataGovFilter = { ...filters };
@@ -416,8 +436,6 @@ Object.assign(App, {
   },
 
   _resolvePermissionCode(resourceType, action) {
-    if (action === 'APPROVE') return 'ACTION_APPROVE';
-    if (action === 'VIEW') return 'ACTION_VIEW';
     const map = {
       'rectificationTasks:CLOSE': 'RECTIFICATION_CLOSE', 'rectificationTasks:DEFER': 'RECTIFICATION_DEFER',
       'regulatoryActions:VIEW': 'ACTION_VIEW', 'regulatoryActions:ASSIGN': 'ACTION_ASSIGN', 'regulatoryActions:APPROVE': 'ACTION_APPROVE', 'regulatoryActions:CLOSE': 'ACTION_CLOSE',
@@ -425,9 +443,16 @@ Object.assign(App, {
       'regulatoryRuleDeployments:PUBLISH': 'RULE_PUBLISH', 'regulatoryRuleDeployments:ROLLBACK': 'RULE_ROLLBACK',
       'regulatorySupervisionTasks:ASSIGN': 'TASK_ASSIGN', 'regulatoryStrategyAnalysis:OVERRIDE': 'STRATEGY_OVERRIDE',
       'regulatorySystemConfigurations:VIEW': 'CONFIG_VIEW', 'regulatorySystemConfigurations:UPDATE': 'CONFIG_CHANGE',
-      'regulatoryRoleAssignments:MANAGE': 'ACCESS_MANAGE', 'regulatoryAuditLogs:EXPORT': 'AUDIT_EXPORT'
+      'regulatoryRoleAssignments:MANAGE': 'ACCESS_MANAGE', 'regulatoryAuditLogs:EXPORT': 'AUDIT_EXPORT',
+      'regulatoryDataSources:VIEW': 'DATA_VIEW', 'regulatoryDataSources:UPDATE': 'DATA_MANAGE',
+      'regulatoryDataIntegrationJobs:RETRY': 'DATA_INTEGRATION_RETRY', 'regulatoryDataGovernanceTasks:ASSIGN': 'DATA_GOVERNANCE_ASSIGN',
+      'regulatoryDataGovernanceTasks:CLOSE': 'DATA_GOVERNANCE_CLOSE', 'regulatoryDataSets:EXPORT': 'DATA_EXPORT',
+      'regulatoryDataLineage:VIEW': 'DATA_LINEAGE_VIEW'
     };
-    return map[resourceType + ':' + action] || (action + '_' + resourceType).toUpperCase();
+    if (map[resourceType + ':' + action]) return map[resourceType + ':' + action];
+    if (action === 'APPROVE') return 'ACTION_APPROVE';
+    if (action === 'VIEW') return 'ACTION_VIEW';
+    return (action + '_' + resourceType).toUpperCase();
   },
 
   _scopeAllowsResource(assignment, resourceType, resourceId) {
@@ -443,6 +468,12 @@ Object.assign(App, {
     if (rect) { entityId = rect.entityId; domainId = rect.domainId; regionId = rect.regionId; }
     if (act) { entityId = act.entityId; domainId = act.domainId; regionId = act.regionId; }
     if (ent) { entityId = ent.entityId; regionId = ent.regionId; domainId = ent.domainId || 'investment'; }
+    const src = (APP_DATA.regulatoryDataSources || []).find(s => s.sourceId === resourceId);
+    const ds = (APP_DATA.regulatoryDataSets || []).find(d => d.dataSetId === resourceId);
+    const gov = (APP_DATA.regulatoryDataGovernanceTasks || []).find(g => g.governanceTaskId === resourceId);
+    if (src) { entityId = src.ownerOrganizationId; regionId = src.regionId; }
+    if (ds) { entityId = ds.ownerOrganizationId; domainId = ds.domain; }
+    if (gov) entityId = gov.responsibleOrganizationId;
     if (scopeType === 'ENTITY') return scopeIds.includes(entityId);
     if (scopeType === 'DOMAIN') return scopeIds.includes(domainId || 'investment');
     if (scopeType === 'REGION') return scopeIds.includes(regionId);
@@ -590,6 +621,176 @@ Object.assign(App, {
     if (!access.allowed) return '';
     const confirm = access.requiredAuthorization ? `if(!confirm('该操作需要已完成审批，确认继续？'))return;` : '';
     return `<button class="btn btn-outline" onclick="${confirm}${onclick}">${this.escHtml(label)}</button>`;
+  },
+
+  calculateDataSetQuality(dataSetId) {
+    const snap = (APP_DATA.regulatoryDataQualitySnapshots || []).find(s => s.scopeType === 'DATASET' && s.scopeId === dataSetId);
+    if (snap) return snap;
+    const ds = (APP_DATA.regulatoryDataSets || []).find(d => d.dataSetId === dataSetId);
+    if (!ds || ds.dataStatus === 'INSUFFICIENT_DATA') return { dataStatus: 'INSUFFICIENT_DATA', overallScore: null };
+    return { dataStatus: 'OK', overallScore: ds.qualityScore, completeness: null, accuracy: null, timeliness: null, consistency: null, uniqueness: null, validity: null };
+  },
+
+  calculateOverallQualityScore(dims) {
+    if (!dims || dims.dataStatus === 'INSUFFICIENT_DATA') return { overallScore: null, dataStatus: 'INSUFFICIENT_DATA' };
+    const { completeness, accuracy, timeliness, consistency, uniqueness, validity } = dims;
+    const overallScore = Math.round((completeness * 0.2 + accuracy * 0.2 + timeliness * 0.2 + consistency * 0.15 + uniqueness * 0.15 + validity * 0.1) * 10) / 10;
+    return { overallScore, dataStatus: 'OK' };
+  },
+
+  getKriDataCredibility(kriId) {
+    const issues = (APP_DATA.regulatoryDataQualityIssues || []).filter(i => i.kriId === kriId && i.status !== 'CLOSED');
+    const lineage = (APP_DATA.regulatoryDataLineage || []).filter(l => l.targetType === 'groupKris' && l.targetId === kriId);
+    const dataSetIds = lineage.filter(l => l.sourceType === 'regulatoryDataSets').map(l => l.sourceId);
+    const scores = dataSetIds.map(id => this.calculateDataSetQuality(id)).filter(s => s.dataStatus === 'OK');
+    const baseScore = scores.length ? scores.reduce((s, x) => s + (x.overallScore || 0), 0) / scores.length : null;
+    if (baseScore == null) return { kriId, credibility: null, dataStatus: 'INSUFFICIENT_DATA', openIssueCount: issues.length, impactLevel: 'UNKNOWN' };
+    const penalty = issues.reduce((p, i) => p + (i.severity === 'HIGH' ? 12 : 6), 0);
+    const credibility = Math.max(0, Math.round((baseScore - penalty) * 10) / 10);
+    const impactLevel = credibility < 70 ? 'HIGH' : credibility < 85 ? 'MEDIUM' : 'LOW';
+    return { kriId, credibility, dataStatus: 'OK', openIssueCount: issues.length, impactLevel, baseScore };
+  },
+
+  getPriorityCredibilityImpact(entityId) {
+    const po = (APP_DATA.regulatoryPriorityObjects || []).find(o => o.objectId === entityId);
+    const entityIssues = (APP_DATA.regulatoryDataQualityIssues || []).filter(i => {
+      const ds = (APP_DATA.regulatoryDataSets || []).find(d => d.dataSetId === i.dataSetId);
+      return ds?.ownerOrganizationId === entityId && i.status !== 'CLOSED';
+    });
+    const kriIds = [...new Set(entityIssues.map(i => i.kriId).filter(Boolean))];
+    const creds = kriIds.map(id => this.getKriDataCredibility(id)).filter(c => c.dataStatus === 'OK');
+    const avgCred = creds.length ? creds.reduce((s, c) => s + c.credibility, 0) / creds.length : null;
+    let priorityAdjustment = 'NONE';
+    if (avgCred != null && avgCred < 75) priorityAdjustment = 'ELEVATE';
+    else if (avgCred != null && avgCred < 85) priorityAdjustment = 'MONITOR';
+    return { entityId, currentPriority: po?.priority, avgKriCredibility: avgCred, openDataIssues: entityIssues.length, priorityAdjustment, dataStatus: avgCred == null ? 'INSUFFICIENT_DATA' : 'OK' };
+  },
+
+  getDataLineageChain(startType, startId, direction) {
+    const lineage = APP_DATA.regulatoryDataLineage || [];
+    const forward = direction !== 'UP';
+    const chain = [{ type: startType, id: startId }];
+    const visited = new Set([startType + ':' + startId]);
+    let frontier = [{ type: startType, id: startId }];
+    for (let depth = 0; depth < 8 && frontier.length; depth++) {
+      const next = [];
+      frontier.forEach(node => {
+        const edges = lineage.filter(l => forward
+          ? l.sourceType === node.type && l.sourceId === node.id
+          : l.targetType === node.type && l.targetId === node.id);
+        edges.forEach(e => {
+          const nType = forward ? e.targetType : e.sourceType;
+          const nId = forward ? e.targetId : e.sourceId;
+          const key = nType + ':' + nId;
+          if (!visited.has(key)) {
+            visited.add(key);
+            chain.push({ type: nType, id: nId, relationType: e.relationType });
+            next.push({ type: nType, id: nId });
+          }
+        });
+      });
+      frontier = next;
+    }
+    return chain;
+  },
+
+  getDataSourceImpactAnalysis(sourceId) {
+    const downstream = this.getDataLineageChain('regulatoryDataSources', sourceId, 'DOWN');
+    const dataSets = downstream.filter(n => n.type === 'regulatoryDataSets').map(n => n.id);
+    const indicators = downstream.filter(n => n.type === 'dataIndicators').map(n => n.id);
+    const kriList = downstream.filter(n => n.type === 'groupKris').map(n => n.id);
+    const risks = downstream.filter(n => n.type === 'warnings').map(n => n.id);
+    const entities = [...new Set(dataSets.map(id => (APP_DATA.regulatoryDataSets || []).find(d => d.dataSetId === id)?.ownerOrganizationId).filter(Boolean))];
+    const actions = (APP_DATA.regulatoryActions || []).filter(a => risks.some(rid => (a.sourceRiskMatterIds || []).includes(rid)));
+    return { sourceId, affectedDataSets: dataSets, affectedIndicators: indicators, affectedKris: kriList, affectedRisks: risks, affectedEntities: entities, affectedActions: actions.map(a => a.actionId) };
+  },
+
+  filterDataByUserScope(items, getEntityId, getDomainId) {
+    const user = this.getCurrentRegulatoryUser();
+    if (!user) return items;
+    const assignments = this.getUserRoleAssignments(user.userId);
+    if (assignments.some(a => a.scopeType === 'GROUP')) return items;
+    return items.filter(item => {
+      const eid = getEntityId(item);
+      const did = getDomainId ? getDomainId(item) : null;
+      return assignments.some(asg => {
+        if (asg.scopeType === 'ENTITY') return asg.scopeIds.includes(eid);
+        if (asg.scopeType === 'DOMAIN') return asg.scopeIds.includes(did);
+        if (asg.scopeType === 'REGION') return asg.scopeIds.includes(item.regionId);
+        return false;
+      });
+    });
+  },
+
+  retryDataIntegrationJob(jobId) {
+    const job = (APP_DATA.regulatoryDataIntegrationJobs || []).find(j => j.integrationJobId === jobId);
+    if (!job) return { success: false, message: '接入任务不存在' };
+    const access = this.canRegulatoryAccess(this.getCurrentRegulatoryUser()?.userId, 'regulatoryDataIntegrationJobs', jobId, 'RETRY');
+    if (!access.allowed) {
+      this.createRegulatoryAuditLog({ actionType: 'OVERRIDE_DENIED', objectType: 'regulatoryDataIntegrationJobs', objectId: jobId, reason: access.reason });
+      return { success: false, denied: true, message: access.reason };
+    }
+    const before = { status: job.status, retryCount: job.retryCount };
+    job.retryCount += 1;
+    if (job.retryCount >= 3 && job.status === 'FAILED') {
+      const issue = (APP_DATA.regulatoryDataQualityIssues || []).find(i => i.dataSetId === job.dataSetId && i.status !== 'CLOSED');
+      if (!issue) {
+        const qiId = 'QI-AUTO-' + jobId;
+        APP_DATA.regulatoryDataQualityIssues.push({
+          qualityIssueId: qiId, qualityRuleId: null, dataSetId: job.dataSetId, sourceId: job.sourceId,
+          issueType: '接入失败', severity: 'HIGH', issueCount: job.failedCount, affectedRecords: job.failedCount,
+          status: 'OPEN', relatedGovernanceTaskId: null, relatedRectificationTaskId: null
+        });
+        const govId = 'GOV-AUTO-' + jobId;
+        const ds = (APP_DATA.regulatoryDataSets || []).find(d => d.dataSetId === job.dataSetId);
+        APP_DATA.regulatoryDataGovernanceTasks.push({
+          governanceTaskId: govId, qualityIssueId: qiId, responsibleOrganizationId: ds?.ownerOrganizationId || 'G001',
+          status: 'IDENTIFIED', relatedRectificationTaskId: null, dueDate: '2026-08-15', verificationStatus: '待处理'
+        });
+      }
+    } else if (job.status === 'FAILED' || job.status === 'PARTIAL_SUCCESS') {
+      job.status = 'SUCCESS';
+      job.failedCount = 0;
+      job.successCount = job.recordCount;
+      job.errorMessage = null;
+    }
+    this.createRegulatoryAuditLog({ actionType: 'RETRY', objectType: 'regulatoryDataIntegrationJobs', objectId: jobId, beforeState: before, afterState: { status: job.status, retryCount: job.retryCount }, reason: '接入任务重试' });
+    APP_DATA.regulatoryDataIntegrationLogs = APP_DATA.regulatoryDataIntegrationLogs || [];
+    APP_DATA.regulatoryDataIntegrationLogs.unshift({ logId: 'LOG-RETRY-' + jobId + '-' + Date.now(), integrationJobId: jobId, eventType: 'RETRY', status: job.status, message: '手动重试接入任务', timestamp: new Date().toISOString().slice(0, 19) });
+    return { success: true, job };
+  },
+
+  assignDataGovernanceTask(governanceTaskId, organizationId) {
+    const task = (APP_DATA.regulatoryDataGovernanceTasks || []).find(t => t.governanceTaskId === governanceTaskId);
+    if (!task) return { success: false, message: '治理任务不存在' };
+    const access = this.canRegulatoryAccess(this.getCurrentRegulatoryUser()?.userId, 'regulatoryDataGovernanceTasks', governanceTaskId, 'ASSIGN');
+    if (!access.allowed) return { success: false, denied: true, message: access.reason };
+    const before = { status: task.status, responsibleOrganizationId: task.responsibleOrganizationId };
+    task.responsibleOrganizationId = organizationId || task.responsibleOrganizationId;
+    task.status = 'ASSIGNED';
+    this.createRegulatoryAuditLog({ actionType: 'ASSIGN', objectType: 'regulatoryDataGovernanceTasks', objectId: governanceTaskId, beforeState: before, afterState: { status: task.status, responsibleOrganizationId: task.responsibleOrganizationId }, reason: '数据治理任务分派' });
+    return { success: true, task };
+  },
+
+  closeDataGovernanceTask(governanceTaskId, reason) {
+    const task = (APP_DATA.regulatoryDataGovernanceTasks || []).find(t => t.governanceTaskId === governanceTaskId);
+    if (!task) return { success: false, message: '治理任务不存在' };
+    const access = this.canRegulatoryAccess(this.getCurrentRegulatoryUser()?.userId, 'regulatoryDataGovernanceTasks', governanceTaskId, 'CLOSE');
+    if (!access.allowed) return { success: false, denied: true, message: access.reason };
+    const before = { status: task.status, verificationStatus: task.verificationStatus };
+    task.status = 'VERIFIED';
+    task.verificationStatus = '已验证';
+    const issue = (APP_DATA.regulatoryDataQualityIssues || []).find(i => i.qualityIssueId === task.qualityIssueId);
+    if (issue) issue.status = 'CLOSED';
+    if (task.relatedRectificationTaskId) {
+      const rect = (APP_DATA.rectificationTasks || []).find(t => t.taskId === task.relatedRectificationTaskId);
+      if (rect && rect.status !== '已关闭') {
+        rect.verificationStatus = '验证通过';
+      }
+    }
+    const ds = issue ? this.calculateDataSetQuality(issue.dataSetId) : null;
+    this.createRegulatoryAuditLog({ actionType: 'CLOSE', objectType: 'regulatoryDataGovernanceTasks', objectId: governanceTaskId, beforeState: before, afterState: { status: task.status, verificationStatus: task.verificationStatus }, reason: reason || '数据治理任务关闭' });
+    return { success: true, task, qualityRecovery: ds };
   },
 
   renderPublicAuthStatusBadge(status) {
@@ -1186,6 +1387,11 @@ Object.assign(App, {
     if (pageId === 'regulatory-authorization') return this.regulatoryAuthorizationFilter || {};
     if (pageId === 'regulatory-audit-trail') return this.regulatoryAuditTrailFilter || {};
     if (pageId === 'regulatory-system-settings') return this.regulatorySystemSettingsFilter || {};
+    if (pageId === 'regulatory-data-sources') return this.regulatoryDataSourcesFilter || {};
+    if (pageId === 'regulatory-data-integration') return this.regulatoryDataIntegrationFilter || {};
+    if (pageId === 'regulatory-data-quality') return this.regulatoryDataQualityFilter || {};
+    if (pageId === 'regulatory-data-governance') return this.regulatoryDataGovernanceFilter || {};
+    if (pageId === 'regulatory-data-lineage') return this.regulatoryDataLineageFilter || {};
     if (pageId === 'regulatory-actions') return this.regulatoryActionFilter || {};
     if (pageId === 'regulatory-action-execution') return this.regulatoryActionExecutionFilter || {};
     if (pageId === 'cross-border-compliance') return this.cbFilter || {};
@@ -1217,6 +1423,11 @@ Object.assign(App, {
       : pageId === 'regulatory-authorization' ? 'regulatoryAuthorizationFilter'
       : pageId === 'regulatory-audit-trail' ? 'regulatoryAuditTrailFilter'
       : pageId === 'regulatory-system-settings' ? 'regulatorySystemSettingsFilter'
+      : pageId === 'regulatory-data-sources' ? 'regulatoryDataSourcesFilter'
+      : pageId === 'regulatory-data-integration' ? 'regulatoryDataIntegrationFilter'
+      : pageId === 'regulatory-data-quality' ? 'regulatoryDataQualityFilter'
+      : pageId === 'regulatory-data-governance' ? 'regulatoryDataGovernanceFilter'
+      : pageId === 'regulatory-data-lineage' ? 'regulatoryDataLineageFilter'
       : pageId === 'regulatory-actions' ? 'regulatoryActionFilter'
       : pageId === 'regulatory-action-execution' ? 'regulatoryActionExecutionFilter'
       : pageId === 'data-governance' ? 'dataGovFilter'
@@ -1250,6 +1461,11 @@ Object.assign(App, {
     else if (pageId === 'regulatory-authorization') { this.regulatoryAuthorizationFilter = {}; this.regulatoryAuthorizationFocusId = null; }
     else if (pageId === 'regulatory-audit-trail') { this.regulatoryAuditTrailFilter = {}; this.regulatoryAuditFocusId = null; }
     else if (pageId === 'regulatory-system-settings') { this.regulatorySystemSettingsFilter = {}; this.regulatorySystemConfigFocusId = null; }
+    else if (pageId === 'regulatory-data-sources') { this.regulatoryDataSourcesFilter = {}; this.regulatoryDataSourceFocusId = null; }
+    else if (pageId === 'regulatory-data-integration') { this.regulatoryDataIntegrationFilter = {}; this.regulatoryDataIntegrationFocusId = null; }
+    else if (pageId === 'regulatory-data-quality') { this.regulatoryDataQualityFilter = {}; this.regulatoryDataQualityFocusId = null; }
+    else if (pageId === 'regulatory-data-governance') { this.regulatoryDataGovernanceFilter = {}; this.regulatoryDataGovernanceFocusId = null; }
+    else if (pageId === 'regulatory-data-lineage') { this.regulatoryDataLineageFilter = {}; this.regulatoryDataLineageFocusId = null; this.regulatoryDataLineageSourceId = null; }
     else if (pageId === 'regulatory-actions') { this.regulatoryActionFilter = {}; this.regulatoryActionFocusId = null; }
     else if (pageId === 'regulatory-action-execution') { this.regulatoryActionExecutionFilter = {}; this.regulatoryActionExecutionFocusId = null; this.regulatoryActionFeedbackFocusId = null; }
     else if (pageId === 'cross-border-compliance') { this.cbFilter = {}; this.cbFocusActivityId = null; }
@@ -2208,6 +2424,35 @@ Object.assign(App, {
         </div>
         <div class="card"><div class="card-title">审计异常</div>
           ${(APP_DATA.regulatoryAuditLogs || []).filter(l => l.actionType === 'OVERRIDE_DENIED').slice(0, 3).map(l => `<p class="insight-note">${l.timestamp} · ${l.userId} · ${l.objectId}</p>`).join('') || this.renderPublicEmptyState('暂无异常操作')}
+        </div>
+      </div>
+      <div class="group-three">
+        <div class="card"><div class="card-title">数据接入健康</div>
+          ${(() => { const dm = APP_DATA.regulatoryDataGovernanceMetrics || {}; return [
+            [dm.sourceCount, '数据源总数', `App.navigatePublic('regulatory-data-sources')`],
+            [dm.onlineSourceCount, '在线数据源', `App.navigatePublic('regulatory-data-sources')`],
+            [dm.integrationSuccessRate + '%', '接入成功率', `App.navigatePublic('regulatory-data-integration')`],
+            [dm.failedJobCount, '失败任务', `App.navigatePublic('regulatory-data-integration')`],
+            [dm.dataDelayHours + 'h', '数据延迟', `App.navigatePublic('regulatory-data-integration')`]
+          ].map(([v, l, nav]) => this.renderPublicKpiCard(l, v, nav)).join(''); })()}
+          <p style="margin-top:8px">${this.renderPublicLinkButton('数据源中心', `App.navigatePublic('regulatory-data-sources')`)} ${this.renderPublicLinkButton('数据接入', `App.navigatePublic('regulatory-data-integration')`)}</p>
+        </div>
+        <div class="card"><div class="card-title">数据质量健康</div>
+          ${(() => { const dm = APP_DATA.regulatoryDataGovernanceMetrics || {}; const qs = dm.overallQualityScore != null ? dm.overallQualityScore : '—'; return [
+            [qs, '总体质量', `App.navigatePublic('regulatory-data-quality')`],
+            [dm.severeIssueCount, '严重异常', `App.navigatePublic('regulatory-data-quality')`],
+            [dm.openIssueCount, '待治理问题', `App.navigatePublic('regulatory-data-governance')`],
+            [dm.overdueGovernanceCount, '超期治理', `App.navigatePublic('regulatory-data-governance')`],
+            [dm.qualityTrendStatus || 'INSUFFICIENT_HISTORY', '质量趋势', `App.navigatePublic('regulatory-data-quality')`]
+          ].map(([v, l, nav]) => this.renderPublicKpiCard(l, v, nav)).join(''); })()}
+        </div>
+        <div class="card"><div class="card-title">数据血缘影响</div>
+          ${(() => { const dm = APP_DATA.regulatoryDataGovernanceMetrics || {}; return [
+            [dm.impactedKriCount, '受影响 KRI', `App.navigatePublic('regulatory-data-lineage')`],
+            [dm.impactedRiskCount, '受影响风险', `App.navigatePublic('regulatory-data-lineage')`],
+            [dm.impactedEntityCount, '受影响监管对象', `App.navigatePublic('regulatory-data-lineage')`],
+            [dm.offlineSourceCount, '异常数据源', `App.navigatePublic('regulatory-data-sources')`]
+          ].map(([v, l, nav]) => this.renderPublicKpiCard(l, v, nav)).join(''); })()}
         </div>
       </div>`;
   },
@@ -3824,6 +4069,20 @@ Object.assign(App, {
         <div class="card"><div class="card-title">监管待办</div>${todoTypes.map(([t,l])=>`<p class="insight-note"><button class="btn btn-outline" onclick="App.navigatePublic('regulatory-queue',{queueType:'${t}'})">${l}</button> <b>${queueByType(t)}</b></p>`).join('')}<p>${this.renderPublicLinkButton('查看全部待办',`App.navigatePublic('regulatory-queue')`)}</p></div>
       </div>
       <div class="card"><div class="card-title">重点监管对象 TOP</div>${entityRows?`<table class="data-table"><thead><tr><th>法人</th><th>优先级</th><th>健康度</th><th>待办</th></tr></thead><tbody>${entityRows}</tbody></table>`:this.renderPublicEmptyState('暂无')}</div>
+      <div class="group-two">
+        <div class="card"><div class="card-title">我的数据治理任务</div>
+          ${(() => { const tasks = (APP_DATA.regulatoryDataGovernanceTasks || []).filter(t => t.status !== 'CLOSED' && t.status !== 'VERIFIED').slice(0, 5);
+            return tasks.length ? tasks.map(t => `<p class="insight-note clickable" onclick="App.navigatePublic('regulatory-data-governance',{governanceTaskId:'${t.governanceTaskId}'})">${t.governanceTaskId} · ${t.status} · 截止 ${t.dueDate}</p>`).join('') : this.renderPublicEmptyState('暂无'); })()}
+          <p>${this.renderPublicLinkButton('数据治理中心', `App.navigatePublic('regulatory-data-governance')`)}</p>
+        </div>
+        <div class="card"><div class="card-title">数据运行异常</div>
+          ${[
+            [(APP_DATA.regulatoryDataQualityIssues || []).filter(i => i.status !== 'CLOSED').length, '数据质量异常', `App.navigatePublic('regulatory-data-quality')`],
+            [(APP_DATA.regulatoryDataIntegrationJobs || []).filter(j => j.status === 'FAILED').length, '接入失败', `App.navigatePublic('regulatory-data-integration')`],
+            [(APP_DATA.regulatoryDataQualityIssues || []).filter(i => i.status === 'OPEN').length, '待复核质量问题', `App.navigatePublic('regulatory-data-governance')`]
+          ].map(([v, l, nav]) => this.renderPublicKpiCard(l, v, nav)).join('')}
+        </div>
+      </div>
       <div class="card"><div class="card-title">监管闭环状态</div>${this.renderPublicWorkbenchLoop(wbM.loopStatus)}</div>`;
   },
 
@@ -4000,6 +4259,29 @@ Object.assign(App, {
       </div>
       <div class="card"><div class="card-title">我的重点对象</div><p>${focusHtml || this.renderPublicEmptyState('暂无')}</p>
         <p>${(wb?.quickActions || []).map(a => this.renderPublicLinkButton(a.label, `App.navigatePublic('${a.pageId}')`)).join(' ')}</p>
+      </div>
+      <div class="card"><div class="card-title">数据运行视图</div>
+        ${(() => {
+          const dm = APP_DATA.regulatoryDataGovernanceMetrics || {};
+          const roleType = role.roleType;
+          if (roleType === 'GROUP_LEADER') return [
+            [dm.overallQualityScore ?? '—', '集团数据质量', `App.navigatePublic('regulatory-data-quality')`],
+            [dm.severeIssueCount, '重大数据异常', `App.navigatePublic('regulatory-data-quality')`],
+            [dm.impactedKriCount, '监管指标可信度关注', `App.navigatePublic('regulatory-data-lineage')`]
+          ].map(([v,l,n]) => this.renderPublicKpiCard(l,v,n)).join('');
+          if (roleType === 'GROUP_REGULATORY') return [
+            [dm.openIssueCount, '数据质量异常', `App.navigatePublic('regulatory-data-quality')`],
+            [dm.openGovernanceCount, '数据治理任务', `App.navigatePublic('regulatory-data-governance')`],
+            [dm.impactedKriCount, '数据血缘影响', `App.navigatePublic('regulatory-data-lineage')`]
+          ].map(([v,l,n]) => this.renderPublicKpiCard(l,v,n)).join('');
+          if (roleType === 'DOMAIN_REGULATOR') {
+            const domainIssues = this.filterDataByUserScope(APP_DATA.regulatoryDataQualityIssues || [], i => (APP_DATA.regulatoryDataSets.find(d => d.dataSetId === i.dataSetId) || {}).ownerOrganizationId, i => (APP_DATA.regulatoryDataSets.find(d => d.dataSetId === i.dataSetId) || {}).domain);
+            return `<p>本领域数据质量异常 <b>${domainIssues.filter(i => i.status !== 'CLOSED').length}</b> ${this.renderPublicLinkButton('查看', `App.navigatePublic('regulatory-data-quality')`)}</p>`;
+          }
+          const entityIssues = (APP_DATA.regulatoryDataQualityIssues || []).filter(i => { const ds = APP_DATA.regulatoryDataSets.find(d => d.dataSetId === i.dataSetId); return ds?.ownerOrganizationId === scopeId; });
+          const entityGov = (APP_DATA.regulatoryDataGovernanceTasks || []).filter(t => t.responsibleOrganizationId === scopeId && t.status !== 'CLOSED');
+          return `<p>本法人数据异常 <b>${entityIssues.filter(i => i.status !== 'CLOSED').length}</b> · 治理任务 <b>${entityGov.length}</b></p>${this.renderPublicLinkButton('数据质量', `App.navigatePublic('regulatory-data-quality')`)} ${this.renderPublicLinkButton('数据治理', `App.navigatePublic('regulatory-data-governance')`)}`;
+        })()}
       </div>`;
   },
 
@@ -4219,6 +4501,196 @@ Object.assign(App, {
       <div class="card"><div class="card-title">规则参数（只读索引，共 ${ruleParams.length} 项）</div><p class="insight-note">规则参数存储于 regulatoryRuleParameters，变更须走 Phase 10–12 规则治理闭环。</p></div>`;
   },
 
+  renderRegulatoryDataSources() {
+    const node = document.getElementById('regulatoryDataSources');
+    if (!node) return;
+    const f = this.regulatoryDataSourcesFilter || {};
+    let sources = this.filterDataByUserScope(APP_DATA.regulatoryDataSources || [], s => s.ownerOrganizationId, s => (s.businessDomains || [])[0]);
+    if (f.sourceType) sources = sources.filter(s => s.sourceType === f.sourceType);
+    if (f.connectionStatus) sources = sources.filter(s => s.connectionStatus === f.connectionStatus);
+    const dm = APP_DATA.regulatoryDataGovernanceMetrics || {};
+    const kpi = [[dm.sourceCount, '数据源总数'], [dm.onlineSourceCount, '在线数据源'], [dm.offlineSourceCount, '异常数据源'], [sources.filter(s => s.lastSyncAt && s.lastSyncAt < '2026-07-22').length, '近24h未同步'], [dm.sourceCount ? Math.round(dm.onlineSourceCount / dm.sourceCount * 100) + '%' : '—', '数据覆盖率'], [dm.severeIssueCount, '质量异常']];
+    const typeOpts = [...new Set((APP_DATA.regulatoryDataSources || []).map(s => s.sourceType))];
+    const rows = sources.map(s => {
+      const canView = this.canRegulatoryAccess(this.getCurrentRegulatoryUser()?.userId, 'regulatoryDataSources', s.sourceId, 'VIEW').allowed;
+      return `<tr class="${canView ? 'clickable' : ''}" ${canView ? `onclick="App.showRegulatoryDataSourceDetail('${s.sourceId}')"` : ''}><td>${s.sourceId}</td><td>${s.sourceName}</td><td>${s.sourceType}</td><td>${s.ownerOrganizationName || s.ownerOrganizationId}</td><td>${this.renderPublicStatusBadge(s.connectionStatus === 'ONLINE' ? '正常' : s.connectionStatus === 'DEGRADED' ? '关注' : '异常')}</td><td>${s.lastSyncAt || '—'}</td><td>${s.dataSetCount}</td><td>${s.qualityScore ?? '—'}</td></tr>`;
+    }).join('');
+    node.innerHTML = `${this.renderPublicBackButton('regulatory-data-sources')}
+      <div class="group-hero"><div><span>数据运行</span><h2>集团监管数据源中心</h2><p>数据源 → 系统 → 数据集 → 数据对象 → 字段</p></div><div>数据源 <b>${sources.length}</b></div></div>
+      <div class="group-metrics">${kpi.map(([v, l]) => this.renderPublicKpiCard(l, v, `App.navigatePublic('regulatory-data-sources')`)).join('')}</div>
+      <div class="filter-bar" style="margin-bottom:12px;display:flex;gap:8px;flex-wrap:wrap">
+        <select onchange="App.regulatoryDataSourcesFilter={...(App.regulatoryDataSourcesFilter||{}),sourceType:this.value||null};App.renderRegulatoryDataSources()"><option value="">全部类型</option>${typeOpts.map(t => `<option value="${t}" ${f.sourceType===t?'selected':''}>${t}</option>`).join('')}</select>
+        <select onchange="App.regulatoryDataSourcesFilter={...(App.regulatoryDataSourcesFilter||{}),connectionStatus:this.value||null};App.renderRegulatoryDataSources()"><option value="">全部连接</option>${['ONLINE','DEGRADED','OFFLINE'].map(t => `<option value="${t}" ${f.connectionStatus===t?'selected':''}>${t}</option>`).join('')}</select>
+      </div>
+      <div class="card"><div class="card-title">数据源清单</div>${rows ? `<table class="data-table"><thead><tr><th>ID</th><th>名称</th><th>类型</th><th>责任组织</th><th>连接</th><th>最后同步</th><th>数据集</th><th>质量分</th></tr></thead><tbody>${rows}</tbody></table>` : this.renderPublicEmptyState('无可见数据源')}</div>
+      <div id="regulatoryDataSourceDetail"></div>`;
+    if (this.regulatoryDataSourceFocusId) setTimeout(() => this.showRegulatoryDataSourceDetail(this.regulatoryDataSourceFocusId), 0);
+  },
+
+  showRegulatoryDataSourceDetail(sourceId) {
+    const src = (APP_DATA.regulatoryDataSources || []).find(s => s.sourceId === sourceId);
+    const node = document.getElementById('regulatoryDataSourceDetail');
+    this.regulatoryDataSourceFocusId = sourceId;
+    const access = this.canRegulatoryAccess(this.getCurrentRegulatoryUser()?.userId, 'regulatoryDataSources', sourceId, 'VIEW');
+    if (!access.allowed) { node.innerHTML = this.renderPublicErrorState('无权查看该数据源'); return; }
+    this.showPublicDetailOrNotFound(node, src, () => {
+      const dataSets = (APP_DATA.regulatoryDataSets || []).filter(d => d.sourceId === sourceId);
+      const impact = this.getDataSourceImpactAnalysis(sourceId);
+      node.innerHTML = this.buildPublicDetailPanel({ objectType: '数据源', objectName: src.sourceName, objectId: src.sourceId, status: src.connectionStatus,
+        sections: [
+          { title: '一、数据源信息', content: this.renderPublicMetaGrid([this.renderPublicIdField(src.sourceId, '数据源 ID'), { label: '类型', value: src.sourceType }, { label: '责任组织', value: src.ownerOrganizationName }, { label: '连接状态', html: this.renderPublicStatusBadge(src.connectionStatus === 'ONLINE' ? '正常' : '异常') }, { label: '最后同步', value: src.lastSyncAt }]) },
+          { title: '二、数据集', content: dataSets.map(d => this.renderPublicLinkButton(d.dataSetName, `App.navigatePublic('regulatory-data-integration',{dataSetId:'${d.dataSetId}'})`)).join('') || this.renderPublicEmptyState('暂无') },
+          { title: '三、血缘影响', content: `<p>受影响 KRI: ${impact.affectedKris.length} · 受影响风险: ${impact.affectedRisks.length} · 受影响行动: ${impact.affectedActions.length}</p>${this.renderPublicLinkButton('查看血缘影响', `App.navigatePublic('regulatory-data-lineage',{sourceId:'${sourceId}'})`)}` }
+        ],
+        footer: `${this.renderPublicLinkButton('数据接入', `App.navigatePublic('regulatory-data-integration',{sourceId:'${sourceId}'})`)} ${this.renderPublicLinkButton('数据血缘', `App.navigatePublic('regulatory-data-lineage',{sourceId:'${sourceId}'})`)}`
+      });
+    }, '数据源');
+  },
+
+  renderRegulatoryDataIntegration() {
+    const node = document.getElementById('regulatoryDataIntegration');
+    if (!node) return;
+    const f = this.regulatoryDataIntegrationFilter || {};
+    let jobs = APP_DATA.regulatoryDataIntegrationJobs || [];
+    if (f.sourceId) jobs = jobs.filter(j => j.sourceId === f.sourceId);
+    if (f.dataSetId) jobs = jobs.filter(j => j.dataSetId === f.dataSetId);
+    if (f.status) jobs = jobs.filter(j => j.status === f.status);
+    const todayJobs = jobs.length;
+    const successRate = jobs.length ? Math.round(jobs.filter(j => j.status === 'SUCCESS').length / jobs.length * 1000) / 10 : 0;
+    const kpi = [[todayJobs, '今日接入任务'], [successRate + '%', '成功率'], [jobs.filter(j => j.status === 'FAILED').length, '失败任务'], [jobs.filter(j => j.status === 'PARTIAL_SUCCESS').length, '部分成功'], [jobs.filter(j => j.retryCount > 0 && j.status === 'FAILED').length, '待重试'], [APP_DATA.regulatoryDataGovernanceMetrics?.dataDelayHours + 'h' || '—', '数据延迟']];
+    const rows = jobs.map(j => {
+      const src = (APP_DATA.regulatoryDataSources || []).find(s => s.sourceId === j.sourceId);
+      const ds = (APP_DATA.regulatoryDataSets || []).find(d => d.dataSetId === j.dataSetId);
+      return `<tr class="clickable" onclick="App.showRegulatoryDataIntegrationDetail('${j.integrationJobId}')"><td>${src?.sourceName || j.sourceId}</td><td>${j.integrationJobId}</td><td>${ds?.dataSetName || j.dataSetId}</td><td>${this.renderPublicStatusBadge(j.status)}</td><td>${j.recordCount}</td><td>${j.successCount}/${j.failedCount}</td><td>${j.retryCount}</td><td>${j.completedAt || '—'}</td></tr>`;
+    }).join('');
+    node.innerHTML = `${this.renderPublicBackButton('regulatory-data-integration')}
+      <div class="group-hero"><div><span>数据运行</span><h2>集团监管数据接入中心</h2><p>数据源 → 接入任务 → 数据集 → 记录 → 质量校验</p></div></div>
+      <div class="group-metrics">${kpi.map(([v, l]) => this.renderPublicKpiCard(l, v, `App.navigatePublic('regulatory-data-integration')`)).join('')}</div>
+      <div class="card"><div class="card-title">接入任务</div>${rows ? `<table class="data-table"><thead><tr><th>数据源</th><th>任务</th><th>数据集</th><th>状态</th><th>记录数</th><th>成功/失败</th><th>重试</th><th>完成</th></tr></thead><tbody>${rows}</tbody></table>` : this.renderPublicEmptyState('暂无')}</div>
+      <div id="regulatoryDataIntegrationDetail"></div>`;
+    if (this.regulatoryDataIntegrationFocusId) setTimeout(() => this.showRegulatoryDataIntegrationDetail(this.regulatoryDataIntegrationFocusId), 0);
+  },
+
+  showRegulatoryDataIntegrationDetail(jobId) {
+    const job = (APP_DATA.regulatoryDataIntegrationJobs || []).find(j => j.integrationJobId === jobId);
+    const node = document.getElementById('regulatoryDataIntegrationDetail');
+    this.regulatoryDataIntegrationFocusId = jobId;
+    this.showPublicDetailOrNotFound(node, job, () => {
+      const logs = (APP_DATA.regulatoryDataIntegrationLogs || []).filter(l => l.integrationJobId === jobId);
+      const issues = (APP_DATA.regulatoryDataQualityIssues || []).filter(i => i.dataSetId === job.dataSetId);
+      node.innerHTML = this.buildPublicDetailPanel({ objectType: '接入任务', objectName: job.integrationJobId, objectId: job.integrationJobId, status: job.status,
+        sections: [
+          { title: '一、任务信息', content: this.renderPublicMetaGrid([this.renderPublicIdField(job.integrationJobId, '任务 ID'), { label: '数据源', value: job.sourceId }, { label: '数据集', value: job.dataSetId }, { label: '记录', value: job.recordCount }, { label: '成功/失败', value: job.successCount + '/' + job.failedCount }, { label: '重试', value: job.retryCount }]) },
+          { title: '二、运行日志', content: logs.length ? logs.map(l => `<p class="insight-note">${l.timestamp} · ${l.eventType} · ${l.message}</p>`).join('') : this.renderPublicEmptyState('暂无日志') },
+          { title: '三、质量校验', content: issues.length ? issues.map(i => this.renderPublicLinkButton(i.issueType, `App.navigatePublic('regulatory-data-quality',{qualityIssueId:'${i.qualityIssueId}'})`)).join('') : '<p>校验通过</p>' }
+        ],
+        footer: `${this.renderRegulatoryActionButton('重试接入', 'regulatoryDataIntegrationJobs', jobId, 'RETRY', `App.retryDataIntegrationJob('${jobId}');App.renderRegulatoryDataIntegration()`)} ${this.renderPublicLinkButton('数据源', `App.navigatePublic('regulatory-data-sources',{sourceId:'${job.sourceId}'})`)}`
+      });
+    }, '接入任务');
+  },
+
+  renderRegulatoryDataQuality() {
+    const node = document.getElementById('regulatoryDataQuality');
+    if (!node) return;
+    const f = this.regulatoryDataQualityFilter || {};
+    let issues = this.filterDataByUserScope(APP_DATA.regulatoryDataQualityIssues || [], i => (APP_DATA.regulatoryDataSets.find(d => d.dataSetId === i.dataSetId) || {}).ownerOrganizationId, i => (APP_DATA.regulatoryDataSets.find(d => d.dataSetId === i.dataSetId) || {}).domain);
+    if (f.severity) issues = issues.filter(i => i.severity === f.severity);
+    if (f.status) issues = issues.filter(i => i.status === f.status);
+    const dm = APP_DATA.regulatoryDataGovernanceMetrics || {};
+    const snap = (APP_DATA.regulatoryDataQualitySnapshots || []).find(s => s.scopeType === 'GROUP');
+    const kpi = [[snap?.overallScore ?? '—', '总体质量得分'], [dm.anomalyDataSetCount, '异常数据集'], [dm.openIssueCount, '待治理问题'], [dm.severeIssueCount, '严重质量问题'], [dm.overdueGovernanceCount, '超期治理'], [dm.qualityTrendStatus, '质量趋势']];
+    const dimRows = snap && snap.dataStatus === 'OK' ? ['completeness', 'accuracy', 'timeliness', 'consistency', 'uniqueness', 'validity'].map(d => `<tr><td>${d}</td><td>${snap[d]}</td></tr>`).join('') : '';
+    const issueRows = issues.map(i => `<tr class="clickable" onclick="App.showRegulatoryDataQualityDetail('${i.qualityIssueId}')"><td>${i.qualityIssueId}</td><td>${i.issueType}</td><td>${i.dataSetId}</td><td>${this.renderPublicPriorityBadge(i.severity)}</td><td>${i.issueCount}</td><td>${this.renderPublicStatusBadge(i.status)}</td><td>${i.kriId || '—'}</td></tr>`).join('');
+    node.innerHTML = `${this.renderPublicBackButton('regulatory-data-quality')}
+      <div class="group-hero"><div><span>数据运行</span><h2>集团监管数据质量中心</h2><p>完整性 · 准确性 · 及时性 · 一致性 · 唯一性 · 有效性</p></div></div>
+      <div class="group-metrics">${kpi.map(([v, l]) => this.renderPublicKpiCard(l, v, `App.navigatePublic('regulatory-data-quality')`)).join('')}</div>
+      <div class="card"><div class="card-title">质量维度（集团）</div>${dimRows ? `<table class="data-table"><thead><tr><th>维度</th><th>得分</th></tr></thead><tbody>${dimRows}</tbody></table>` : this.renderPublicEmptyState('INSUFFICIENT_DATA')}</div>
+      <div class="card"><div class="card-title">质量问题</div>${issueRows ? `<table class="data-table"><thead><tr><th>ID</th><th>类型</th><th>数据集</th><th>严重度</th><th>问题数</th><th>状态</th><th>关联KRI</th></tr></thead><tbody>${issueRows}</tbody></table>` : this.renderPublicEmptyState('暂无')}</div>
+      <div id="regulatoryDataQualityDetail"></div>`;
+    if (this.regulatoryDataQualityFocusId) setTimeout(() => this.showRegulatoryDataQualityDetail(this.regulatoryDataQualityFocusId), 0);
+  },
+
+  showRegulatoryDataQualityDetail(qualityIssueId) {
+    const issue = (APP_DATA.regulatoryDataQualityIssues || []).find(i => i.qualityIssueId === qualityIssueId);
+    const node = document.getElementById('regulatoryDataQualityDetail');
+    this.regulatoryDataQualityFocusId = qualityIssueId;
+    this.showPublicDetailOrNotFound(node, issue, () => {
+      const cred = issue.kriId ? this.getKriDataCredibility(issue.kriId) : null;
+      const ds = (APP_DATA.regulatoryDataSets || []).find(d => d.dataSetId === issue.dataSetId);
+      const entId = ds?.ownerOrganizationId;
+      const priorityImpact = entId ? this.getPriorityCredibilityImpact(entId) : null;
+      node.innerHTML = this.buildPublicDetailPanel({ objectType: '质量问题', objectName: issue.issueType, objectId: issue.qualityIssueId, status: issue.status,
+        sections: [
+          { title: '一、问题信息', content: this.renderPublicMetaGrid([this.renderPublicIdField(issue.qualityIssueId, '问题 ID'), { label: '数据集', value: issue.dataSetId }, { label: '严重度', html: this.renderPublicPriorityBadge(issue.severity) }, { label: '问题数', value: issue.issueCount }]) },
+          { title: '二、KRI 可信度影响', content: cred ? `<p>可信度: ${cred.credibility} · 影响级别: ${cred.impactLevel}</p>` : this.renderPublicEmptyState('INSUFFICIENT_DATA') },
+          { title: '三、监管优先级影响', content: priorityImpact ? `<p>当前优先级: ${priorityImpact.currentPriority || '—'} · 调整建议: ${priorityImpact.priorityAdjustment}</p>` : '—' },
+          { title: '四、治理穿透', content: issue.relatedGovernanceTaskId ? this.renderPublicLinkButton('治理任务', `App.navigatePublic('regulatory-data-governance',{governanceTaskId:'${issue.relatedGovernanceTaskId}'})`) : this.renderPublicEmptyState('暂无治理任务') }
+        ],
+        footer: `${issue.kriId ? this.renderPublicLinkButton('KRI血缘', `App.navigatePublic('regulatory-data-lineage',{kriId:'${issue.kriId}'})`) : ''} ${issue.relatedRectificationTaskId ? this.renderPublicLinkButton('整改任务', `App.navigatePublic('rectification',{rectificationTaskId:'${issue.relatedRectificationTaskId}'})`) : ''}`
+      });
+    }, '质量问题');
+  },
+
+  renderRegulatoryDataGovernance() {
+    const node = document.getElementById('regulatoryDataGovernance');
+    if (!node) return;
+    let tasks = this.filterDataByUserScope(APP_DATA.regulatoryDataGovernanceTasks || [], t => t.responsibleOrganizationId);
+    const rows = tasks.map(t => {
+      const issue = (APP_DATA.regulatoryDataQualityIssues || []).find(i => i.qualityIssueId === t.qualityIssueId);
+      const ent = APP_DATA.globalLegalEntities.find(e => e.entityId === t.responsibleOrganizationId);
+      return `<tr class="clickable" onclick="App.showRegulatoryDataGovernanceDetail('${t.governanceTaskId}')"><td>${t.governanceTaskId}</td><td>${issue?.issueType || t.qualityIssueId}</td><td>${ent?.entityName || t.responsibleOrganizationId}</td><td>${this.renderPublicStatusBadge(t.status)}</td><td>${t.dueDate}</td><td>${t.verificationStatus}</td><td>${t.relatedRectificationTaskId || '—'}</td></tr>`;
+    }).join('');
+    node.innerHTML = `${this.renderPublicBackButton('regulatory-data-governance')}
+      <div class="group-hero"><div><span>数据运行</span><h2>集团监管数据治理中心</h2><p>质量问题 → 确认 → 责任主体 → 治理任务 → 整改 → 复核 → 关闭</p></div><div>任务 <b>${tasks.length}</b></div></div>
+      <div class="card"><div class="card-title">治理任务</div>${rows ? `<table class="data-table"><thead><tr><th>任务ID</th><th>质量问题</th><th>责任主体</th><th>状态</th><th>截止</th><th>验证</th><th>关联整改</th></tr></thead><tbody>${rows}</tbody></table>` : this.renderPublicEmptyState('暂无')}</div>
+      <div id="regulatoryDataGovernanceDetail"></div>`;
+    if (this.regulatoryDataGovernanceFocusId) setTimeout(() => this.showRegulatoryDataGovernanceDetail(this.regulatoryDataGovernanceFocusId), 0);
+  },
+
+  showRegulatoryDataGovernanceDetail(governanceTaskId) {
+    const task = (APP_DATA.regulatoryDataGovernanceTasks || []).find(t => t.governanceTaskId === governanceTaskId);
+    const node = document.getElementById('regulatoryDataGovernanceDetail');
+    this.regulatoryDataGovernanceFocusId = governanceTaskId;
+    this.showPublicDetailOrNotFound(node, task, () => {
+      const issue = (APP_DATA.regulatoryDataQualityIssues || []).find(i => i.qualityIssueId === task.qualityIssueId);
+      node.innerHTML = this.buildPublicDetailPanel({ objectType: '数据治理任务', objectName: task.governanceTaskId, objectId: task.governanceTaskId, status: task.status,
+        sections: [
+          { title: '一、治理任务', content: this.renderPublicMetaGrid([this.renderPublicIdField(task.governanceTaskId, '任务 ID'), { label: '责任主体', value: task.responsibleOrganizationId }, { label: '截止', value: task.dueDate }, { label: '验证状态', value: task.verificationStatus }]) },
+          { title: '二、关联质量问题', content: issue ? this.renderPublicLinkButton(issue.issueType, `App.navigatePublic('regulatory-data-quality',{qualityIssueId:'${issue.qualityIssueId}'})`) : '—' },
+          { title: '三、关联整改', content: task.relatedRectificationTaskId ? this.renderPublicLinkButton(task.relatedRectificationTaskId, `App.navigatePublic('rectification',{rectificationTaskId:'${task.relatedRectificationTaskId}'})`) : this.renderPublicEmptyState('暂无关联整改') }
+        ],
+        footer: `${this.renderRegulatoryActionButton('分派任务', 'regulatoryDataGovernanceTasks', governanceTaskId, 'ASSIGN', `App.assignDataGovernanceTask('${governanceTaskId}');App.renderRegulatoryDataGovernance()`)} ${this.renderRegulatoryActionButton('关闭治理', 'regulatoryDataGovernanceTasks', governanceTaskId, 'CLOSE', `App.closeDataGovernanceTask('${governanceTaskId}');App.renderRegulatoryDataGovernance()`)}`
+      });
+    }, '治理任务');
+  },
+
+  renderRegulatoryDataLineage() {
+    const node = document.getElementById('regulatoryDataLineage');
+    if (!node) return;
+    const f = this.regulatoryDataLineageFilter || {};
+    const focusSource = this.regulatoryDataLineageSourceId || f.sourceId;
+    const focusKri = f.kriId;
+    let chain = [];
+    let title = '数据血缘全景';
+    if (focusSource) {
+      chain = this.getDataLineageChain('regulatoryDataSources', focusSource, 'DOWN');
+      title = '数据源向下穿透: ' + focusSource;
+    } else if (focusKri) {
+      chain = [...this.getDataLineageChain('groupKris', focusKri, 'UP'), ...this.getDataLineageChain('groupKris', focusKri, 'DOWN')];
+      title = 'KRI 血缘: ' + focusKri;
+    } else {
+      const rel = (APP_DATA.regulatoryDataLineage || [])[0];
+      if (rel) chain = this.getDataLineageChain(rel.sourceType, rel.sourceId, 'DOWN');
+    }
+    const chainHtml = chain.map((n, i) => `${i ? '<i>→</i>' : ''}<button class="btn btn-outline" onclick="App.navigatePublic('regulatory-data-lineage',{nodeType:'${n.type}',nodeId:'${n.id}'})">${n.type}<br>${n.id}</button>`).join('');
+    const lineageRows = (APP_DATA.regulatoryDataLineage || []).slice(0, 30).map(l => `<tr><td>${l.lineageId}</td><td>${l.sourceType}/${l.sourceId}</td><td>${l.relationType}</td><td>${l.targetType}/${l.targetId}</td></tr>`).join('');
+    node.innerHTML = `${this.renderPublicBackButton('regulatory-data-lineage')}
+      <div class="group-hero"><div><span>数据运行</span><h2>集团监管数据血缘中心</h2><p>监管指标 → KRI → 规则 → 数据字段 → 数据集 → 数据源</p></div></div>
+      <div class="card"><div class="card-title">${title}</div><div class="kri-lineage" style="flex-wrap:wrap">${chainHtml || this.renderPublicEmptyState('暂无血缘')}</div></div>
+      <div class="card"><div class="card-title">血缘关系索引</div><table class="data-table"><thead><tr><th>ID</th><th>源</th><th>关系</th><th>目标</th></tr></thead><tbody>${lineageRows}</tbody></table></div>
+      <div id="regulatoryDataLineageDetail"></div>`;
+  },
+
   rerenderPublicPage(pageId) {
     const routeId = this.resolvePublicRouteId(pageId);
     const fn = {
@@ -4269,7 +4741,12 @@ Object.assign(App, {
       'regulatory-access-control': 'renderRegulatoryAccessControl',
       'regulatory-authorization': 'renderRegulatoryAuthorization',
       'regulatory-audit-trail': 'renderRegulatoryAuditTrail',
-      'regulatory-system-settings': 'renderRegulatorySystemSettings'
+      'regulatory-system-settings': 'renderRegulatorySystemSettings',
+      'regulatory-data-sources': 'renderRegulatoryDataSources',
+      'regulatory-data-integration': 'renderRegulatoryDataIntegration',
+      'regulatory-data-quality': 'renderRegulatoryDataQuality',
+      'regulatory-data-governance': 'renderRegulatoryDataGovernance',
+      'regulatory-data-lineage': 'renderRegulatoryDataLineage'
     }[routeId];
     if (fn && this[fn]) this[fn]();
   }

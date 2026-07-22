@@ -104,7 +104,12 @@ const App = {
     'regulatory-access-control': '集团监管访问控制中心',
     'regulatory-authorization': '集团监管授权审批中心',
     'regulatory-audit-trail': '集团监管操作审计中心',
-    'regulatory-system-settings': '集团监管平台系统配置中心'
+    'regulatory-system-settings': '集团监管平台系统配置中心',
+    'regulatory-data-sources': '集团监管数据源中心',
+    'regulatory-data-integration': '集团监管数据接入中心',
+    'regulatory-data-quality': '集团监管数据质量中心',
+    'regulatory-data-governance': '集团监管数据治理中心',
+    'regulatory-data-lineage': '集团监管数据血缘中心'
   },
 
   init() {
@@ -149,6 +154,11 @@ const App = {
     this.renderRegulatoryAuthorization();
     this.renderRegulatoryAuditTrail();
     this.renderRegulatorySystemSettings();
+    this.renderRegulatoryDataSources();
+    this.renderRegulatoryDataIntegration();
+    this.renderRegulatoryDataQuality();
+    this.renderRegulatoryDataGovernance();
+    this.renderRegulatoryDataLineage();
     this.renderGlobalLegalEntities();
     this.renderGlobalRegions();
     this.renderCoverageGaps();
@@ -541,6 +551,29 @@ const App = {
     if (pageId === 'regulatory-system-settings') {
       if (params.configId) this.regulatorySystemConfigFocusId = params.configId;
       this.renderRegulatorySystemSettings();
+    }
+    if (pageId === 'regulatory-data-sources') {
+      if (params.sourceId) { this.regulatoryDataSourceFocusId = params.sourceId; this.showRegulatoryDataSourceDetail(params.sourceId); }
+      else this.renderRegulatoryDataSources();
+    }
+    if (pageId === 'regulatory-data-integration') {
+      if (params.sourceId) this.regulatoryDataIntegrationFilter = { ...(this.regulatoryDataIntegrationFilter || {}), sourceId: params.sourceId };
+      if (params.dataSetId) this.regulatoryDataIntegrationFilter = { ...(this.regulatoryDataIntegrationFilter || {}), dataSetId: params.dataSetId };
+      if (params.integrationJobId) { this.regulatoryDataIntegrationFocusId = params.integrationJobId; this.showRegulatoryDataIntegrationDetail(params.integrationJobId); }
+      else this.renderRegulatoryDataIntegration();
+    }
+    if (pageId === 'regulatory-data-quality') {
+      if (params.qualityIssueId) { this.regulatoryDataQualityFocusId = params.qualityIssueId; this.showRegulatoryDataQualityDetail(params.qualityIssueId); }
+      else this.renderRegulatoryDataQuality();
+    }
+    if (pageId === 'regulatory-data-governance') {
+      if (params.governanceTaskId) { this.regulatoryDataGovernanceFocusId = params.governanceTaskId; this.showRegulatoryDataGovernanceDetail(params.governanceTaskId); }
+      else this.renderRegulatoryDataGovernance();
+    }
+    if (pageId === 'regulatory-data-lineage') {
+      if (params.sourceId) { this.regulatoryDataLineageSourceId = params.sourceId; this.regulatoryDataLineageFilter = { ...(this.regulatoryDataLineageFilter || {}), sourceId: params.sourceId }; }
+      if (params.kriId) this.regulatoryDataLineageFilter = { ...(this.regulatoryDataLineageFilter || {}), kriId: params.kriId };
+      this.renderRegulatoryDataLineage();
     }
   },
 
