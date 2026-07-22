@@ -6292,3 +6292,33 @@ Object.assign(APP_DATA, {
   rpmCv['ROLE-GROUP-LEADER'] = [...new Set([...(rpmCv['ROLE-GROUP-LEADER'] || []), 'RECTIFICATION_VERIFY'])];
   APP_DATA.regulatoryRolePermissionMap = rpmCv;
 })();
+
+(function () {
+  APP_DATA.regulatoryOperatingScenarios = [
+    { scenarioId: 'OP-01', name: '日常监管运行', roleType: 'GROUP_REGULATORY', startPage: 'regulatory-workbench', pagePath: ['regulatory-workbench', 'regulatory-data-integration', 'regulatory-data-quality', 'regulatory-kri-monitoring', 'regulatory-warning-center', 'regulatory-queue'], steps: ['数据接入异常', '数据质量问题', 'KRI可信度', '预警识别', '监管待办'], expectedResult: '日常运行事项可穿透原始对象', dataChain: 'jobs → quality → KRI → warnings → queue' },
+    { scenarioId: 'OP-02', name: '周度监管复盘', roleType: 'GROUP_REGULATORY', startPage: 'regulatory-analysis-center', pagePath: ['regulatory-analysis-center', 'regulatory-workbench', 'warnings', 'regulatory-actions', 'rectification'], steps: ['本周风险', '本周预警', '本周行动', '本周整改', '待验证'], expectedResult: '周度复盘动态聚合', dataChain: 'periodicReview → source objects' },
+    { scenarioId: 'OP-03', name: '月度监管运营', roleType: 'GROUP_LEADER', startPage: 'global-group-overview', pagePath: ['global-group-overview', 'regulatory-analysis-center', 'regulatory-performance'], steps: ['月度数据质量', '月度KRI', '月度预警', '月度行动', '月度绩效'], expectedResult: '月度运营快照可计算', dataChain: 'MONTHLY cycle → snapshots' },
+    { scenarioId: 'OP-04', name: '季度监管评价', roleType: 'GROUP_LEADER', startPage: 'regulatory-performance', pagePath: ['regulatory-performance', 'regulatory-analysis-center', 'regulatory-data-governance'], steps: ['领域健康度', '法人健康度', '行动效果', '整改验证率', '监管绩效'], expectedResult: '季度评价来自真实数据', dataChain: 'QUARTERLY review → metrics' },
+    { scenarioId: 'OP-05', name: '年度战略复盘', roleType: 'GROUP_LEADER', startPage: 'regulatory-strategic-review', pagePath: ['regulatory-strategic-review', 'regulatory-strategy-planning', 'regulatory-annual-plan', 'regulatory-focus-management'], steps: ['年度目标', '年度计划', '监管行动', '监管绩效', '下一年重点'], expectedResult: '周期复盘联动战略', dataChain: 'ANNUAL → strategic review' },
+    { scenarioId: 'OP-06', name: '数据质量阻断', roleType: 'GROUP_REGULATORY', startPage: 'regulatory-data-quality', pagePath: ['regulatory-data-integration', 'regulatory-data-quality', 'regulatory-kri-monitoring', 'regulatory-data-governance'], steps: ['数据源异常', '质量失败', 'KRI不足', '阻断预警', '治理恢复'], expectedResult: '质量失败不生成可信预警', dataChain: 'source → quality → KRI credibility' },
+    { scenarioId: 'OP-07', name: '整改验证闭环', roleType: 'GROUP_REGULATORY', startPage: 'regulatory-workbench', pagePath: ['rectification', 'regulatory-data-governance', 'regulatory-performance'], steps: ['整改任务', '提交证据', '审核', '验证通过', '绩效重算'], expectedResult: '验证后闭环与绩效更新', dataChain: 'rectification → verification → closure' },
+    { scenarioId: 'OP-08', name: '监管资源重新配置', roleType: 'GROUP_LEADER', startPage: 'regulatory-resource-allocation', pagePath: ['regulatory-risk-concentration', 'regulatory-data-governance', 'regulatory-performance', 'regulatory-strategic-review'], steps: ['集中度变化', '成熟度变化', '绩效变化', '资源缺口', '人工决策'], expectedResult: '建议需人工决策不自动执行', dataChain: 'recommendations → human decision' }
+  ];
+  APP_DATA.regulatoryOperatingCycles = APP_DATA.regulatoryOperatingCycles || [];
+  APP_DATA.regulatoryDailyOperations = APP_DATA.regulatoryDailyOperations || [];
+  APP_DATA.regulatoryPeriodicReviews = APP_DATA.regulatoryPeriodicReviews || [];
+  APP_DATA.regulatoryOperatingSnapshots = APP_DATA.regulatoryOperatingSnapshots || [];
+  APP_DATA.regulatoryOperatingRecommendations = APP_DATA.regulatoryOperatingRecommendations || [];
+  APP_DATA.regulatoryOperatingMetrics = APP_DATA.regulatoryOperatingMetrics || {};
+  APP_DATA.regulatoryPermissionSets = [...(APP_DATA.regulatoryPermissionSets || []),
+    { permissionSetId: 'PS-OP-01', permissionCode: 'OPERATING_VIEW', resourceType: 'regulatoryOperatingCycles', action: 'VIEW', riskLevel: 'LOW' },
+    { permissionSetId: 'PS-OP-02', permissionCode: 'OPERATING_MANAGE', resourceType: 'regulatoryOperatingCycles', action: 'MANAGE', riskLevel: 'MEDIUM' }
+  ];
+  const rpmOp = APP_DATA.regulatoryRolePermissionMap || {};
+  ['ROLE-GROUP-LEADER', 'ROLE-GROUP-REG', 'ROLE-DOMAIN-REG', 'ROLE-ENTITY-REG'].forEach(r => {
+    rpmOp[r] = [...new Set([...(rpmOp[r] || []), 'OPERATING_VIEW'])];
+  });
+  rpmOp['ROLE-GROUP-REG'] = [...new Set([...(rpmOp['ROLE-GROUP-REG'] || []), 'OPERATING_MANAGE'])];
+  rpmOp['ROLE-GROUP-LEADER'] = [...new Set([...(rpmOp['ROLE-GROUP-LEADER'] || []), 'OPERATING_MANAGE'])];
+  APP_DATA.regulatoryRolePermissionMap = rpmOp;
+})();

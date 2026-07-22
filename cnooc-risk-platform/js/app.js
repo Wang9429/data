@@ -133,6 +133,7 @@ const App = {
     if (this.initializeBatchAdaptation) this.initializeBatchAdaptation();
     if (this.initializeDomainClosure) this.initializeDomainClosure();
     if (this.initializeClosureVerification) this.initializeClosureVerification();
+    if (this.initializeRegulatoryOperatingCycle) this.initializeRegulatoryOperatingCycle();
     this.renderNav();
     this.renderGroupOverview();
     this.renderRegulatoryEvents();
