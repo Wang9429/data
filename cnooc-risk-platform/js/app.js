@@ -48,12 +48,16 @@ const App = {
     group: '集团监管总览',
     major: '重大事项监管',
     foundation: '监管基础能力'
-    ,matter: '投资重大事项详情'
+    ,matter: '投资重大事项详情',
+    'global-legal-entities': '全球法人监管',
+    'global-regions': '全球区域/国别监管'
   },
 
   init() {
     this.renderNav();
     this.renderGroupOverview();
+    this.renderGlobalLegalEntities();
+    this.renderGlobalRegions();
     this.renderMajorMatters();
     this.renderFoundationWorkbench();
     this.renderDashboardMetrics();
@@ -146,6 +150,8 @@ const App = {
   getDomainMenu() {
     const base = [
       { id:'group', icon:'◉', label:'集团监管总览' },
+      { id:'global-legal-entities', icon:'◎', label:'全球法人监管' },
+      { id:'global-regions', icon:'◉', label:'全球区域/国别监管' },
       { id:'dashboard', icon:'▦', label:'分领域监管' },
       { id:'major', icon:'◆', label:'重大事项监管' },
       { id:'warnings', icon:'🔔', label:'集团风险预警' },
@@ -214,10 +220,22 @@ const App = {
     const fields=APP_DATA.regulationDomains.slice(0,8);
     node.innerHTML=`<div class="group-hero"><div><span>集团总部监管视角</span><h2>集团监管总览</h2><p>聚焦重点领域、重点法人、重大事项、重大风险和集团督办事项。</p></div><div>数据覆盖率 <b>92.6%</b></div></div>
     <div class="group-metrics">${[['126','纳入监管法人'],['8','纳入监管领域'],['3,286','重点监管事项'],['28','当前重大风险'],['126','当前重点预警'],['43','整改未闭环'],['18','集团重点督办'],['92.6%','数据覆盖率']].map(x=>`<button class="metric-card" onclick="App.navigate('dashboard')"><div class="value">${x[0]}</div><div class="label">${x[1]}</div></button>`).join('')}</div>
+    <div class="card"><div class="card-title">公共监管底座入口</div><div class="field-status-grid"><button onclick="App.navigate('global-legal-entities')"><b>全球法人监管</b><span>全级次法人、项目公司、海外法人</span><em>高风险法人12家</em></button><button onclick="App.navigate('global-regions')"><b>全球区域/国别监管</b><span>区域、国家/地区、项目和风险</span><em>覆盖24个国家/地区</em></button></div></div>
     <div class="card"><div class="card-title">分领域监管态势</div><div class="field-status-grid">${fields.map((f,i)=>`<button onclick="App.selectRegulationDomain('${f.id}')"><b>${f.name}</b><span>重点事项：${[1286,486,238,426,512,186,328,412][i]}项</span><em>重大风险：${[12,3,2,4,5,2,6,4][i]}项</em><small>整改中：${[18,6,4,8,9,3,11,7][i]}项</small></button>`).join('')}</div></div>
     <div class="group-three"><div class="card"><div class="card-title">重点法人监管画像</div><table class="data-table"><thead><tr><th>法人</th><th>高风险领域</th><th>综合关注度</th></tr></thead><tbody><tr><td>A公司</td><td>投资、境外、合同</td><td><span class="badge badge-danger">高</span></td></tr><tr><td>B公司</td><td>投资、财务</td><td><span class="badge badge-warning">较高</span></td></tr><tr><td>D公司</td><td>境外、供应链</td><td><span class="badge badge-warning">较高</span></td></tr></tbody></table></div><div class="card"><div class="card-title">集团重点督办事项</div><div class="supervision-list"><p><b>01</b> 某境外投资项目收益持续偏离 <span class="badge badge-danger">L4</span></p><p><b>02</b> 固定资产项目追加投资接近审批边界 <span class="badge badge-warning">L3</span></p><p><b>03</b> 重大合同履约延期事项 <span class="badge badge-warning">L3</span></p></div></div></div>
     <div class="card"><div class="card-title">全级次法人监管态势</div><table class="data-table"><thead><tr><th>法人层级</th><th>法人数量</th><th>重大风险</th><th>重点预警</th><th>重大事项</th><th>控制规则异常</th><th>整改未闭环</th></tr></thead><tbody><tr><td>集团总部</td><td>1</td><td>0</td><td>0</td><td>18</td><td>0</td><td>6</td></tr><tr><td>一级子企业</td><td>12</td><td>8</td><td>32</td><td>86</td><td>4</td><td>15</td></tr><tr><td>二级子企业</td><td>38</td><td>12</td><td>58</td><td>164</td><td>7</td><td>18</td></tr><tr><td>三级子企业</td><td>52</td><td>6</td><td>29</td><td>73</td><td>3</td><td>4</td></tr><tr><td>四级及以下企业</td><td>23</td><td>2</td><td>7</td><td>21</td><td>1</td><td>0</td></tr></tbody></table></div>
     <div class="group-three"><div class="card"><div class="card-title">跨领域风险与重点区域</div><table class="data-table"><thead><tr><th>风险</th><th>涉及领域</th><th>区域 / 法人</th><th>趋势</th></tr></thead><tbody><tr><td>境外投资收益偏离</td><td>投资、财务、境外</td><td>中东 / B公司</td><td><span class="badge badge-danger">上升</span></td></tr><tr><td>重大合同履约延期</td><td>合同、供应链、工程</td><td>境内 / A公司</td><td><span class="badge badge-warning">关注</span></td></tr></tbody></table></div><div class="card"><div class="card-title">监管覆盖与盲区</div><div class="supervision-list"><p><b>92.6%</b> 重点事项已形成有效监测</p><p><b>8</b> 家法人存在数据更新滞后</p><p><b>14</b> 项重点事项待补充 KRI 或控制证据</p><p><b>6</b> 项整改待集团验证</p></div></div></div>`;
+  },
+
+  renderGlobalLegalEntities() {
+    const node=document.getElementById('globalLegalEntities'); if(!node)return;
+    const entities=APP_DATA.globalLegalEntities;
+    node.innerHTML=`<div class="group-hero"><div><span>集团级公共监管底座</span><h2>全球法人监管</h2><p>全球 → 区域 → 国家/地区 → 法人 → 项目公司的全级次监管对象视图。</p></div><div>全球法人 <b>126家</b></div></div><div class="group-metrics">${[['126','集团法人总数'],['40','境外法人'],['24','国家/地区'],['5','覆盖区域'],['62','项目公司'],['146','项目现场'],['12','高风险法人'],['8','接入不完整法人']].map(x=>`<div class="metric-card"><div class="value">${x[0]}</div><div class="label">${x[1]}</div></div>`).join('')}</div><div class="group-three"><div class="card"><div class="card-title">全级次法人树</div><div class="kri-lineage">${entities.map(e=>`<span><b>${e.entityName}</b><br>${e.entityLevel} · ${e.regionId} · 项目${e.projectCount}项</span><i>→</i>`).join('')}</div></div><div class="card"><div class="card-title">全球区域分布</div>${APP_DATA.globalRegions.map(r=>`<div class="enterprise-line"><span>${r.regionName}</span><b>法人 ${r.legalEntityCount}</b><b>项目 ${r.projectCount}</b><b class="${r.highRiskCount?'badge-danger':'badge-success'}">高风险 ${r.highRiskCount}</b></div>`).join('')}</div></div><div class="card"><div class="card-title">法人监管画像</div><table class="data-table"><thead><tr><th>法人</th><th>层级</th><th>区域/国家</th><th>业务</th><th>项目</th><th>风险/KRI</th><th>整改</th><th>数据/合规</th></tr></thead><tbody>${entities.map(e=>`<tr><td>${e.entityName}</td><td>${e.entityLevel}</td><td>${e.regionId} / ${e.countryId}</td><td>${e.businessDomains}</td><td>${e.projectCount}</td><td>${e.riskCount} / ${e.kriExceptionCount}</td><td>${e.rectificationCount}</td><td>${e.dataAccessStatus} / ${e.crossBorderComplianceStatus}</td></tr>`).join('')}</tbody></table></div>`;
+  },
+
+  renderGlobalRegions() {
+    const node=document.getElementById('globalRegions'); if(!node)return;
+    node.innerHTML=`<div class="group-hero"><div><span>集团级公共监管底座</span><h2>全球区域/国别监管</h2><p>区域 → 国家/地区 → 法人 → 系统/数据源 → 项目 → 风险事项。</p></div><div>覆盖国家 <b>24个</b></div></div><div class="field-status-grid">${APP_DATA.globalRegions.map(r=>`<div><b>${r.regionName}</b><span>法人 ${r.legalEntityCount} · 国家 ${r.countryCount} · 项目 ${r.projectCount}</span><em>风险 ${r.riskCount} · 高风险 ${r.highRiskCount}</em><small>接入率 ${r.dataCoverageRate} · 合规 ${r.complianceStatus}</small></div>`).join('')}</div><div class="card"><div class="card-title">国家/地区监管画像</div><table class="data-table"><thead><tr><th>国家/地区</th><th>法人/项目</th><th>业务领域</th><th>投资金额</th><th>风险/KRI</th><th>重大事项</th><th>整改</th><th>数据质量</th><th>跨境合规</th></tr></thead><tbody>${APP_DATA.globalCountries.map(c=>`<tr><td>${c.countryName}</td><td>${c.legalEntityCount} / ${c.projectCount}</td><td>${c.businessDomains}</td><td>${c.investmentAmount}</td><td>${c.riskCount} / ${c.kriExceptionCount}</td><td>${c.majorMatterCount}</td><td>${c.rectificationCount}</td><td>${c.dataQualityStatus} (${c.dataCoverageRate})</td><td>${c.crossBorderComplianceStatus}</td></tr>`).join('')}</tbody></table></div>`;
   },
 
   renderMajorMatters() {
