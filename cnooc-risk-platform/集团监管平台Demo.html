@@ -947,14 +947,13 @@ body {
           <div class="logo-icon">集团</div>
           <div class="sidebar-title">集团穿透式监管平台</div>
         </div>
-        <div class="sidebar-subtitle">面向集团总部与出资人监管要求的分领域、分法人主体穿透监管演示平台</div>
       </div>
       <nav class="nav-menu" id="navMenu"></nav>
     </aside>
 
     <main class="main-content">
       <header class="top-header">
-        <div class="header-title" id="pageTitle">集团穿透式监管驾驶舱</div>
+        <div class="header-title" id="pageTitle">集团穿透式监管平台</div>
         <div class="header-meta">
           <span>数据更新时间：2026-07-20</span>
           <span>|</span>
@@ -1449,7 +1448,7 @@ body {
   </div>
 
   <script data-inline-from="js/data.js">
-// 集团穿透式监管平台（投资管理专题）- 模拟数据
+// 集团穿透式监管平台 - 模拟数据
 
 const APP_DATA = {
   processStages: [
@@ -8053,6 +8052,42 @@ const App = {
     penetration: { pageId: 'penetration', label: '风险监测投资穿透分析', parentEntry: 'warnings', parentLabel: '投资风险监测', showInMenu: false }
   },
 
+  SYSTEM_NAME: '集团穿透式监管平台',
+  FORBIDDEN_BRAND_LABELS: ['投资管理领域', '投资管理领域运行', '投资管理专题监管', '集团监管平台 Demo', '集团穿透式监管 Demo'],
+
+  syncSystemBrand() {
+    const systemName = this.SYSTEM_NAME;
+    document.title = systemName;
+    const sidebarTitle = document.querySelector('.sidebar-title');
+    if (sidebarTitle) sidebarTitle.textContent = systemName;
+    document.querySelectorAll('.sidebar-subtitle').forEach((node) => node.remove());
+    const pageTitle = document.getElementById('pageTitle');
+    if (pageTitle) pageTitle.textContent = systemName;
+    const gatewayTitle = document.querySelector('.gateway-header h1');
+    if (gatewayTitle) gatewayTitle.textContent = systemName;
+  },
+
+  getRenderedSystemBrandSnapshot() {
+    const systemName = this.SYSTEM_NAME;
+    const sidebarTitle = document.querySelector('.sidebar-title');
+    const pageTitle = document.getElementById('pageTitle');
+    const sidebarHeaderText = (document.querySelector('.sidebar-header') || {}).textContent || '';
+    const forbiddenBesideBrand = this.FORBIDDEN_BRAND_LABELS.some((label) => {
+      if (!sidebarHeaderText.includes(label)) return false;
+      const idx = sidebarHeaderText.indexOf(label);
+      const nameIdx = sidebarHeaderText.indexOf(systemName);
+      return nameIdx === -1 || Math.abs(idx - nameIdx) < 40;
+    });
+    return {
+      actualRenderedSystemName: (sidebarTitle && sidebarTitle.textContent.trim()) || '',
+      pageHeaderSystemName: (pageTitle && pageTitle.textContent.trim()) || '',
+      documentTitle: document.title.trim(),
+      noDomainLabelBesideRenderedSystemName: !forbiddenBesideBrand
+        && !(sidebarTitle && this.FORBIDDEN_BRAND_LABELS.some((label) => sidebarTitle.textContent.includes(label)))
+        && !(pageTitle && this.FORBIDDEN_BRAND_LABELS.some((label) => pageTitle.textContent.includes(label)))
+    };
+  },
+
   getInvestmentPageMeta(pageId) {
     return (this.investmentPageMeta || {})[pageId] || null;
   },
@@ -8383,6 +8418,7 @@ const App = {
     this.renderRectificationGovernance();
     this.renderRectKanban();
     this.renderPortfolio();
+    this.syncSystemBrand();
   },
 
   navigate(pageId, params = {}) {
@@ -8393,11 +8429,7 @@ const App = {
 
     if (this.currentDomain !== 'investment' && ['dashboard', 'process', 'scenarios', 'controls', 'warnings', 'rectification', 'portfolio', 'penetration'].includes(pageId)) {
       this.renderNonInvestmentDomainPage(pageId);
-      const domainLabel = this.getDomainPageLabel(this.currentDomain, pageId);
-      if (domainLabel) document.getElementById('pageTitle').textContent = domainLabel;
     }
-
-    document.getElementById('pageTitle').textContent = this.pageTitles[pageId] || pageId;
 
     document.querySelectorAll('.nav-item').forEach(item => {
       const activePage = pageId === 'penetration' ? 'warnings' : pageId;
@@ -8408,7 +8440,6 @@ const App = {
       this.selectedRiskId = params.riskId || this.selectedRiskId || 'risk-2';
       this.renderPenetration(this.selectedRiskId);
       document.getElementById('penetrationBack').style.display = 'block';
-      document.getElementById('pageTitle').textContent = '风险监测投资穿透分析';
     }
 
     if (pageId === 'warnings' && this.currentDomain === 'investment') {
@@ -8434,6 +8465,8 @@ const App = {
     if (['global-group-overview', 'group', 'global-legal-entities', 'global-regions', 'coverage-gaps', 'platform-operations', 'data-governance', 'cross-border-compliance', 'cross-domain-risks', 'warnings', 'rectification', 'regulatory-events', 'rectification-operations', 'regulatory-evaluation', 'regulatory-command-center', 'regulatory-actions', 'regulatory-action-execution', 'regulatory-strategy', 'regulatory-maturity', 'regulatory-optimization', 'regulatory-rule-config', 'regulatory-simulation', 'regulatory-rule-history', 'regulatory-rule-versions', 'regulatory-rule-approvals', 'regulatory-rule-impact', 'regulatory-rule-effectiveness', 'regulatory-rule-runtime', 'regulatory-rule-executions', 'regulatory-rule-deployments', 'regulatory-performance', 'regulatory-resource-allocation', 'regulatory-supervision-tasks', 'regulatory-benchmarking', 'regulatory-strategy-planning', 'regulatory-annual-plan', 'regulatory-target-management', 'regulatory-focus-management', 'regulatory-plan-execution', 'regulatory-strategic-review', 'regulatory-workbench', 'regulatory-queue', 'regulatory-decision-room', 'regulatory-role-workbench', 'regulatory-my-work', 'regulatory-search', 'regulatory-access-control', 'regulatory-authorization', 'regulatory-audit-trail', 'regulatory-system-settings'].includes(pageId) && Object.keys(params).length) {
       setTimeout(() => this.applyPublicNavigationContext(pageId, params), 50);
     }
+
+    this.syncSystemBrand();
   },
 
   navigatePublic(pageId, params = {}) {
@@ -10066,8 +10099,7 @@ const App = {
     if (domainId === 'investment') this.restoreInvestmentPages();
     if (fromGateway) document.getElementById('domainGateway').style.display = 'none';
     this.navigate('dashboard');
-    const homeLabel = this.getDomainPageLabel(domainId, 'dashboard') || `${domain.name}驾驶舱`;
-    document.getElementById('pageTitle').textContent = homeLabel;
+    this.syncSystemBrand();
   },
 
   restoreInvestmentPages() {
@@ -10829,6 +10861,8 @@ document.addEventListener('DOMContentLoaded', () => {
   ensureOfflineStyles();
   App.init();
 });
+
+window.App = App;
 
 </script>
 <script data-inline-from="js/public-regulatory.js">
@@ -15939,11 +15973,13 @@ Object.assign(App, {
       { title: '投资布局分析', value: '6大板块', desc: '（辅助）清洁能源、装备制造等结构背景', nav: `App.showPortfolioDetail('投资布局','集团总体')` },
       { title: '区域投资结构', value: '74.6%', desc: '（辅助）区域规模分布，非监管关注主因', nav: `App.showPortfolioDetail('区域投资结构','中东')` },
       { title: '子企业投资集中度', value: '68.2%', desc: '（辅助）集中度背景，结合风险事项判断', nav: `App.showPortfolioDetail('子企业集中度','前十大法人')` },
-      { title: '战略方向匹配分析', value: '92.4%', desc: '（辅助）主业匹配，偏离项纳入监管关注', nav: `App.showPortfolioDetail('战略方向匹配','集团主业')` }
+      { title: '战略方向匹配分析', value: '92.4%', desc: '（辅助）主业匹配，偏离项纳入监管关注', staticOnly: true }
     ];
     return `<div class="card"><div class="card-title">辅助分析 · 投资规划与布局背景</div>
       <p class="insight-note">以下为投资组合结构背景数据，供结合重点监管对象综合研判。</p>
-      <div class="portfolio-analysis-row">${blocks.map(b => `<button class="analysis-card" onclick="${b.nav}"><h4>${b.title}</h4><strong>${b.value}</strong><p>${b.desc}</p></button>`).join('')}</div>
+      <div class="portfolio-analysis-row">${blocks.map(b => b.staticOnly
+        ? `<div class="analysis-card" data-static-analysis="true"><h4>${b.title}</h4><strong>${b.value}</strong><p>${b.desc}</p></div>`
+        : `<button class="analysis-card" onclick="${b.nav}"><h4>${b.title}</h4><strong>${b.value}</strong><p>${b.desc}</p></button>`).join('')}</div>
     </div>`;
   },
 

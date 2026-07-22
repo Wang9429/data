@@ -38,6 +38,42 @@ const App = {
     penetration: { pageId: 'penetration', label: '风险监测投资穿透分析', parentEntry: 'warnings', parentLabel: '投资风险监测', showInMenu: false }
   },
 
+  SYSTEM_NAME: '集团穿透式监管平台',
+  FORBIDDEN_BRAND_LABELS: ['投资管理领域', '投资管理领域运行', '投资管理专题监管', '集团监管平台 Demo', '集团穿透式监管 Demo'],
+
+  syncSystemBrand() {
+    const systemName = this.SYSTEM_NAME;
+    document.title = systemName;
+    const sidebarTitle = document.querySelector('.sidebar-title');
+    if (sidebarTitle) sidebarTitle.textContent = systemName;
+    document.querySelectorAll('.sidebar-subtitle').forEach((node) => node.remove());
+    const pageTitle = document.getElementById('pageTitle');
+    if (pageTitle) pageTitle.textContent = systemName;
+    const gatewayTitle = document.querySelector('.gateway-header h1');
+    if (gatewayTitle) gatewayTitle.textContent = systemName;
+  },
+
+  getRenderedSystemBrandSnapshot() {
+    const systemName = this.SYSTEM_NAME;
+    const sidebarTitle = document.querySelector('.sidebar-title');
+    const pageTitle = document.getElementById('pageTitle');
+    const sidebarHeaderText = (document.querySelector('.sidebar-header') || {}).textContent || '';
+    const forbiddenBesideBrand = this.FORBIDDEN_BRAND_LABELS.some((label) => {
+      if (!sidebarHeaderText.includes(label)) return false;
+      const idx = sidebarHeaderText.indexOf(label);
+      const nameIdx = sidebarHeaderText.indexOf(systemName);
+      return nameIdx === -1 || Math.abs(idx - nameIdx) < 40;
+    });
+    return {
+      actualRenderedSystemName: (sidebarTitle && sidebarTitle.textContent.trim()) || '',
+      pageHeaderSystemName: (pageTitle && pageTitle.textContent.trim()) || '',
+      documentTitle: document.title.trim(),
+      noDomainLabelBesideRenderedSystemName: !forbiddenBesideBrand
+        && !(sidebarTitle && this.FORBIDDEN_BRAND_LABELS.some((label) => sidebarTitle.textContent.includes(label)))
+        && !(pageTitle && this.FORBIDDEN_BRAND_LABELS.some((label) => pageTitle.textContent.includes(label)))
+    };
+  },
+
   getInvestmentPageMeta(pageId) {
     return (this.investmentPageMeta || {})[pageId] || null;
   },
@@ -368,6 +404,7 @@ const App = {
     this.renderRectificationGovernance();
     this.renderRectKanban();
     this.renderPortfolio();
+    this.syncSystemBrand();
   },
 
   navigate(pageId, params = {}) {
@@ -378,11 +415,7 @@ const App = {
 
     if (this.currentDomain !== 'investment' && ['dashboard', 'process', 'scenarios', 'controls', 'warnings', 'rectification', 'portfolio', 'penetration'].includes(pageId)) {
       this.renderNonInvestmentDomainPage(pageId);
-      const domainLabel = this.getDomainPageLabel(this.currentDomain, pageId);
-      if (domainLabel) document.getElementById('pageTitle').textContent = domainLabel;
     }
-
-    document.getElementById('pageTitle').textContent = this.pageTitles[pageId] || pageId;
 
     document.querySelectorAll('.nav-item').forEach(item => {
       const activePage = pageId === 'penetration' ? 'warnings' : pageId;
@@ -393,7 +426,6 @@ const App = {
       this.selectedRiskId = params.riskId || this.selectedRiskId || 'risk-2';
       this.renderPenetration(this.selectedRiskId);
       document.getElementById('penetrationBack').style.display = 'block';
-      document.getElementById('pageTitle').textContent = '风险监测投资穿透分析';
     }
 
     if (pageId === 'warnings' && this.currentDomain === 'investment') {
@@ -419,6 +451,8 @@ const App = {
     if (['global-group-overview', 'group', 'global-legal-entities', 'global-regions', 'coverage-gaps', 'platform-operations', 'data-governance', 'cross-border-compliance', 'cross-domain-risks', 'warnings', 'rectification', 'regulatory-events', 'rectification-operations', 'regulatory-evaluation', 'regulatory-command-center', 'regulatory-actions', 'regulatory-action-execution', 'regulatory-strategy', 'regulatory-maturity', 'regulatory-optimization', 'regulatory-rule-config', 'regulatory-simulation', 'regulatory-rule-history', 'regulatory-rule-versions', 'regulatory-rule-approvals', 'regulatory-rule-impact', 'regulatory-rule-effectiveness', 'regulatory-rule-runtime', 'regulatory-rule-executions', 'regulatory-rule-deployments', 'regulatory-performance', 'regulatory-resource-allocation', 'regulatory-supervision-tasks', 'regulatory-benchmarking', 'regulatory-strategy-planning', 'regulatory-annual-plan', 'regulatory-target-management', 'regulatory-focus-management', 'regulatory-plan-execution', 'regulatory-strategic-review', 'regulatory-workbench', 'regulatory-queue', 'regulatory-decision-room', 'regulatory-role-workbench', 'regulatory-my-work', 'regulatory-search', 'regulatory-access-control', 'regulatory-authorization', 'regulatory-audit-trail', 'regulatory-system-settings'].includes(pageId) && Object.keys(params).length) {
       setTimeout(() => this.applyPublicNavigationContext(pageId, params), 50);
     }
+
+    this.syncSystemBrand();
   },
 
   navigatePublic(pageId, params = {}) {
@@ -2051,8 +2085,7 @@ const App = {
     if (domainId === 'investment') this.restoreInvestmentPages();
     if (fromGateway) document.getElementById('domainGateway').style.display = 'none';
     this.navigate('dashboard');
-    const homeLabel = this.getDomainPageLabel(domainId, 'dashboard') || `${domain.name}驾驶舱`;
-    document.getElementById('pageTitle').textContent = homeLabel;
+    this.syncSystemBrand();
   },
 
   restoreInvestmentPages() {
@@ -2814,3 +2847,5 @@ document.addEventListener('DOMContentLoaded', () => {
   ensureOfflineStyles();
   App.init();
 });
+
+window.App = App;

@@ -5105,11 +5105,13 @@ Object.assign(App, {
       { title: '投资布局分析', value: '6大板块', desc: '（辅助）清洁能源、装备制造等结构背景', nav: `App.showPortfolioDetail('投资布局','集团总体')` },
       { title: '区域投资结构', value: '74.6%', desc: '（辅助）区域规模分布，非监管关注主因', nav: `App.showPortfolioDetail('区域投资结构','中东')` },
       { title: '子企业投资集中度', value: '68.2%', desc: '（辅助）集中度背景，结合风险事项判断', nav: `App.showPortfolioDetail('子企业集中度','前十大法人')` },
-      { title: '战略方向匹配分析', value: '92.4%', desc: '（辅助）主业匹配，偏离项纳入监管关注', nav: `App.showPortfolioDetail('战略方向匹配','集团主业')` }
+      { title: '战略方向匹配分析', value: '92.4%', desc: '（辅助）主业匹配，偏离项纳入监管关注', staticOnly: true }
     ];
     return `<div class="card"><div class="card-title">辅助分析 · 投资规划与布局背景</div>
       <p class="insight-note">以下为投资组合结构背景数据，供结合重点监管对象综合研判。</p>
-      <div class="portfolio-analysis-row">${blocks.map(b => `<button class="analysis-card" onclick="${b.nav}"><h4>${b.title}</h4><strong>${b.value}</strong><p>${b.desc}</p></button>`).join('')}</div>
+      <div class="portfolio-analysis-row">${blocks.map(b => b.staticOnly
+        ? `<div class="analysis-card" data-static-analysis="true"><h4>${b.title}</h4><strong>${b.value}</strong><p>${b.desc}</p></div>`
+        : `<button class="analysis-card" onclick="${b.nav}"><h4>${b.title}</h4><strong>${b.value}</strong><p>${b.desc}</p></button>`).join('')}</div>
     </div>`;
   },
 
