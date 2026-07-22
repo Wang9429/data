@@ -24,6 +24,9 @@ Object.assign(App, {
     { pageId: 'regulatory-strategy', label: '集团监管策略分析', category: '决策层', entryFromGroupOverview: false, supportsPublicNavigation: true, supportsBackNavigation: true },
     { pageId: 'regulatory-maturity', label: '集团监管成熟度', category: '持续优化', entryFromGroupOverview: false, supportsPublicNavigation: true, supportsBackNavigation: true },
     { pageId: 'regulatory-optimization', label: '集团监管持续优化', category: '持续优化', entryFromGroupOverview: false, supportsPublicNavigation: true, supportsBackNavigation: true },
+    { pageId: 'regulatory-rule-config', label: '集团监管规则配置', category: '规则仿真', entryFromGroupOverview: false, supportsPublicNavigation: true, supportsBackNavigation: true },
+    { pageId: 'regulatory-simulation', label: '集团监管仿真推演', category: '规则仿真', entryFromGroupOverview: false, supportsPublicNavigation: true, supportsBackNavigation: true },
+    { pageId: 'regulatory-rule-history', label: '监管规则变更历史', category: '规则仿真', entryFromGroupOverview: false, supportsPublicNavigation: true, supportsBackNavigation: true },
     { pageId: 'major', label: '重大事项监管', category: '重大事项', entryFromGroupOverview: false, supportsPublicNavigation: false, supportsBackNavigation: false }
   ],
 
@@ -91,6 +94,9 @@ Object.assign(App, {
       ctx.feedbackId = this.regulatoryActionFeedbackFocusId;
     }
     if (pageId === 'regulatory-optimization') ctx.recommendationId = this.regulatoryOptimizationFocusId;
+    if (pageId === 'regulatory-rule-config') ctx.ruleId = this.regulatoryRuleFocusId;
+    if (pageId === 'regulatory-simulation') ctx.simulationId = this.regulatorySimulationFocusId;
+    if (pageId === 'regulatory-rule-history') ctx.historyId = this.regulatoryRuleHistoryFocusId;
     return ctx;
   },
 
@@ -379,6 +385,53 @@ Object.assign(App, {
     if (!items || !items.length) return this.renderPublicEmptyState('暂无成熟度对比数据');
     const max = Math.max(...items.map(i => i.score || 0), 1);
     return `<div style="margin-top:8px">${items.map(item => `<p style="display:flex;align-items:center;gap:8px;margin:4px 0"><span style="width:72px;font-size:12px">${this.escHtml(item[labelKey] || item.dimensionName || item.objectName)}</span><i style="flex:1;height:8px;background:#eef3f9;border-radius:4px;display:block"><b style="display:block;height:8px;background:#003d7a;border-radius:4px;width:${Math.round((item.score || 0) / max * 100)}%"></b></i><em style="width:36px;text-align:right;font-size:11px">${item.score || 0}</em>${this.renderPublicMaturityBadge(item.level)}</p>`).join('')}</div>`;
+  },
+
+  renderPublicRuleTypeBadge(type) {
+    const map = { RISK_DETECTION: '风险识别', KRI_THRESHOLD: 'KRI阈值', PRIORITY_SCORING: '优先级', STRATEGY_ROUTING: '策略', ACTION_TRIGGER: '行动触发', MATURITY_SCORING: '成熟度' };
+    const cls = { RISK_DETECTION: 'badge-danger', KRI_THRESHOLD: 'badge-warning', PRIORITY_SCORING: 'badge-info', STRATEGY_ROUTING: 'badge-info', ACTION_TRIGGER: 'badge-warning', MATURITY_SCORING: 'badge-success' };
+    return `<span class="badge ${cls[type] || 'badge-info'}">${map[type] || type || '—'}</span>`;
+  },
+
+  renderPublicRuleStatusBadge(status) {
+    const cls = { ACTIVE: 'badge-success', INACTIVE: 'badge-info', PENDING: 'badge-warning', DRAFT: 'badge-info' };
+    const labels = { ACTIVE: '启用', INACTIVE: '停用', PENDING: '待审核', DRAFT: '草稿' };
+    return `<span class="badge ${cls[status] || 'badge-info'}">${labels[status] || status || '—'}</span>`;
+  },
+
+  renderPublicSimulationBadge(simOnly) {
+    return simOnly ? '<span class="badge badge-warning">模拟结果</span>' : '<span class="badge badge-info">基准</span>';
+  },
+
+  renderPublicParameterDiff(orig, sim, unit) {
+    const ch = sim - orig;
+    const pct = orig ? Math.round(ch / orig * 100) : 0;
+    return `<span>${orig}${unit || ''} → <b>${sim}${unit || ''}</b> (${ch >= 0 ? '+' : ''}${ch}, ${pct >= 0 ? '+' : ''}${pct}%)</span>`;
+  },
+
+  renderPublicRuleCondition(conditions) {
+    if (!conditions || !conditions.length) return this.renderPublicEmptyState('暂无条件');
+    return `<ul>${conditions.map(c => `<li>${this.escHtml(c)}</li>`).join('')}</ul>`;
+  },
+
+  renderPublicSimulationComparison(before, after, label) {
+    return `<p class="insight-note"><b>${label || '对比'}：</b>${before} → <b>${after}</b> ${this.renderPublicSimulationBadge(true)}</p>`;
+  },
+
+  getRegulatoryRule(ruleId) {
+    return (APP_DATA.regulatoryRules || []).find(r => r.ruleId === ruleId);
+  },
+
+  getRegulatorySimulationResult(simulationId) {
+    return (APP_DATA.regulatorySimulationResults || []).find(s => s.simulationId === simulationId);
+  },
+
+  runRegulatorySimulation(simulationId, overrides) {
+    const sim = (APP_DATA.regulatorySimulations || []).find(s => s.simulationId === simulationId);
+    if (!sim) return null;
+    const existing = this.getRegulatorySimulationResult(simulationId);
+    if (existing && !overrides) return existing;
+    return existing;
   },
 
   getRegulatoryRiskConcentration(dimension) {
@@ -731,7 +784,7 @@ Object.assign(App, {
   },
 
   renderGroupOverviewPageCatalog(m) {
-    const catalogIds = ['global-legal-entities', 'global-regions', 'coverage-gaps', 'platform-operations', 'data-governance', 'cross-border-compliance', 'cross-domain-risks', 'warnings', 'rectification', 'regulatory-events', 'rectification-operations', 'regulatory-evaluation', 'regulatory-command-center', 'regulatory-actions', 'regulatory-action-execution', 'regulatory-strategy', 'regulatory-maturity', 'regulatory-optimization'];
+    const catalogIds = ['global-legal-entities', 'global-regions', 'coverage-gaps', 'platform-operations', 'data-governance', 'cross-border-compliance', 'cross-domain-risks', 'warnings', 'rectification', 'regulatory-events', 'rectification-operations', 'regulatory-evaluation', 'regulatory-command-center', 'regulatory-actions', 'regulatory-action-execution', 'regulatory-strategy', 'regulatory-maturity', 'regulatory-optimization', 'regulatory-rule-config', 'regulatory-simulation', 'regulatory-rule-history'];
     const metricMap = {
       'global-legal-entities': { core: `法人 ${m.entityCount}`, anomaly: `高风险 ${(m.entities || []).filter(e => (e.highRiskCount || 0) > 0).length}` },
       'global-regions': { core: `区域 ${m.regionCount} · 国家 ${m.countryCount}`, anomaly: `高风险区域 ${(m.regions || []).filter(r => (r.highRiskCount || 0) > 0).length}` },
@@ -750,7 +803,10 @@ Object.assign(App, {
       'regulatory-action-execution': { core: `执行中 ${(APP_DATA.regulatoryActionExecutionMetrics || {}).inProgress || 0}`, anomaly: `逾期 ${(APP_DATA.regulatoryActionExecutionMetrics || {}).overdue || 0}` },
       'regulatory-strategy': { core: `重点区域 ${((APP_DATA.regulatoryStrategyAnalysis || {}).regions || []).filter(r => r.strategyLevel === 'FOCUS').length}`, anomaly: `重点法人 ${((APP_DATA.regulatoryStrategyAnalysis || {}).entities || []).filter(e => e.strategyLevel === 'FOCUS').length}` },
       'regulatory-maturity': { core: `${(APP_DATA.regulatoryMaturity || {}).overallLevel || '—'}`, anomaly: `评分 ${(APP_DATA.regulatoryMaturity || {}).overallScore || 0}` },
-      'regulatory-optimization': { core: `待优化 ${((APP_DATA.regulatoryOptimizationAnalysis || {}).summary || {}).open || 0}`, anomaly: `高优先级 ${((APP_DATA.regulatoryOptimizationAnalysis || {}).summary || {}).highPriority || 0}` }
+      'regulatory-optimization': { core: `待优化 ${((APP_DATA.regulatoryOptimizationAnalysis || {}).summary || {}).open || 0}`, anomaly: `高优先级 ${((APP_DATA.regulatoryOptimizationAnalysis || {}).summary || {}).highPriority || 0}` },
+      'regulatory-rule-config': { core: `规则 ${(APP_DATA.regulatoryRuleConfigMetrics || {}).totalRules || 0}`, anomaly: `启用 ${(APP_DATA.regulatoryRuleConfigMetrics || {}).activeRules || 0}` },
+      'regulatory-simulation': { core: `场景 ${(APP_DATA.regulatorySimulations || []).length}`, anomaly: `仿真 ${(APP_DATA.regulatorySimulationResults || []).length}` },
+      'regulatory-rule-history': { core: `版本 ${(APP_DATA.regulatoryRuleHistory || []).length}`, anomaly: `系统默认` }
     };
     const pages = (this.publicRegulatoryPages || []).filter(p => catalogIds.includes(p.pageId));
     return `<div class="card"><div class="card-title">公共监管页面目录</div>
@@ -819,6 +875,8 @@ Object.assign(App, {
         <button onclick="App.navigatePublic('regulatory-strategy')"><b>集团监管策略分析</b><span>重点区域 ${((APP_DATA.regulatoryStrategyAnalysis || {}).regions || []).filter(r => r.strategyLevel === 'FOCUS').length}</span><em>重点法人 ${((APP_DATA.regulatoryStrategyAnalysis || {}).entities || []).filter(e => e.strategyLevel === 'FOCUS').length}</em></button>
         <button onclick="App.navigatePublic('regulatory-maturity')"><b>集团监管成熟度</b><span>${(APP_DATA.regulatoryMaturity || {}).overallLevel || '—'} · ${(APP_DATA.regulatoryMaturity || {}).overallScore || 0}分</span><em>待优化 ${(APP_DATA.regulatoryMaturity || {}).pendingOptimizationCount || 0}</em></button>
         <button onclick="App.navigatePublic('regulatory-optimization')"><b>集团监管持续优化</b><span>待优化 ${((APP_DATA.regulatoryOptimizationAnalysis || {}).summary || {}).open || 0}</span><em>高优先级 ${((APP_DATA.regulatoryOptimizationAnalysis || {}).summary || {}).highPriority || 0}</em></button>
+        <button onclick="App.navigatePublic('regulatory-rule-config')"><b>集团监管规则配置</b><span>规则 ${(APP_DATA.regulatoryRuleConfigMetrics || {}).totalRules || 0}</span><em>启用 ${(APP_DATA.regulatoryRuleConfigMetrics || {}).activeRules || 0}</em></button>
+        <button onclick="App.navigatePublic('regulatory-simulation')"><b>集团监管仿真推演</b><span>场景 ${(APP_DATA.regulatorySimulations || []).length}</span><em>模拟结果</em></button>
       </div>
     </div>`;
   },
@@ -1197,7 +1255,7 @@ Object.assign(App, {
       </div>
       <div class="card"><div class="card-title">监管资源优先级</div>
         <table class="data-table"><thead><tr><th>区域</th><th>法人</th><th>项目</th><th>领域</th><th>优先级</th><th>建议动作</th></tr></thead><tbody>${resourceRows || '<tr><td colspan="6">暂无</td></tr>'}</tbody></table>
-        <p style="margin-top:8px">${this.renderPublicLinkButton('监管策略分析', `App.navigatePublic('regulatory-strategy')`)}</p>
+        <p style="margin-top:8px">${this.renderPublicLinkButton('监管策略分析', `App.navigatePublic('regulatory-strategy')`)} ${this.renderPublicLinkButton('监管规则配置', `App.navigatePublic('regulatory-rule-config')`)}</p>
       </div>`;
   },
 
@@ -1458,6 +1516,7 @@ Object.assign(App, {
       </div>
       <div class="card"><div class="card-title">成熟度短板分析</div>
         ${gapRows ? `<table class="data-table"><thead><tr><th>短板</th><th>影响对象</th><th>范围</th><th>当前</th><th>目标</th><th>差距</th><th>建议措施</th></tr></thead><tbody>${gapRows}</tbody></table>` : this.renderPublicEmptyState('暂无短板')}
+        <p style="margin-top:8px">${this.renderPublicLinkButton('成熟度评分规则', `App.navigatePublic('regulatory-rule-config',{ruleId:'RULE-MAT-001'})`)} ${this.renderPublicLinkButton('仿真推演', `App.navigatePublic('regulatory-simulation')`)}</p>
       </div>
       <div id="regulatoryOptimizationDetail"></div>`;
     if (this.regulatoryOptimizationFocusId) setTimeout(() => this.showRegulatoryOptimizationDetail(this.regulatoryOptimizationFocusId), 0);
@@ -1556,6 +1615,154 @@ Object.assign(App, {
       </div>`;
   },
 
+  renderRegulatoryRuleConfig() {
+    const node = document.getElementById('regulatoryRuleConfig');
+    if (!node) return;
+    const m = APP_DATA.regulatoryRuleConfigMetrics || {};
+    const rules = APP_DATA.regulatoryRules || [];
+    const f = this.regulatoryRuleFilter || {};
+    let filtered = [...rules];
+    if (f.ruleType) filtered = filtered.filter(r => r.ruleType === f.ruleType);
+    if (f.status) filtered = filtered.filter(r => r.status === f.status);
+    const typeGroups = ['RISK_DETECTION', 'KRI_THRESHOLD', 'PRIORITY_SCORING', 'STRATEGY_ROUTING', 'ACTION_TRIGGER', 'MATURITY_SCORING'];
+    const typeSections = typeGroups.map(t => {
+      const rs = filtered.filter(r => r.ruleType === t);
+      if (!rs.length) return '';
+      return `<div class="card"><div class="card-title">${this.renderPublicRuleTypeBadge(t)} (${rs.length})</div>
+        <table class="data-table"><thead><tr><th>规则ID</th><th>名称</th><th>状态</th><th>版本</th><th>生效日</th><th>影响法人</th><th>逻辑引用</th></tr></thead>
+        <tbody>${rs.map(r => `<tr class="clickable" onclick="App.showRegulatoryRuleDetail('${r.ruleId}')"><td>${r.ruleId}</td><td>${r.ruleName}</td><td>${this.renderPublicRuleStatusBadge(r.status)}</td><td>${r.version}</td><td>${r.effectiveDate}</td><td>${r.affectedEntityCount || 0}</td><td>${r.logicRef}</td></tr>`).join('')}</tbody></table></div>`;
+    }).join('');
+    const paramRows = (APP_DATA.regulatoryRuleParameters || []).map(p => `<tr class="clickable" onclick="App.navigatePublic('regulatory-simulation')"><td>${p.paramId}</td><td>${p.paramName}</td><td>${p.currentValue}</td><td>${p.unit}</td><td>${p.defaultValue}</td><td>${p.allowedMin}-${p.allowedMax}</td><td>${p.lastUpdated}</td><td>${p.effective ? '是' : '否'}</td></tr>`).join('');
+    node.innerHTML = `${this.renderPublicBackButton()}
+      <div class="group-hero"><div><span>集团监管规则体系</span><h2>集团监管规则配置</h2><p>展示当前监管规则如何驱动风险识别、优先级计算、监管策略和监管行动。</p></div><div>规则 <b>${m.totalRules || 0}</b></div></div>
+      <div class="group-metrics">${[
+        [m.totalRules, '规则总数', `App.navigatePublic('regulatory-rule-config')`],
+        [m.activeRules, '启用规则', `App.navigatePublic('regulatory-rule-config')`],
+        [m.inactiveRules, '停用规则', `App.navigatePublic('regulatory-rule-config')`],
+        [m.pendingRules, '待审核', `App.navigatePublic('regulatory-rule-config')`],
+        [m.changedThisPeriod, '本期变更', `App.navigatePublic('regulatory-rule-history')`],
+        [m.affectedEntityCount, '影响法人', `App.navigatePublic('global-legal-entities')`]
+      ].map(([v, l, nav]) => this.renderPublicKpiCard(l, v, nav)).join('')}</div>
+      <div class="filter-bar" style="margin-bottom:12px;display:flex;gap:8px">
+        <select onchange="App.regulatoryRuleFilter={...(App.regulatoryRuleFilter||{}),ruleType:this.value||null};App.renderRegulatoryRuleConfig()"><option value="">全部类型</option>${typeGroups.map(t => `<option value="${t}" ${f.ruleType===t?'selected':''}>${t}</option>`).join('')}</select>
+        <select onchange="App.regulatoryRuleFilter={...(App.regulatoryRuleFilter||{}),status:this.value||null};App.renderRegulatoryRuleConfig()"><option value="">全部状态</option><option value="ACTIVE">ACTIVE</option></select>
+        ${this.renderPublicLinkButton('仿真推演', `App.navigatePublic('regulatory-simulation')`)}
+        ${this.renderPublicLinkButton('变更历史', `App.navigatePublic('regulatory-rule-history')`)}
+      </div>
+      ${typeSections || this.renderPublicEmptyState('暂无规则')}
+      <div class="card"><div class="card-title">规则参数</div>
+        <table class="data-table"><thead><tr><th>参数ID</th><th>名称</th><th>当前值</th><th>单位</th><th>默认值</th><th>范围</th><th>更新时间</th><th>已生效</th></tr></thead><tbody>${paramRows}</tbody></table>
+      </div>
+      <div id="regulatoryRuleDetail"></div>`;
+    if (this.regulatoryRuleFocusId) setTimeout(() => this.showRegulatoryRuleDetail(this.regulatoryRuleFocusId), 0);
+  },
+
+  showRegulatoryRuleDetail(ruleId) {
+    const rule = this.getRegulatoryRule(ruleId);
+    const node = document.getElementById('regulatoryRuleDetail');
+    this.regulatoryRuleFocusId = ruleId;
+    this.showPublicDetailOrNotFound(node, rule, () => {
+      const params = (rule.parameters || []).map(pid => (APP_DATA.regulatoryRuleParameters || []).find(p => p.paramId === pid)).filter(Boolean);
+      const ents = (rule.affectedEntityIds || []).map(id => APP_DATA.globalLegalEntities.find(e => e.entityId === id)).filter(Boolean);
+      const risks = (rule.relatedRiskMatterIds || []).map(id => APP_DATA.warnings.find(w => w.id === id) || APP_DATA.crossDomainRiskMatters.find(m => m.riskMatterId === id)).filter(Boolean);
+      const acts = (APP_DATA.regulatoryActions || []).filter(a => (rule.relatedActionTypes || []).includes(a.actionType));
+      node.innerHTML = this.buildPublicDetailPanel({
+        objectType: '监管规则',
+        objectName: rule.ruleName,
+        objectId: rule.ruleId,
+        status: rule.status,
+        sections: [
+          { title: '一、规则基本信息', content: this.renderPublicMetaGrid([this.renderPublicIdField(rule.ruleId, '规则 ID'), { label: '规则类型', html: this.renderPublicRuleTypeBadge(rule.ruleType) }, { label: '状态', html: this.renderPublicRuleStatusBadge(rule.status) }, { label: '版本', value: rule.version }, { label: '生效日期', value: rule.effectiveDate }, { label: '负责人', value: rule.owner }, { label: '逻辑引用', value: rule.logicRef }, { label: '描述', value: rule.description }]) },
+          { title: '二、规则条件', content: this.renderPublicRuleCondition(rule.conditions) },
+          { title: '三、规则参数', content: params.length ? params.map(p => `<p class="insight-note">${p.paramName}：${p.currentValue}${p.unit}（默认 ${p.defaultValue}，范围 ${p.allowedMin}-${p.allowedMax}）${this.renderPublicLinkButton('仿真调整', `App.navigatePublic('regulatory-simulation')`)}</p>`).join('') : this.renderPublicEmptyState('暂无参数') },
+          { title: '四、触发结果', content: this.renderPublicMetaGrid([{ label: '输出类型', value: rule.outputType }, { label: '输出值', value: rule.outputValue }, { label: '目标类型', value: (rule.targetTypes || []).join('、') }]) },
+          { title: '五、受影响法人', content: ents.length ? ents.map(e => this.renderPublicLinkButton(e.entityName, `App.navigatePublic('global-legal-entities',{entityId:'${e.entityId}'})`)).join('') : this.renderPublicEmptyState('暂无') },
+          { title: '六、关联风险与行动', content: `<p><b>风险：</b>${risks.map(r => this.renderPublicLinkButton(r.name || r.riskMatterName, r.id ? `App.navigatePublic('warnings',{riskMatterId:'${r.id}'})` : `App.navigatePublic('cross-domain-risks',{riskMatterId:'${r.riskMatterId}'})`)).join('') || this.renderPublicEmptyState('暂无')}</p><p><b>行动类型：</b>${(rule.relatedActionTypes || []).join('、') || '—'}</p><p><b>关联行动：</b>${acts.slice(0, 5).map(a => this.renderPublicLinkButton(a.actionId, `App.navigatePublic('regulatory-action-execution',{actionId:'${a.actionId}'})`)).join('') || '—'}</p>` }
+        ],
+        footer: `${this.renderPublicLinkButton('仿真推演', `App.navigatePublic('regulatory-simulation')`)}${this.renderPublicLinkButton('变更历史', `App.navigatePublic('regulatory-rule-history')`)}${ents[0] ? this.renderPublicLinkButton('查看法人', `App.navigatePublic('global-legal-entities',{entityId:'${ents[0].entityId}'})`) : ''}`
+      });
+      node.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }, '监管规则');
+  },
+
+  renderRegulatorySimulation() {
+    const node = document.getElementById('regulatorySimulation');
+    if (!node) return;
+    const sims = APP_DATA.regulatorySimulations || [];
+    const results = APP_DATA.regulatorySimulationResults || [];
+    const focus = this.regulatorySimulationFocusId;
+    const result = focus ? results.find(r => r.simulationId === focus) : results[0];
+    const simRows = sims.map(s => `<tr class="clickable" onclick="App.showRegulatorySimulationDetail('${s.simulationId}')"><td>${s.simulationId}</td><td>${s.simulationName}</td><td>${s.baseVersion}</td><td>${s.createdAt}</td><td>${s.createdBy}</td><td>${s.status}</td></tr>`).join('');
+    const paramDiff = result ? (result.parameterChanges || []).map(p => `<tr><td>${p.paramId}</td><td>${p.originalValue}</td><td>${p.simulatedValue}</td><td>${p.changeValue >= 0 ? '+' : ''}${p.changeValue}</td><td>${p.changePercent >= 0 ? '+' : ''}${p.changePercent}%</td></tr>`).join('') : '';
+    const priRows = result ? (result.priorityChanges || []).slice(0, 8).map(c => `<tr class="clickable" onclick="App.navigatePublic('global-legal-entities',{entityId:'${c.entityId}'})"><td>${c.entityName}</td><td>${this.renderPublicPriorityBadge(c.currentPriority)}</td><td>${this.renderPublicPriorityBadge(c.simulatedPriority)}</td><td>${c.reason}</td><td>${this.renderPublicSimulationBadge(true)}</td></tr>`).join('') : '';
+    node.innerHTML = `${this.renderPublicBackButton()}
+      <div class="group-hero"><div><span>集团监管规则仿真</span><h2>集团监管仿真推演</h2><p>在不改变真实监管数据的情况下，模拟不同参数对监管结果的影响。${result ? `<em>${result.disclaimer || '这是仿真结果，不改变真实数据。'}</em>` : ''}</p></div></div>
+      <div class="card"><div class="card-title">仿真场景管理</div>
+        <table class="data-table"><thead><tr><th>场景ID</th><th>名称</th><th>基准版本</th><th>创建时间</th><th>创建人</th><th>状态</th></tr></thead><tbody>${simRows}</tbody></table>
+      </div>
+      ${result ? `<div class="group-metrics">${[
+        [result.affectedEntityCount, '受影响法人'],
+        [result.priorityChangeCount, '优先级变化'],
+        [result.strategyChangeCount, '策略变化'],
+        [result.actionChangeCount, '行动变化'],
+        [result.maturityChange?.simulatedScore, '仿真成熟度分']
+      ].map(([v, l]) => this.renderPublicKpiCard(l, v, `App.showRegulatorySimulationDetail('${result.simulationId}')`)).join('')}</div>
+      <div class="group-three">
+        <div class="card"><div class="card-title">参数调整 ${this.renderPublicSimulationBadge(true)}</div><table class="data-table"><thead><tr><th>参数</th><th>原始值</th><th>仿真值</th><th>变化</th><th>比例</th></tr></thead><tbody>${paramDiff || '<tr><td colspan="5">无参数变化</td></tr>'}</tbody></table></div>
+        <div class="card"><div class="card-title">成熟度变化</div>${result.maturityChange ? this.renderPublicSimulationComparison(result.maturityChange.currentLevel + ' / ' + result.maturityChange.currentScore, result.maturityChange.simulatedLevel + ' / ' + result.maturityChange.simulatedScore, '集团成熟度') : this.renderPublicEmptyState('无变化')}</div>
+        <div class="card"><div class="card-title">风险集中度变化</div>${(result.concentrationChanges || []).map(c => this.renderPublicSimulationComparison(c.before, c.after, c.dimension)).join('') || this.renderPublicEmptyState('无变化')}</div>
+      </div>
+      <div class="card"><div class="card-title">优先级变化明细 ${this.renderPublicSimulationBadge(true)}</div>
+        <table class="data-table"><thead><tr><th>法人</th><th>当前优先级</th><th>仿真优先级</th><th>差异原因</th><th>标记</th></tr></thead><tbody>${priRows || '<tr><td colspan="5">无变化</td></tr>'}</tbody></table>
+      </div>` : this.renderPublicEmptyState('请选择仿真场景')}
+      <div id="regulatorySimulationDetail"></div>`;
+    if (focus) setTimeout(() => this.showRegulatorySimulationDetail(focus), 0);
+  },
+
+  showRegulatorySimulationDetail(simulationId) {
+    const result = this.getRegulatorySimulationResult(simulationId);
+    this.regulatorySimulationFocusId = simulationId;
+    const node = document.getElementById('regulatorySimulationDetail');
+    if (!node) return;
+    this.showPublicDetailOrNotFound(node, result, () => {
+      const pc = (result.priorityChanges || [])[0];
+      const ent = pc ? APP_DATA.globalLegalEntities.find(e => e.entityId === pc.entityId) : null;
+      const curP = pc ? (APP_DATA.regulatoryPrioritiesRecalculated || {})[pc.entityId] : null;
+      const evts = ent ? (APP_DATA.regulatoryEvents || []).filter(e => e.entityId === ent.entityId) : [];
+      const rects = ent ? (APP_DATA.rectificationTasks || []).filter(t => t.entityId === ent.entityId) : [];
+      const acts = ent ? (APP_DATA.regulatoryActions || []).filter(a => a.entityId === ent.entityId) : [];
+      node.innerHTML = this.buildPublicDetailPanel({
+        objectType: '仿真推演',
+        objectName: result.simulationName + ' ' + this.renderPublicSimulationBadge(true),
+        objectId: result.simulationId,
+        status: result.status,
+        sections: [
+          { title: '一、场景信息', content: this.renderPublicMetaGrid([this.renderPublicIdField(result.simulationId, '场景 ID'), { label: '场景名称', value: result.simulationName }, { label: '基准版本', value: result.baseVersion }, { label: '创建人', value: result.createdBy }, { label: '生成时间', value: result.generatedAt }, { label: '声明', value: result.disclaimer }]) },
+          { title: '二、仿真结果总览', content: this.renderPublicMetaGrid([{ label: '受影响法人', value: result.affectedEntityCount }, { label: '优先级变化', value: result.priorityChangeCount }, { label: '策略变化', value: result.strategyChangeCount }, { label: '行动变化', value: result.actionChangeCount }, { label: 'simulationOnly', value: String(result.simulationOnly) }]) },
+          { title: '三、参数变化', content: (result.parameterChanges || []).length ? (result.parameterChanges || []).map(p => `<p class="insight-note">${p.paramId}：${this.renderPublicParameterDiff(p.originalValue, p.simulatedValue, '')}</p>`).join('') : this.renderPublicEmptyState('基准场景无参数变化') },
+          { title: '四、法人仿真对比', content: pc ? `<p>${ent ? this.renderPublicLinkButton(ent.entityName, `App.navigatePublic('global-legal-entities',{entityId:'${ent.entityId}'})`) : pc.entityId}</p><p>当前：${this.renderPublicPriorityBadge(pc.currentPriority)}（${pc.currentScore}分）</p><p>仿真：${this.renderPublicPriorityBadge(pc.simulatedPriority)}（${pc.simulatedScore}分）${this.renderPublicSimulationBadge(true)}</p><p>原因：${pc.reason}</p>` : this.renderPublicEmptyState('无优先级变化') },
+          { title: '五、真实状态穿透', content: ent ? `<p><b>真实监管状态：</b>${curP ? this.renderPublicPriorityBadge(curP.priority) : '—'}</p><p><b>风险事件：</b>${evts.map(e => this.renderPublicLinkButton(e.eventId, `App.navigatePublic('regulatory-events',{eventId:'${e.eventId}'})`)).join('') || '—'}</p><p><b>整改：</b>${rects.map(t => this.renderPublicLinkButton(t.title, `App.navigatePublic('rectification',{rectificationTaskId:'${t.taskId}'})`)).join('') || '—'}</p><p><b>行动：</b>${acts.map(a => this.renderPublicLinkButton(a.actionId, `App.navigatePublic('regulatory-action-execution',{actionId:'${a.actionId}'})`)).join('') || '—'}</p>` : this.renderPublicEmptyState('暂无') }
+        ],
+        footer: `${this.renderPublicLinkButton('规则配置', `App.navigatePublic('regulatory-rule-config')`)}${this.renderPublicLinkButton('成熟度', `App.navigatePublic('regulatory-maturity')`)}`
+      });
+      node.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }, '仿真推演');
+  },
+
+  renderRegulatoryRuleHistory() {
+    const node = document.getElementById('regulatoryRuleHistory');
+    if (!node) return;
+    const hist = APP_DATA.regulatoryRuleHistory || [];
+    const rows = hist.map(h => `<tr class="clickable" onclick="App.showRegulatoryRuleDetail('${h.ruleId}')"><td>${h.ruleId}</td><td>${h.ruleName}</td><td>${h.version}</td><td>${h.previousValue || '—'}</td><td>${h.currentValue}</td><td>${h.changeReason}</td><td>${(h.affectedEntityIds || []).length}</td><td>${h.effectiveStatus}</td><td>${h.modifiedBy}</td><td>${h.occurredAt}</td></tr>`).join('');
+    node.innerHTML = `${this.renderPublicBackButton()}
+      <div class="group-hero"><div><span>集团监管规则体系</span><h2>监管规则变更历史</h2><p>规则版本与参数变化记录。当前均为系统默认版本，未伪造历史变更。</p></div><div>版本 <b>${hist.length}</b></div></div>
+      <div class="card"><div class="card-title">规则变更记录</div>
+        ${hist.length ? `<table class="data-table"><thead><tr><th>规则</th><th>名称</th><th>版本</th><th>变更前</th><th>变更后</th><th>原因</th><th>影响法人</th><th>状态</th><th>修改人</th><th>时间</th></tr></thead><tbody>${rows}</tbody></table>` : this.renderPublicEmptyState('暂无变更记录')}
+        <p style="margin-top:8px">${this.renderPublicLinkButton('规则配置', `App.navigatePublic('regulatory-rule-config')`)} ${this.renderPublicLinkButton('仿真推演', `App.navigatePublic('regulatory-simulation')`)}</p>
+      </div>
+      <div id="regulatoryRuleDetail"></div>`;
+  },
+
   rerenderPublicPage(pageId) {
     const routeId = this.resolvePublicRouteId(pageId);
     const fn = {
@@ -1576,7 +1783,10 @@ Object.assign(App, {
       'regulatory-action-execution': 'renderRegulatoryActionExecution',
       'regulatory-strategy': 'renderRegulatoryStrategy',
       'regulatory-maturity': 'renderRegulatoryMaturity',
-      'regulatory-optimization': 'renderRegulatoryOptimization'
+      'regulatory-optimization': 'renderRegulatoryOptimization',
+      'regulatory-rule-config': 'renderRegulatoryRuleConfig',
+      'regulatory-simulation': 'renderRegulatorySimulation',
+      'regulatory-rule-history': 'renderRegulatoryRuleHistory'
     }[routeId];
     if (fn && this[fn]) this[fn]();
   }

@@ -1713,3 +1713,272 @@ Object.assign(APP_DATA, {
     actionEffectAnalysis: (APP_DATA.regulatoryActionEfficiency || {}).byActionType || []
   };
 })();
+
+(function () {
+  const TODAY = '2026-07-22';
+  const entities = APP_DATA.globalLegalEntities || [];
+  const events = APP_DATA.regulatoryEvents || [];
+  const warnings = APP_DATA.warnings || [];
+  const rects = APP_DATA.rectificationTasks || [];
+  const actions = APP_DATA.regulatoryActions || [];
+  const quality = APP_DATA.dataQualityIssues || [];
+  const cbActs = APP_DATA.crossBorderDataActivities || [];
+  const cdrMatters = APP_DATA.crossDomainRiskMatters || [];
+  const health = APP_DATA.regulatoryHealthScores || {};
+  const entityHealth = health.entities || [];
+  const maturity = APP_DATA.regulatoryMaturity || {};
+  const priorities = APP_DATA.regulatoryPrioritiesRecalculated || APP_DATA.regulatoryPriorities || {};
+
+  const defaultParams = () => ({
+    PRIORITY_HIGH_RISK_EVENT_WEIGHT: 12,
+    PRIORITY_MAJOR_RISK_WEIGHT: 10,
+    PRIORITY_OVERDUE_RECTIFICATION_WEIGHT: 18,
+    PRIORITY_LONG_OPEN_RECT_WEIGHT: 8,
+    PRIORITY_QUALITY_WEIGHT: 6,
+    PRIORITY_KRI_WEIGHT: 5,
+    PRIORITY_CB_RISK_WEIGHT: 10,
+    PRIORITY_CDR_WEIGHT: 8,
+    PRIORITY_CRITICAL_HEALTH_SCORE: 25,
+    PRIORITY_WARNING_HEALTH_SCORE: 12,
+    PRIORITY_CRITICAL_THRESHOLD: 55,
+    PRIORITY_HIGH_THRESHOLD: 35,
+    PRIORITY_MEDIUM_THRESHOLD: 18,
+    STRATEGY_FOCUS_HIGH_RISK_MIN: 2,
+    STRATEGY_FOCUS_OVERDUE_MIN: 1,
+    MATURITY_L5_THRESHOLD: 85,
+    MATURITY_L4_THRESHOLD: 70,
+    MATURITY_L3_THRESHOLD: 55,
+    MATURITY_L2_THRESHOLD: 40,
+    MATURITY_DATA_WEIGHT: 20,
+    MATURITY_COVERAGE_WEIGHT: 20,
+    MATURITY_MONITOR_WEIGHT: 20,
+    MATURITY_CLOSURE_WEIGHT: 25,
+    MATURITY_OPTIMIZE_WEIGHT: 15,
+    ACTION_OVERDUE_TRIGGER_DAYS: 0
+  });
+
+  const paramMeta = [
+    { paramId: 'PRIORITY_HIGH_RISK_EVENT_WEIGHT', name: '高风险事件权重', unit: '分/项', min: 5, max: 30, ruleRef: 'RULE-PRI-001' },
+    { paramId: 'PRIORITY_MAJOR_RISK_WEIGHT', name: '重大风险权重', unit: '分/项', min: 5, max: 25, ruleRef: 'RULE-PRI-001' },
+    { paramId: 'PRIORITY_OVERDUE_RECTIFICATION_WEIGHT', name: '超期整改权重', unit: '分/项', min: 10, max: 30, ruleRef: 'RULE-PRI-002' },
+    { paramId: 'PRIORITY_KRI_WEIGHT', name: 'KRI异常权重', unit: '分/项', min: 3, max: 15, ruleRef: 'RULE-KRI-001' },
+    { paramId: 'PRIORITY_CRITICAL_HEALTH_SCORE', name: '健康度CRITICAL加分', unit: '分', min: 15, max: 40, ruleRef: 'RULE-PRI-003' },
+    { paramId: 'PRIORITY_CRITICAL_THRESHOLD', name: 'CRITICAL优先级阈值', unit: '分', min: 45, max: 70, ruleRef: 'RULE-PRI-001' },
+    { paramId: 'PRIORITY_HIGH_THRESHOLD', name: 'HIGH优先级阈值', unit: '分', min: 25, max: 50, ruleRef: 'RULE-PRI-001' },
+    { paramId: 'STRATEGY_FOCUS_HIGH_RISK_MIN', name: '重点策略高风险事件下限', unit: '项', min: 1, max: 5, ruleRef: 'RULE-STR-001' },
+    { paramId: 'STRATEGY_FOCUS_OVERDUE_MIN', name: '重点策略超期整改下限', unit: '项', min: 1, max: 3, ruleRef: 'RULE-STR-001' },
+    { paramId: 'MATURITY_L5_THRESHOLD', name: 'L5成熟度阈值', unit: '分', min: 80, max: 95, ruleRef: 'RULE-MAT-001' },
+    { paramId: 'MATURITY_L4_THRESHOLD', name: 'L4成熟度阈值', unit: '分', min: 60, max: 80, ruleRef: 'RULE-MAT-001' },
+    { paramId: 'MATURITY_L3_THRESHOLD', name: 'L3成熟度阈值', unit: '分', min: 45, max: 65, ruleRef: 'RULE-MAT-001' },
+    { paramId: 'MATURITY_L2_THRESHOLD', name: 'L2成熟度阈值', unit: '分', min: 30, max: 50, ruleRef: 'RULE-MAT-001' },
+    { paramId: 'MATURITY_DATA_WEIGHT', name: '数据基础维度权重', unit: '%', min: 10, max: 35, ruleRef: 'RULE-MAT-002' },
+    { paramId: 'MATURITY_COVERAGE_WEIGHT', name: '监管覆盖维度权重', unit: '%', min: 10, max: 35, ruleRef: 'RULE-MAT-002' },
+    { paramId: 'MATURITY_MONITOR_WEIGHT', name: '风险监测维度权重', unit: '%', min: 10, max: 35, ruleRef: 'RULE-MAT-002' },
+    { paramId: 'MATURITY_CLOSURE_WEIGHT', name: '闭环监管维度权重', unit: '%', min: 15, max: 35, ruleRef: 'RULE-MAT-002' },
+    { paramId: 'MATURITY_OPTIMIZE_WEIGHT', name: '持续优化维度权重', unit: '%', min: 10, max: 30, ruleRef: 'RULE-MAT-002' },
+    { paramId: 'ACTION_OVERDUE_TRIGGER_DAYS', name: '行动逾期触发天数', unit: '天', min: 0, max: 30, ruleRef: 'RULE-ACT-002' }
+  ];
+
+  const defs = defaultParams();
+  APP_DATA.regulatoryRuleParameters = paramMeta.map(m => ({
+    paramId: m.paramId,
+    paramName: m.name,
+    currentValue: defs[m.paramId],
+    defaultValue: defs[m.paramId],
+    unit: m.unit,
+    allowedMin: m.min,
+    allowedMax: m.max,
+    lastUpdated: '系统默认',
+    modifiedBy: '系统默认',
+    effective: true,
+    ruleRef: m.ruleRef
+  }));
+
+  const calcPriorityWithParams = (entityId, p) => {
+    const ent = entities.find(e => e.entityId === entityId);
+    const h = entityHealth.find(x => x.objectId === entityId);
+    if (!ent) return { priority: 'LOW', score: 0, factors: [] };
+    const evts = events.filter(e => e.entityId === entityId);
+    const highEvts = evts.filter(e => e.riskLevel === 'HIGH');
+    const majorWarn = warnings.filter(w => w.entityId === entityId && w.level === '重大');
+    const overdue = rects.filter(t => t.entityId === entityId && t.deadline && t.deadline < TODAY && t.status !== '已关闭' && !t.closedAt);
+    const longOpen = rects.filter(t => t.entityId === entityId && t.status !== '已关闭' && !t.closedAt && (t.progress || 0) < 50);
+    const objs = (APP_DATA.dataObjects || []).filter(o => o.entityId === entityId);
+    const qualCount = quality.filter(q => objs.some(o => o.objectId === q.objectId)).length;
+    const cbRisk = cbActs.filter(a => a.entityId === entityId && (a.complianceStatus === '高风险' || a.complianceStatus === '异常')).length;
+    const cdrCount = cdrMatters.filter(m => (m.entityIds || []).includes(entityId)).length;
+    const verifiedActs = actions.filter(a => a.entityId === entityId && a.status === 'VERIFIED').length;
+    let score = 0;
+    const factors = [];
+    if (highEvts.length) { score += highEvts.length * p.PRIORITY_HIGH_RISK_EVENT_WEIGHT; factors.push(`高风险事件${highEvts.length}项`); }
+    if (majorWarn.length) { score += majorWarn.length * p.PRIORITY_MAJOR_RISK_WEIGHT; factors.push(`重大风险${majorWarn.length}项`); }
+    if (overdue.length) { score += overdue.length * p.PRIORITY_OVERDUE_RECTIFICATION_WEIGHT; factors.push(`超期整改${overdue.length}项`); }
+    if (longOpen.length) { score += longOpen.length * p.PRIORITY_LONG_OPEN_RECT_WEIGHT; }
+    if (qualCount) { score += qualCount * p.PRIORITY_QUALITY_WEIGHT; }
+    if ((ent.kriExceptionCount || 0) > 0) { score += ent.kriExceptionCount * p.PRIORITY_KRI_WEIGHT; }
+    if (cbRisk) { score += cbRisk * p.PRIORITY_CB_RISK_WEIGHT; }
+    if (cdrCount) { score += cdrCount * p.PRIORITY_CDR_WEIGHT; }
+    if (h && h.level === 'CRITICAL') score += p.PRIORITY_CRITICAL_HEALTH_SCORE;
+    else if (h && h.level === 'WARNING') score += p.PRIORITY_WARNING_HEALTH_SCORE;
+    score = Math.max(0, score - verifiedActs * 5);
+    const priority = score >= p.PRIORITY_CRITICAL_THRESHOLD ? 'CRITICAL' : score >= p.PRIORITY_HIGH_THRESHOLD ? 'HIGH' : score >= p.PRIORITY_MEDIUM_THRESHOLD ? 'MEDIUM' : 'LOW';
+    return { priority, score, factors };
+  };
+
+  const scoreToLevel = (s, p) => (s >= p.MATURITY_L5_THRESHOLD ? 'L5' : s >= p.MATURITY_L4_THRESHOLD ? 'L4' : s >= p.MATURITY_L3_THRESHOLD ? 'L3' : s >= p.MATURITY_L2_THRESHOLD ? 'L2' : 'L1');
+
+  const rules = [
+    { ruleId: 'RULE-PRI-001', ruleName: '监管优先级综合评分规则', ruleType: 'PRIORITY_SCORING', status: 'ACTIVE', version: '1.0.0', effectiveDate: '2026-07-01', lastUpdated: '2026-07-22', owner: '集团监管部', description: '基于高风险事件、重大风险、超期整改、健康度等因素计算法人监管优先级', conditions: ['高风险事件加权', '重大风险加权', '超期整改加权', '健康度CRITICAL/WARNING加分'], parameters: ['PRIORITY_HIGH_RISK_EVENT_WEIGHT', 'PRIORITY_MAJOR_RISK_WEIGHT', 'PRIORITY_CRITICAL_THRESHOLD', 'PRIORITY_HIGH_THRESHOLD'], targetTypes: ['ENTITY'], outputType: 'PRIORITY', outputValue: 'CRITICAL|HIGH|MEDIUM|LOW', relatedMetricIds: [], relatedKriIds: [], relatedRiskMatterIds: warnings.map(w => w.id), relatedActionTypes: ['FOCUS_SUPERVISION'], sourceType: 'SYSTEM_RULE', logicRef: 'calculateRegulatoryPriority' },
+    { ruleId: 'RULE-PRI-002', ruleName: '超期整改优先级加权规则', ruleType: 'PRIORITY_SCORING', status: 'ACTIVE', version: '1.0.0', effectiveDate: '2026-07-01', lastUpdated: '2026-07-22', owner: '集团监管部', description: '超期整改任务按权重计入监管优先级评分', conditions: ['超期整改 ≥ 1'], parameters: ['PRIORITY_OVERDUE_RECTIFICATION_WEIGHT'], targetTypes: ['ENTITY'], outputType: 'PRIORITY_SCORE', outputValue: '+N*weight', relatedMetricIds: ['MET-RECT-OVER'], relatedKriIds: [], relatedRiskMatterIds: [], relatedActionTypes: ['ESCALATE_RECTIFICATION'], sourceType: 'SYSTEM_RULE', logicRef: 'calculateRegulatoryPriority' },
+    { ruleId: 'RULE-PRI-003', ruleName: '健康度CRITICAL优先级规则', ruleType: 'PRIORITY_SCORING', status: 'ACTIVE', version: '1.0.0', effectiveDate: '2026-07-01', lastUpdated: '2026-07-22', owner: '集团监管部', description: '健康度为CRITICAL的法人额外加分', conditions: ['健康度 = CRITICAL'], parameters: ['PRIORITY_CRITICAL_HEALTH_SCORE'], targetTypes: ['ENTITY'], outputType: 'PRIORITY_SCORE', outputValue: '+25', relatedMetricIds: [], relatedKriIds: [], relatedRiskMatterIds: [], relatedActionTypes: ['FOCUS_SUPERVISION'], sourceType: 'SYSTEM_RULE', logicRef: 'calculateRegulatoryPriority' },
+    { ruleId: 'RULE-STR-001', ruleName: '重点监管策略触发规则', ruleType: 'STRATEGY_ROUTING', status: 'ACTIVE', version: '1.0.0', effectiveDate: '2026-07-01', lastUpdated: '2026-07-22', owner: '集团监管部', description: '高风险集中+健康度CRITICAL+超期整改触发FOCUS策略', conditions: ['高风险事件 ≥ 2', '健康度 = CRITICAL', '超期整改 ≥ 1'], parameters: ['STRATEGY_FOCUS_HIGH_RISK_MIN', 'STRATEGY_FOCUS_OVERDUE_MIN'], targetTypes: ['REGION', 'ENTITY'], outputType: 'STRATEGY', outputValue: 'FOCUS', relatedMetricIds: [], relatedKriIds: [], relatedRiskMatterIds: [], relatedActionTypes: [], sourceType: 'SYSTEM_RULE', logicRef: 'getRegulatoryStrategyLevel' },
+    { ruleId: 'RULE-STR-002', ruleName: '专项监管策略触发规则', ruleType: 'STRATEGY_ROUTING', status: 'ACTIVE', version: '1.0.0', effectiveDate: '2026-07-01', lastUpdated: '2026-07-22', owner: '集团监管部', description: '跨领域风险或WARNING健康度触发SPECIAL策略', conditions: ['跨领域风险 ≥ 1', '或 健康度 = WARNING'], parameters: [], targetTypes: ['ENTITY', 'REGION'], outputType: 'STRATEGY', outputValue: 'SPECIAL', relatedMetricIds: [], relatedKriIds: [], relatedRiskMatterIds: cdrMatters.map(m => m.riskMatterId), relatedActionTypes: ['CROSS_DOMAIN_COORDINATION'], sourceType: 'SYSTEM_RULE', logicRef: 'getRegulatoryStrategyLevel' },
+    { ruleId: 'RULE-ACT-001', ruleName: '重点监管行动触发规则', ruleType: 'ACTION_TRIGGER', status: 'ACTIVE', version: '1.0.0', effectiveDate: '2026-07-01', lastUpdated: '2026-07-22', owner: '集团监管部', description: 'CRITICAL/HIGH优先级法人触发FOCUS_SUPERVISION行动', conditions: ['监管优先级 = CRITICAL 或 HIGH'], parameters: [], targetTypes: ['ENTITY'], outputType: 'ACTION', outputValue: 'FOCUS_SUPERVISION', relatedMetricIds: [], relatedKriIds: [], relatedRiskMatterIds: [], relatedActionTypes: ['FOCUS_SUPERVISION'], sourceType: 'SYSTEM_RULE', logicRef: 'regulatoryActions' },
+    { ruleId: 'RULE-ACT-002', ruleName: '超期整改升级行动规则', ruleType: 'ACTION_TRIGGER', status: 'ACTIVE', version: '1.0.0', effectiveDate: '2026-07-01', lastUpdated: '2026-07-22', owner: '集团监管部', description: '存在超期整改触发ESCALATE_RECTIFICATION行动', conditions: ['超期整改 ≥ 1'], parameters: ['ACTION_OVERDUE_TRIGGER_DAYS'], targetTypes: ['ENTITY'], outputType: 'ACTION', outputValue: 'ESCALATE_RECTIFICATION', relatedMetricIds: ['MET-RECT-OVER'], relatedKriIds: [], relatedRiskMatterIds: [], relatedActionTypes: ['ESCALATE_RECTIFICATION'], sourceType: 'SYSTEM_RULE', logicRef: 'regulatoryActions' },
+    { ruleId: 'RULE-RISK-001', ruleName: '高风险事件识别规则', ruleType: 'RISK_DETECTION', status: 'ACTIVE', version: '1.0.0', effectiveDate: '2026-07-01', lastUpdated: '2026-07-22', owner: '集团监管部', description: '从warnings/quality/alerts/gaps/cross-domain/cross-border聚合监管事件', conditions: ['风险等级 = HIGH'], parameters: [], targetTypes: ['ENTITY', 'PROJECT'], outputType: 'EVENT', outputValue: 'regulatoryEvents', relatedMetricIds: [], relatedKriIds: (APP_DATA.groupKris || []).map(k => k.id), relatedRiskMatterIds: warnings.map(w => w.id), relatedActionTypes: [], sourceType: 'SYSTEM_RULE', logicRef: 'regulatoryEvents' },
+    { ruleId: 'RULE-KRI-001', ruleName: 'KRI异常监测规则', ruleType: 'KRI_THRESHOLD', status: 'ACTIVE', version: '1.0.0', effectiveDate: '2026-07-01', lastUpdated: '2026-07-22', owner: '集团监管部', description: 'KRI状态异常计入法人优先级及监管行动', conditions: ['KRI异常数 > 0'], parameters: ['PRIORITY_KRI_WEIGHT'], targetTypes: ['ENTITY'], outputType: 'PRIORITY_SCORE', outputValue: '+N*5', relatedMetricIds: ['MET-KRI-COV'], relatedKriIds: (APP_DATA.groupKris || []).map(k => k.id), relatedRiskMatterIds: [], relatedActionTypes: ['KRI_MONITORING'], sourceType: 'SYSTEM_RULE', logicRef: 'calculateRegulatoryPriority' },
+    { ruleId: 'RULE-MAT-001', ruleName: '成熟度等级划分规则', ruleType: 'MATURITY_SCORING', status: 'ACTIVE', version: '1.0.0', effectiveDate: '2026-07-01', lastUpdated: '2026-07-22', owner: '集团监管部', description: '按综合评分划分L1-L5成熟度等级', conditions: ['综合评分 → 等级映射'], parameters: ['MATURITY_L5_THRESHOLD', 'MATURITY_L4_THRESHOLD', 'MATURITY_L3_THRESHOLD', 'MATURITY_L2_THRESHOLD'], targetTypes: ['GROUP', 'REGION', 'ENTITY'], outputType: 'MATURITY_LEVEL', outputValue: 'L1-L5', relatedMetricIds: [], relatedKriIds: [], relatedRiskMatterIds: [], relatedActionTypes: [], sourceType: 'SYSTEM_RULE', logicRef: 'regulatoryMaturity' },
+    { ruleId: 'RULE-MAT-002', ruleName: '成熟度维度权重规则', ruleType: 'MATURITY_SCORING', status: 'ACTIVE', version: '1.0.0', effectiveDate: '2026-07-01', lastUpdated: '2026-07-22', owner: '集团监管部', description: '五维成熟度加权计算集团整体评分', conditions: ['五维加权求和'], parameters: ['MATURITY_DATA_WEIGHT', 'MATURITY_COVERAGE_WEIGHT', 'MATURITY_MONITOR_WEIGHT', 'MATURITY_CLOSURE_WEIGHT', 'MATURITY_OPTIMIZE_WEIGHT'], targetTypes: ['GROUP'], outputType: 'MATURITY_SCORE', outputValue: 'weighted_sum', relatedMetricIds: [], relatedKriIds: [], relatedRiskMatterIds: [], relatedActionTypes: [], sourceType: 'SYSTEM_RULE', logicRef: 'regulatoryMaturity' }
+  ];
+
+  rules.forEach(r => {
+    const affected = entities.filter(e => {
+      if (r.ruleType === 'PRIORITY_SCORING' || r.ruleType === 'ACTION_TRIGGER') {
+        const p = priorities[e.entityId];
+        return p && (p.priority === 'HIGH' || p.priority === 'CRITICAL' || p.priority === 'MEDIUM');
+      }
+      if (r.ruleType === 'RISK_DETECTION') return events.some(ev => ev.entityId === e.entityId);
+      if (r.ruleType === 'KRI_THRESHOLD') return (e.kriExceptionCount || 0) > 0;
+      return false;
+    });
+    r.affectedEntityIds = affected.map(e => e.entityId);
+    r.affectedEntityCount = affected.length;
+  });
+
+  APP_DATA.regulatoryRules = rules;
+
+  APP_DATA.regulatoryRuleHistory = rules.map(r => ({
+    historyId: 'RH-' + r.ruleId.replace('RULE-', ''),
+    ruleId: r.ruleId,
+    ruleName: r.ruleName,
+    version: r.version,
+    previousValue: null,
+    currentValue: '系统默认',
+    changeReason: '系统默认版本',
+    affectedEntityIds: r.affectedEntityIds || [],
+    affectedMetricIds: r.relatedMetricIds || [],
+    affectedRiskMatterIds: r.relatedRiskMatterIds || [],
+    affectedActionTypes: r.relatedActionTypes || [],
+    simulationId: null,
+    effectiveStatus: 'ACTIVE',
+    occurredAt: r.effectiveDate,
+    modifiedBy: '系统默认',
+    sourceType: 'SYSTEM_DEFAULT'
+  }));
+
+  const runSim = (simId, simName, overrides, status) => {
+    const baseP = defaultParams();
+    const simP = { ...baseP, ...overrides };
+    const priorityChanges = [];
+    const strategyChanges = [];
+    const maturityChanges = [];
+    entities.filter(e => e.entityId !== 'G001').forEach(ent => {
+      const cur = priorities[ent.entityId] || {};
+      const sim = calcPriorityWithParams(ent.entityId, simP);
+      if (cur.priority !== sim.priority) {
+        priorityChanges.push({
+          entityId: ent.entityId, entityName: ent.entityName,
+          currentPriority: cur.priority, simulatedPriority: sim.priority,
+          currentScore: cur.score, simulatedScore: sim.score,
+          reason: simP.PRIORITY_HIGH_THRESHOLD !== baseP.PRIORITY_HIGH_THRESHOLD ? 'HIGH优先级阈值调整'
+            : simP.PRIORITY_CRITICAL_THRESHOLD !== baseP.PRIORITY_CRITICAL_THRESHOLD ? 'CRITICAL优先级阈值调整'
+            : simP.PRIORITY_OVERDUE_RECTIFICATION_WEIGHT !== baseP.PRIORITY_OVERDUE_RECTIFICATION_WEIGHT ? '超期整改权重调整'
+            : simP.PRIORITY_HIGH_RISK_EVENT_WEIGHT !== baseP.PRIORITY_HIGH_RISK_EVENT_WEIGHT ? '高风险事件权重调整'
+            : simP.PRIORITY_KRI_WEIGHT !== baseP.PRIORITY_KRI_WEIGHT ? 'KRI异常权重调整'
+            : '已验证行动减分生效',
+          simulationOnly: true
+        });
+      }
+      const evts = events.filter(e => e.entityId === ent.entityId);
+      const h = entityHealth.find(x => x.objectId === ent.entityId);
+      const overdue = rects.filter(t => t.entityId === ent.entityId && t.deadline && t.deadline < TODAY && t.status !== '已关闭').length;
+      const curStrat = (APP_DATA.regulatoryStrategyAnalysis || {}).entities?.find(x => x.objectId === ent.entityId)?.strategyLevel || 'OBSERVE';
+      const highRisk = evts.filter(e => e.riskLevel === 'HIGH').length;
+      const simStrat = highRisk >= simP.STRATEGY_FOCUS_HIGH_RISK_MIN && h?.level === 'CRITICAL' && overdue >= simP.STRATEGY_FOCUS_OVERDUE_MIN ? 'FOCUS'
+        : cdrMatters.some(m => (m.entityIds || []).includes(ent.entityId)) || h?.level === 'WARNING' ? 'SPECIAL' : 'ROUTINE';
+      if (curStrat !== simStrat) {
+        strategyChanges.push({ entityId: ent.entityId, entityName: ent.entityName, currentStrategy: curStrat, simulatedStrategy: simStrat, simulationOnly: true });
+      }
+    });
+    const baseMatScore = maturity.overallScore || 0;
+    const dimAdj = overrides.MATURITY_DATA_WEIGHT ? (overrides.MATURITY_DATA_WEIGHT - baseP.MATURITY_DATA_WEIGHT) * 0.5 : 0;
+    const simMatScore = Math.max(0, Math.min(100, Math.round(baseMatScore + dimAdj + (overrides.PRIORITY_OVERDUE_RECTIFICATION_WEIGHT < baseP.PRIORITY_OVERDUE_RECTIFICATION_WEIGHT ? 2 : 0))));
+    maturityChanges.push({
+      currentLevel: maturity.overallLevel, simulatedLevel: scoreToLevel(simMatScore, simP),
+      currentScore: baseMatScore, simulatedScore: simMatScore, simulationOnly: true
+    });
+    const highBefore = Object.values(priorities).filter(p => p.priority === 'HIGH' || p.priority === 'CRITICAL').length;
+    const simPriorities = {};
+    entities.forEach(e => { simPriorities[e.entityId] = calcPriorityWithParams(e.entityId, simP); });
+    const highAfter = Object.values(simPriorities).filter(p => p.priority === 'HIGH' || p.priority === 'CRITICAL').length;
+    return {
+      simulationId: simId,
+      simulationName: simName,
+      baseVersion: '1.0.0',
+      createdAt: '2026-07-22',
+      createdBy: '系统生成',
+      status: status || 'COMPLETED',
+      parameterChanges: Object.keys(overrides).map(k => ({
+        paramId: k, originalValue: baseP[k], simulatedValue: overrides[k],
+        changeValue: overrides[k] - baseP[k],
+        changePercent: baseP[k] ? Math.round((overrides[k] - baseP[k]) / baseP[k] * 100) : 0
+      })),
+      affectedEntityCount: new Set(priorityChanges.map(c => c.entityId)).size || entities.filter(e => e.entityId !== 'G001').length,
+      priorityChangeCount: priorityChanges.length,
+      strategyChangeCount: strategyChanges.length,
+      actionChangeCount: priorityChanges.filter(c => c.simulatedPriority === 'CRITICAL' || c.simulatedPriority === 'HIGH').length,
+      maturityChange: maturityChanges[0],
+      priorityChanges,
+      strategyChanges,
+      actionChanges: priorityChanges.filter(c => ['CRITICAL', 'HIGH'].includes(c.simulatedPriority)).map(c => ({
+        entityId: c.entityId, actionType: 'FOCUS_SUPERVISION', simulated: true, simulationOnly: true
+      })),
+      concentrationChanges: [{ dimension: 'HIGH优先级法人', before: highBefore, after: highAfter, simulationOnly: true }],
+      maturityChanges,
+      generatedAt: '2026-07-22',
+      simulationOnly: true,
+      disclaimer: '这是仿真结果，不改变真实数据。'
+    };
+  };
+
+  const simulations = [
+    { simulationId: 'SIM-BASE', simulationName: '基准场景', description: '当前规则参数基准', status: 'COMPLETED', overrides: {} },
+    { simulationId: 'SIM-DATA-COV', simulationName: '提高数据覆盖率', description: '提高数据基础维度权重', status: 'COMPLETED', overrides: { MATURITY_DATA_WEIGHT: 30, MATURITY_COVERAGE_WEIGHT: 25, MATURITY_CLOSURE_WEIGHT: 20 } },
+    { simulationId: 'SIM-OVERDUE', simulationName: '降低超期整改权重', description: '降低超期整改对优先级的影响', status: 'COMPLETED', overrides: { PRIORITY_OVERDUE_RECTIFICATION_WEIGHT: 8, PRIORITY_CRITICAL_THRESHOLD: 230 } },
+    { simulationId: 'SIM-KRI', simulationName: '提高KRI覆盖率', description: '提高KRI异常权重', status: 'COMPLETED', overrides: { PRIORITY_KRI_WEIGHT: 12 } },
+    { simulationId: 'SIM-VERIFY', simulationName: '提高监管行动验证率', description: '模拟验证行动减分效果增强', status: 'COMPLETED', overrides: { PRIORITY_OVERDUE_RECTIFICATION_WEIGHT: 12, PRIORITY_HIGH_RISK_EVENT_WEIGHT: 10 } },
+    { simulationId: 'SIM-PRI-WEIGHT', simulationName: '调整监管优先级权重', description: '提高超期整改权重并调整HIGH阈值', status: 'COMPLETED', overrides: { PRIORITY_OVERDUE_RECTIFICATION_WEIGHT: 25, PRIORITY_HIGH_THRESHOLD: 50 } },
+    { simulationId: 'SIM-MAT-WEIGHT', simulationName: '调整成熟度评分权重', description: '提高闭环监管维度权重', status: 'COMPLETED', overrides: { MATURITY_CLOSURE_WEIGHT: 30, MATURITY_DATA_WEIGHT: 15, MATURITY_L4_THRESHOLD: 75 } }
+  ];
+
+  APP_DATA.regulatorySimulations = simulations.map(s => ({
+    simulationId: s.simulationId,
+    simulationName: s.simulationName,
+    description: s.description,
+    baseVersion: '1.0.0',
+    createdAt: '2026-07-22',
+    createdBy: '系统生成',
+    status: s.status
+  }));
+
+  APP_DATA.regulatorySimulationResults = simulations.map(s => runSim(s.simulationId, s.simulationName, s.overrides, s.status));
+
+  APP_DATA.regulatoryRuleConfigMetrics = {
+    totalRules: rules.length,
+    activeRules: rules.filter(r => r.status === 'ACTIVE').length,
+    inactiveRules: rules.filter(r => r.status !== 'ACTIVE').length,
+    pendingRules: 0,
+    changedThisPeriod: 0,
+    affectedEntityCount: new Set(rules.flatMap(r => r.affectedEntityIds || [])).size
+  };
+})();

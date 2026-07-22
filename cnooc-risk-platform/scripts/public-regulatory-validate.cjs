@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * 公共监管底座最终验收脚本
+ * 公共监管底座 Phase 10 验收脚本
  */
 const fs = require('fs');
 const path = require('path');
@@ -41,11 +41,16 @@ const expectedPages = [
   'platform-operations', 'data-governance', 'cross-border-compliance', 'cross-domain-risks',
   'warnings', 'rectification', 'regulatory-events', 'rectification-operations', 'regulatory-evaluation',
   'regulatory-command-center', 'regulatory-actions', 'regulatory-action-execution', 'regulatory-strategy',
-  'regulatory-maturity', 'regulatory-optimization', 'major'
+  'regulatory-maturity', 'regulatory-optimization',
+  'regulatory-rule-config', 'regulatory-simulation', 'regulatory-rule-history',
+  'major'
 ];
 expectedPages.forEach(pid => {
   if (!pubJs.includes(`pageId: '${pid}'`)) errors.push(`公共页面清单缺失: ${pid}`);
 });
+
+const publicPageCount = (pubJs.match(/pageId: '/g) || []).length;
+if (publicPageCount !== 23) warnings.push(`公共页面数=${publicPageCount}，期望23`);
 
 const components = [
   'renderPublicStatusBadge', 'renderPublicBackButton', 'buildPublicDetailPanel', 'renderPublicMetaGrid',
@@ -53,7 +58,11 @@ const components = [
   'showPublicDetailOrNotFound', 'renderPublicMaturityBadge', 'renderPublicMaturityRadar',
   'renderRegulatoryMaturity', 'renderRegulatoryOptimization', 'showRegulatoryOptimizationDetail',
   'getRegulatoryMaturity', 'calculateRegulatoryPriority', 'recalculateRegulatoryPriority',
-  'showRegulatoryActionExecutionDetail', 'showRegulatoryActionFeedbackDetail', 'showRegulatoryDecisionDetail'
+  'showRegulatoryActionExecutionDetail', 'showRegulatoryActionFeedbackDetail', 'showRegulatoryDecisionDetail',
+  'renderPublicRuleTypeBadge', 'renderPublicRuleStatusBadge', 'renderPublicSimulationBadge',
+  'renderPublicParameterDiff', 'renderPublicRuleCondition', 'renderPublicSimulationComparison',
+  'renderRegulatoryRuleConfig', 'renderRegulatorySimulation', 'renderRegulatoryRuleHistory',
+  'showRegulatoryRuleDetail', 'showRegulatorySimulationDetail', 'getRegulatoryRule', 'getRegulatorySimulationResult'
 ];
 components.forEach(fn => {
   if (!pubJs.includes(fn)) errors.push(`公共组件缺失: ${fn}`);
@@ -61,7 +70,7 @@ components.forEach(fn => {
 
 let hardcodeOffsetCount = 0;
 [/\.length\s*\+\s*\d+/g].forEach(re => {
-  [appJs, pubJs].forEach((src, i) => {
+  [appJs, pubJs].forEach((src) => {
     (src.match(re) || []).forEach(hit => {
       if (!hit.includes('steps.length')) { hardcodeOffsetCount++; warnings.push(`硬编码偏移: ${hit}`); }
     });
@@ -98,10 +107,35 @@ let hardcodeOffsetCount = 0;
   (r.relatedActionIds || []).forEach(aid => resolve(aid, D.regulatoryActions, 'actionId', 'rec.actionId'));
 });
 
+(D.regulatoryRules || []).forEach(r => {
+  req(r.ruleId, 'ruleId');
+  (r.parameters || []).forEach(pid => resolve(pid, D.regulatoryRuleParameters, 'paramId', 'rule.paramId'));
+  (r.relatedRiskMatterIds || []).forEach(rid => {
+    const w = D.warnings.find(x => x.id === rid);
+    const m = D.crossDomainRiskMatters.find(x => x.riskMatterId === rid);
+    if (!w && !m && rid) errors.push(`无法解析: rule.relatedRiskMatterId=${rid}`);
+  });
+});
+(D.regulatoryRuleParameters || []).forEach(p => req(p.paramId, 'paramId'));
+(D.regulatorySimulations || []).forEach(s => req(s.simulationId, 'simulationId'));
+(D.regulatorySimulationResults || []).forEach(s => {
+  req(s.simulationId, 'simulationId');
+  if (s.simulationOnly !== true) errors.push(`仿真结果 ${s.simulationId} 未标记 simulationOnly`);
+});
+(D.regulatoryRuleHistory || []).forEach(h => {
+  req(h.historyId, 'historyId');
+  resolve(h.ruleId, D.regulatoryRules, 'ruleId', 'history.ruleId');
+});
+
 if (!D.regulatoryMaturity) errors.push('regulatoryMaturity 未生成');
 if (!D.regulatoryMaturityTrend) errors.push('regulatoryMaturityTrend 未生成');
 if (!D.regulatoryOptimizationRecommendations?.length) errors.push('regulatoryOptimizationRecommendations 未生成');
 if (!D.regulatoryOptimizationAnalysis) errors.push('regulatoryOptimizationAnalysis 未生成');
+if (!D.regulatoryRules?.length) errors.push('regulatoryRules 未生成');
+if (!D.regulatoryRuleParameters?.length) errors.push('regulatoryRuleParameters 未生成');
+if (!D.regulatorySimulations?.length) errors.push('regulatorySimulations 未生成');
+if (!D.regulatorySimulationResults?.length) errors.push('regulatorySimulationResults 未生成');
+if (!D.regulatoryRuleConfigMetrics) errors.push('regulatoryRuleConfigMetrics 未生成');
 if (D.regulatoryMaturity && !D.regulatoryMaturity.dimensions?.length) errors.push('regulatoryMaturity.dimensions 未生成');
 if (D.regulatoryMaturityTrend && !D.regulatoryMaturityTrend.simulated) warnings.push('regulatoryMaturityTrend 应标注 simulated');
 
@@ -109,6 +143,11 @@ const penetrateCount = (appJs.match(/navigate\(['"]penetration['"]/g) || []).len
 const freezeFails = [];
 if (penetrateCount !== 3) freezeFails.push('navigate(penetration)!=3');
 if (!/renderPenetration\s*\(/.test(appJs)) freezeFails.push('renderPenetration missing');
+
+['page-regulatory-rule-config', 'page-regulatory-simulation', 'page-regulatory-rule-history'].forEach(id => {
+  const html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
+  if (!html.includes(id)) errors.push(`index.html 缺失容器: ${id}`);
+});
 
 let nodeCheck = '通过';
 try {
@@ -126,6 +165,7 @@ const result = {
   investmentFreeze: freezeFails.length === 0 ? '通过' : '不通过',
   freezeFails,
   penetrateCallCount: penetrateCount,
+  publicPageCount,
   hardcodeOffsetCount,
   nodeCheck,
   emptyStateComponents: /renderPublicEmptyState/.test(pubJs) ? '通过' : '不通过'
