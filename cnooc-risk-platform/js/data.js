@@ -1,4 +1,4 @@
-// 集团穿透式监管平台（投资管理专题）- 模拟数据
+// 集团监管平台 Demo — 模拟数据
 
 const APP_DATA = {
   processStages: [

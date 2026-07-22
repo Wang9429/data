@@ -16,8 +16,12 @@ function ensureOfflineStyles() {
   document.head.appendChild(style);
 }
 
+function isSingleFileDemoMode() {
+  return !!(window.__SINGLE_FILE_DEMO__ || window.__OFFLINE_DEMO__);
+}
+
 const App = {
-  currentPage: 'dashboard',
+  currentPage: isSingleFileDemoMode() ? 'group' : 'dashboard',
   selectedRiskId: null,
   currentDomain: 'investment',
   domainPageTemplates: {},
@@ -44,7 +48,7 @@ const App = {
   ],
 
   pageTitles: {
-    dashboard: '集团穿透式监管驾驶舱',
+    dashboard: '集团监管驾驶舱',
     process: '监管对象与价值链',
     scenarios: '风险场景',
     warnings: '风险预警中心',
@@ -233,6 +237,36 @@ const App = {
     this.renderRectificationGovernance();
     this.renderRectKanban();
     this.renderPortfolio();
+    this.bootstrapSingleFileDemo();
+  },
+
+  bootstrapSingleFileDemo() {
+    if (!isSingleFileDemoMode()) return;
+    const gateway = document.getElementById('domainGateway');
+    if (gateway) gateway.style.display = 'none';
+    const tabs = document.getElementById('domainTabs');
+    if (tabs) tabs.style.display = 'none';
+    document.title = '集团监管平台 Demo';
+    const brand = document.querySelector('.sidebar-title');
+    if (brand) brand.innerHTML = '集团监管平台<br>Demo Final';
+    this.currentPage = 'group';
+    this.navigate('group');
+  },
+
+  getDemoFinalMenu() {
+    return [
+      { id: 'group', icon: '◉', label: '集团监管总览' },
+      { id: 'regulatory-command-center', icon: '📊', label: '集团监管驾驶舱' },
+      { id: 'regulatory-workbench', icon: '▣', label: '统一监管工作台' },
+      { id: 'regulatory-role-workbench', icon: '👤', label: '角色工作台' },
+      { id: 'regulatory-analysis-center', icon: '◈', label: '集团监管综合分析中心' },
+      { id: 'regulatory-data-governance', icon: '◧', label: '数据治理中心' },
+      { id: 'regulatory-kri-monitoring', icon: '📈', label: 'KRI 监测中心' },
+      { id: 'regulatory-warning-center', icon: '🔔', label: '监管预警中心' },
+      { id: 'regulatory-actions', icon: '⚡', label: '监管行动与整改' },
+      { id: 'regulatory-performance', icon: '🏆', label: '监管绩效' },
+      { id: 'regulatory-improvement-center', icon: '↻', label: '持续改进' }
+    ];
   },
 
   navigate(pageId, params = {}) {
@@ -686,7 +720,7 @@ const App = {
   renderNav() {
     const nav = document.getElementById('navMenu');
     nav.innerHTML = this.getDomainMenu().map(item => `
-      <div class="nav-item ${item.id === 'dashboard' ? 'active' : ''}" data-page="${item.id}" onclick="App.navigate('${item.id}')">
+      <div class="nav-item ${item.id === this.currentPage ? 'active' : ''}" data-page="${item.id}" onclick="App.navigate('${item.id}')">
         <span class="nav-icon">${item.icon}</span>
         <span>${item.label}</span>
       </div>
@@ -694,6 +728,7 @@ const App = {
   },
 
   getDomainMenu() {
+    if (isSingleFileDemoMode()) return this.getDemoFinalMenu();
     const base = [
       { id:'group', icon:'◉', label:'集团监管总览' },
       { id:'global-legal-entities', icon:'◎', label:'全球法人监管' },
@@ -998,7 +1033,7 @@ const App = {
     const node=document.getElementById('platformOperations'); if(!node)return;
     const chain=APP_DATA.platformOperationChain||[];
     const opSources=APP_DATA.dataSourceRegistry.filter(s=>['SRC001','SRC002','SRC003','SRC007'].includes(s.sourceId));
-    node.innerHTML=`<div class="group-hero"><div><span>集团级公共监管底座</span><h2>监管运行监测</h2><p>监测集团穿透式监管平台从数据接入到风险处置的全链路运行状态。</p></div><div>运行告警 <b>${APP_DATA.platformOperationAlerts.length}项</b></div></div>${this.renderPublicBackButton()}<div class="group-metrics">${APP_DATA.platformOperationMetrics.map(m=>`<div class="metric-card"><div class="value">${m[1]}</div><div class="label">${m[0]}</div><div class="sub-items">目标${m[2]} · 较上期${m[3]}<br>${m[4]}</div></div>`).join('')}</div><div class="card"><div class="card-title">监管运行链路</div><div class="kri-lineage">${chain.map(c=>`<span><b>${c[0]}</b><br>${c[1]}<br><small>${c[2]} · ${c[3]}</small></span><i>→</i>`).join('')}</div></div><div class="card"><div class="card-title">系统与数据源运行状态</div><table class="data-table"><thead><tr><th>系统</th><th>法人</th><th>区域/国家</th><th>领域</th><th>接口/同步</th><th>最近同步</th><th>完整率/及时率</th><th>质量评分</th><th>责任部门</th></tr></thead><tbody>${opSources.map(s=>`<tr class="clickable" onclick="App.navigatePublic('data-governance',{sourceId:'${s.sourceId}'})"><td>${s.systemName}<br><small>${s.systemType}</small></td><td>${s.ownerEntity}</td><td>${s.regionName}/${s.countryName}</td><td>${(s.businessDomains||[]).join('、')}</td><td>${s.interfaceStatus} / ${s.syncStatus}</td><td>${s.lastSyncTime}</td><td>${s.dataCompleteness} / ${s.dataTimeliness}</td><td>${s.qualityScore}</td><td>${s.dataOwner}</td></tr>`).join('')}</tbody></table></div><div class="card"><div class="card-title">监管运行异常清单</div><table class="data-table"><thead><tr><th>异常类型</th><th>等级</th><th>系统</th><th>法人/区域</th><th>领域</th><th>发生时间</th><th>状态</th><th>责任部门</th><th>期限</th><th>影响范围</th></tr></thead><tbody>${APP_DATA.platformOperationAlerts.map(a=>{ const entity=APP_DATA.globalLegalEntities.find(e=>e.entityId===a.entityId); const region=APP_DATA.globalRegions.find(r=>r.regionId===a.regionId); return `<tr class="clickable" onclick="App.showPlatformAlertDetail('${a.alertId}')"><td>${a.alertType}</td><td>${a.level}</td><td>${a.systemName}</td><td>${entity?entity.entityName:a.entityId} / ${region?region.regionName:a.regionId}</td><td>${a.businessDomain}</td><td>${a.occurredAt}</td><td>${a.status}</td><td>${a.responsibleDepartment}</td><td>${a.deadline}</td><td>${a.impactDesc}</td></tr>`; }).join('')}</tbody></table></div><div id="platformAlertDetail"></div><div class="card"><div class="card-title">近7日监管运行趋势</div><table class="data-table"><thead><tr><th>日期</th><th>数据接入率</th><th>数据质量</th><th>KRI更新</th><th>规则执行</th><th>预警触达</th><th>处置及时率</th><th>整改闭环</th></tr></thead><tbody>${APP_DATA.platformOperationHistory.map(h=>`<tr>${h.map(x=>`<td>${x}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+    node.innerHTML=`<div class="group-hero"><div><span>集团级公共监管底座</span><h2>监管运行监测</h2><p>监测集团监管平台从数据接入到风险处置的全链路运行状态。</p></div><div>运行告警 <b>${APP_DATA.platformOperationAlerts.length}项</b></div></div>${this.renderPublicBackButton()}<div class="group-metrics">${APP_DATA.platformOperationMetrics.map(m=>`<div class="metric-card"><div class="value">${m[1]}</div><div class="label">${m[0]}</div><div class="sub-items">目标${m[2]} · 较上期${m[3]}<br>${m[4]}</div></div>`).join('')}</div><div class="card"><div class="card-title">监管运行链路</div><div class="kri-lineage">${chain.map(c=>`<span><b>${c[0]}</b><br>${c[1]}<br><small>${c[2]} · ${c[3]}</small></span><i>→</i>`).join('')}</div></div><div class="card"><div class="card-title">系统与数据源运行状态</div><table class="data-table"><thead><tr><th>系统</th><th>法人</th><th>区域/国家</th><th>领域</th><th>接口/同步</th><th>最近同步</th><th>完整率/及时率</th><th>质量评分</th><th>责任部门</th></tr></thead><tbody>${opSources.map(s=>`<tr class="clickable" onclick="App.navigatePublic('data-governance',{sourceId:'${s.sourceId}'})"><td>${s.systemName}<br><small>${s.systemType}</small></td><td>${s.ownerEntity}</td><td>${s.regionName}/${s.countryName}</td><td>${(s.businessDomains||[]).join('、')}</td><td>${s.interfaceStatus} / ${s.syncStatus}</td><td>${s.lastSyncTime}</td><td>${s.dataCompleteness} / ${s.dataTimeliness}</td><td>${s.qualityScore}</td><td>${s.dataOwner}</td></tr>`).join('')}</tbody></table></div><div class="card"><div class="card-title">监管运行异常清单</div><table class="data-table"><thead><tr><th>异常类型</th><th>等级</th><th>系统</th><th>法人/区域</th><th>领域</th><th>发生时间</th><th>状态</th><th>责任部门</th><th>期限</th><th>影响范围</th></tr></thead><tbody>${APP_DATA.platformOperationAlerts.map(a=>{ const entity=APP_DATA.globalLegalEntities.find(e=>e.entityId===a.entityId); const region=APP_DATA.globalRegions.find(r=>r.regionId===a.regionId); return `<tr class="clickable" onclick="App.showPlatformAlertDetail('${a.alertId}')"><td>${a.alertType}</td><td>${a.level}</td><td>${a.systemName}</td><td>${entity?entity.entityName:a.entityId} / ${region?region.regionName:a.regionId}</td><td>${a.businessDomain}</td><td>${a.occurredAt}</td><td>${a.status}</td><td>${a.responsibleDepartment}</td><td>${a.deadline}</td><td>${a.impactDesc}</td></tr>`; }).join('')}</tbody></table></div><div id="platformAlertDetail"></div><div class="card"><div class="card-title">近7日监管运行趋势</div><table class="data-table"><thead><tr><th>日期</th><th>数据接入率</th><th>数据质量</th><th>KRI更新</th><th>规则执行</th><th>预警触达</th><th>处置及时率</th><th>整改闭环</th></tr></thead><tbody>${APP_DATA.platformOperationHistory.map(h=>`<tr>${h.map(x=>`<td>${x}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
   },
 
   showPlatformAlertDetail(alertId) {
@@ -1589,7 +1624,7 @@ const App = {
     const hasFilter = Object.values(f).some(v => v);
     const emptyFilterMsg = !sources.length && hasFilter ? this.renderPublicNoFilterResults() : '';
     node.innerHTML = `
-    <div class="group-hero"><div><span>集团级公共监管底座</span><h2>数据治理与数据血缘</h2><p>面向集团穿透式监管的数据治理与风险监管血缘能力：数据从哪里来、经过什么加工、最终支撑哪个监管指标和风险判断。</p></div><div>质量异常 <b>${APP_DATA.dataQualityIssues.length}项</b></div></div>
+    <div class="group-hero"><div><span>集团级公共监管底座</span><h2>数据治理与数据血缘</h2><p>面向集团监管的数据治理与风险监管血缘能力：数据从哪里来、经过什么加工、最终支撑哪个监管指标和风险判断。</p></div><div>质量异常 <b>${APP_DATA.dataQualityIssues.length}项</b></div></div>
     ${this.renderPublicBackButton()}${this.renderPublicFilterBar('data-governance', ['regionId', 'countryId', 'entityId', 'projectId'])}
     ${emptyFilterMsg}
     <div class="group-metrics">${APP_DATA.dataGovernanceMetrics.map(m => `<div class="metric-card"><div class="value">${m[1]}</div><div class="label">${m[0]}</div><div class="sub-items">较上期 ${m[2]} · <span class="badge ${this.dataGovQualityBadge(m[3])}">${m[3]}</span></div></div>`).join('')}</div>
@@ -1911,8 +1946,10 @@ const App = {
     this.renderGroupKriBoard();
     if (domainId === 'investment') this.restoreInvestmentPages();
     if (fromGateway) document.getElementById('domainGateway').style.display = 'none';
-    this.navigate('dashboard');
-    document.getElementById('pageTitle').textContent = `${domain.name} · 集团穿透式监管驾驶舱`;
+    this.navigate(isSingleFileDemoMode() ? 'group' : 'dashboard');
+    document.getElementById('pageTitle').textContent = isSingleFileDemoMode()
+      ? '集团监管总览'
+      : `${domain.name} · 集团监管驾驶舱`;
   },
 
   restoreInvestmentPages() {

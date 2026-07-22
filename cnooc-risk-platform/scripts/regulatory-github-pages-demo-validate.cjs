@@ -79,6 +79,54 @@ check((D.regulatoryDemoScenarioMetrics || {}).noFakeHistory === true, 'noFakeHis
 check((D.regulatoryDemoScenarioMetrics || {}).noFakeClosedLoop === true, 'noFakeClosedLoop');
 check((D.regulatoryDemoFinalFreezeIndex || {}).investmentFreeze === true, 'investmentFreeze');
 
+const forbiddenBranding = [
+  '集团穿透式监管平台（离线演示版）',
+  '集团穿透式监管平台',
+  '投资专题 Demo',
+  '投资管理专题监管',
+  '离线演示版'
+];
+const allowedContextPatterns = [
+  /不混入投资管理专题数据/,
+  /投资管理领域已配置/
+];
+const brandingHits = forbiddenBranding.filter(text => {
+  if (!html.includes(text)) return false;
+  if (text === '集团穿透式监管平台') {
+    const re = /集团穿透式监管平台/g;
+    let match;
+    while ((match = re.exec(html)) !== null) {
+      const start = Math.max(0, match.index - 40);
+      const end = Math.min(html.length, match.index + 40);
+      const snippet = html.slice(start, end);
+      if (!allowedContextPatterns.some(p => p.test(snippet))) return true;
+    }
+    return false;
+  }
+  return true;
+});
+check(brandingHits.length === 0, `oldBranding:${brandingHits.join(',')}`);
+check(html.includes('<title>集团监管平台 Demo</title>'), 'systemNameTitle');
+check(/集团监管平台 Demo Final/.test(html), 'systemNameFinal');
+check(!html.includes('集团穿透式监管平台（离线演示版）'), 'oldOfflineTitle');
+check(html.includes('集团监管总览') && html.includes('集团 → 区域 → 国家 → 法人 → 项目 → 风险 → KRI → 预警'), 'groupRegulatoryHome');
+check(html.includes('DEMO-01') && html.includes('DEMO-06') && html.includes('startDemoScenario'), 'demoEntry');
+check(html.includes('getDemoFinalMenu') || html.includes('统一监管工作台'), 'demoNav');
+const hasExternalScript = /<script[^>]+src=/i.test(html);
+const hasDisallowedLink = (() => {
+  const re = /<link[^>]+href=["'](https?:[^"']+)["']/gi;
+  let m;
+  while ((m = re.exec(html)) !== null) {
+    if (!isAllowedUrl(m[1])) return true;
+  }
+  return false;
+})();
+check(!hasExternalScript && !hasDisallowedLink, 'singleFileCheck');
+check(html.includes('window.__SINGLE_FILE_DEMO__=true'), 'singleFileMarker');
+
+const demo06 = (D.regulatoryDemoScenarioIndexes || []).find(s => s.demoCode === 'DEMO-06');
+check(demo06?.trendStatus === 'INSUFFICIENT_HISTORY' || (D.regulatoryDemoScenarioMetrics || {}).insufficientHistoryDemoCodes?.includes?.('DEMO-06'), 'insufficientHistoryDemo06');
+
 const workflow = fs.readFileSync(path.join(ROOT, '..', '.github/workflows/deploy-pages.yml'), 'utf8');
 check(workflow.includes('cnooc-risk-platform'), 'pages workflow path');
 
@@ -95,13 +143,21 @@ const result = {
   externalCdn: externalHits.length ? '有' : '无',
   allDemoScenariosReachable: codes.every(c => demoPaths[c].reachable),
   allDemoScenariosTraceable: codes.every(c => demoPaths[c].traceable),
-  simulationIsolationCheck: (D.regulatoryDemoScenarioMetrics || {}).simulationIsolationOk === true,
-  humanDecisionCheck: true,
-  noFakeHistory: true,
-  noFakeClosedLoop: true,
   publicPageCount,
   navigatePenetration: penetrate,
   investmentFreeze: true,
+  systemNameCheck: html.includes('<title>集团监管平台 Demo</title>') && /集团监管平台 Demo Final/.test(html),
+  oldInvestmentDemoTextCheck: brandingHits.length === 0,
+  groupRegulatoryHomeCheck: html.includes('集团监管总览') && html.includes('集团 → 区域 → 国家 → 法人 → 项目 → 风险 → KRI → 预警'),
+  demoEntryCheck: codes.every(c => html.includes(c)),
+  demoScenarioReachabilityCheck: codes.every(c => demoPaths[c].reachable),
+  demoTraceabilityCheck: codes.every(c => demoPaths[c].traceable),
+  simulationIsolationCheck: (D.regulatoryDemoScenarioMetrics || {}).simulationIsolationOk === true,
+  humanDecisionCheck: (D.regulatoryDemoScenarioIndexes || []).find(s => s.demoCode === 'DEMO-05')?.requiresHumanDecision === true,
+  noFakeHistoryCheck: (D.regulatoryDemoScenarioMetrics || {}).noFakeHistory === true,
+  noFakeClosedLoopCheck: (D.regulatoryDemoScenarioMetrics || {}).noFakeClosedLoop === true,
+  singleFileCheck: !hasExternalScript && !hasDisallowedLink,
+  externalDependencyCheck: externalHits.length === 0,
   businessLogicModified: false,
   demoPaths,
   deployNote: '推送至 master 或触发 deploy-pages workflow 后，约 1-3 分钟可访问线上链接',
