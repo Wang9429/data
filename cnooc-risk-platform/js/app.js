@@ -131,6 +131,7 @@ const App = {
     if (this.finalizeRegulatoryPlatform) this.finalizeRegulatoryPlatform();
     if (this.initializeDataAdaptation) this.initializeDataAdaptation();
     if (this.initializeBatchAdaptation) this.initializeBatchAdaptation();
+    if (this.initializeDomainClosure) this.initializeDomainClosure();
     this.renderNav();
     this.renderGroupOverview();
     this.renderRegulatoryEvents();

@@ -1018,6 +1018,303 @@ Object.assign(App, {
     return { sourceId: src, domainId: domain?.domainId, domainName: domain?.domainName, adaptationStatus: domain?.adaptationStatus, credibility: cred };
   },
 
+  initializeDomainClosure() {
+    this.refreshDomainDataGaps();
+    this.refreshDomainClosurePlans();
+    this.computeDomainClosureMetrics();
+    return APP_DATA.regulatoryDomainClosureMetrics;
+  },
+
+  _closureNow() { return '2026-07-22 11:00:00'; },
+
+  _targetMaturityFromGaps(gapCount, currentLevel) {
+    const lvl = parseInt(String(currentLevel || 'LEVEL_0').replace('LEVEL_', ''), 10) || 0;
+    const target = Math.min(7, lvl + (gapCount > 4 ? 2 : gapCount > 2 ? 1 : 0));
+    return 'LEVEL_' + target;
+  },
+
+  analyzeDomainDataGaps(domainId) {
+    const r = this.getDomainAdaptationResult(domainId) || this.buildDomainAdaptationResult(domainId);
+    if (!r) return [];
+    const config = this.getDomainConfiguration(domainId);
+    const gaps = [];
+    let seq = 1;
+    const add = (gapType, gapLevel, evidence, extra) => {
+      gaps.push({
+        gapId: 'GAP-' + domainId.toUpperCase().slice(0, 3) + '-' + String(seq++).padStart(3, '0'),
+        domainId,
+        gapType,
+        gapLevel,
+        relatedSourceIds: extra?.sources || r.sourceIds || [],
+        relatedMappingIds: extra?.mappings || r.businessObjectMappingIds || [],
+        relatedMetricIds: extra?.metrics || r.metricIds || [],
+        relatedKriIds: extra?.kris || r.kriIds || [],
+        currentMaturityLevel: r.maturityLevel || this.calculateDomainAdaptationMaturity(domainId, r),
+        targetMaturityLevel: null,
+        gapStatus: 'OPEN',
+        evidence,
+        generatedAt: this._closureNow()
+      });
+    };
+    if (!r.sourceIds.length) add('NO_DATA_SOURCE', 'CRITICAL', '未配置关联数据源');
+    else if (!r.dataSetIds.length) add('NO_DATASET', 'CRITICAL', '数据源无关联数据集');
+    if (r.sourceIds.length && !r.mappedObjectCount) add('NO_BUSINESS_OBJECT_MAPPING', 'HIGH', '缺少业务对象映射');
+    if (r.sourceIds.length && !r.metricIds.length && r.mappedObjectCount) add('NO_METRIC', 'MEDIUM', '无监管指标映射');
+    if (r.sourceIds.length && !r.kriIds.length) add('NO_KRI', 'HIGH', '未配置或未关联KRI');
+    else if (r.kriIds.length && !r.calculatedKriCount && r.kriCalculationStatus !== 'COMPLETED') add('NO_KRI', 'HIGH', 'KRI不可计算: ' + r.kriCalculationStatus);
+    if (r.kriIds.length && r.calculatedKriCount && !r.generatedWarningCount && r.qualityStatus !== 'QUALITY_FAILED') add('NO_WARNING_CHAIN', 'MEDIUM', 'KRI已计算但无预警链路');
+    if ((r.generatedWarningCount || r.kriIds.length) && !r.linkedActionCount) add('NO_ACTION_CHAIN', 'HIGH', '预警/KRI未联动监管行动');
+    if (r.linkedActionCount && !r.linkedRectificationCount) add('NO_RECTIFICATION_CHAIN', 'HIGH', '监管行动未关联整改');
+    if (r.linkedRectificationCount && !r.verifiedCount) add('NO_VERIFICATION_CHAIN', 'HIGH', '整改未完成验证关闭');
+    if (r.qualityStatus === 'QUALITY_FAILED') add('NO_KRI', 'CRITICAL', '数据质量阻断KRI可信度', { kris: r.kriIds });
+    gaps.forEach(g => { g.targetMaturityLevel = this._targetMaturityFromGaps(gaps.length, g.currentMaturityLevel); });
+    return gaps;
+  },
+
+  refreshDomainDataGaps() {
+    const domains = APP_DATA.regulatoryDomainConfigurations || [];
+    APP_DATA.regulatoryDomainDataGaps = domains.flatMap(d => this.analyzeDomainDataGaps(d.domainId));
+    return APP_DATA.regulatoryDomainDataGaps;
+  },
+
+  getDomainDataGaps(domainId) {
+    return (APP_DATA.regulatoryDomainDataGaps || []).filter(g => g.domainId === domainId);
+  },
+
+  calculateDomainClosureReadiness(domainId) {
+    const r = this.getDomainAdaptationResult(domainId) || this.buildDomainAdaptationResult(domainId);
+    if (!r) return { domainId, domainClosureReadiness: 0, dataStatus: 'INSUFFICIENT_DATA' };
+    const srcScore = r.sourceIds.length ? (r.dataSetIds.length ? 100 : 50) : 0;
+    const qualPenalty = r.qualityStatus === 'QUALITY_FAILED' ? 40 : r.qualityStatus === 'QUALITY_WARNING' ? 15 : 0;
+    const dataReadiness = Math.max(0, Math.min(100, srcScore - qualPenalty));
+    const mappingReadiness = r.sourceIds.length ? Math.round((r.mappedObjectCount / Math.max(1, r.dataSetIds.length)) * 100) : 0;
+    const kriReadiness = r.kriIds.length ? Math.round((r.calculatedKriCount / r.kriIds.length) * 100) : 0;
+    const supervisionReadiness = (() => {
+      let s = 0;
+      if (r.generatedWarningCount) s += 35;
+      if (r.linkedActionCount) s += 35;
+      if (r.linkedTaskCount) s += 15;
+      if (r.kriIds.length && !r.generatedWarningCount) s += 10;
+      return Math.min(100, s);
+    })();
+    const closureReadiness = (() => {
+      let s = 0;
+      if (r.linkedRectificationCount) s += 40;
+      if (r.verifiedCount) s += 60;
+      return Math.min(100, s);
+    })();
+    const domainClosureReadiness = Math.round((dataReadiness * 0.25 + mappingReadiness * 0.2 + kriReadiness * 0.2 + supervisionReadiness * 0.2 + closureReadiness * 0.15) * 10) / 10;
+    return {
+      domainId,
+      currentMaturityLevel: r.maturityLevel || this.calculateDomainAdaptationMaturity(domainId, r),
+      targetMaturityLevel: r.closedLoopStatus === 'FULL_CLOSED_LOOP' ? 'LEVEL_7' : this._targetMaturityFromGaps(this.getDomainDataGaps(domainId).length, r.maturityLevel),
+      closedLoopStatus: r.closedLoopStatus,
+      dataReadiness,
+      mappingReadiness,
+      kriReadiness,
+      supervisionReadiness,
+      closureReadiness,
+      domainClosureReadiness,
+      governanceReadiness: Math.round((dataReadiness + mappingReadiness) / 2),
+      supervisionRunReadiness: supervisionReadiness,
+      dataStatus: r.closedLoopStatus === 'INSUFFICIENT_REAL_DATA' ? 'INSUFFICIENT_REAL_DATA' : 'OK',
+      trendStatus: 'INSUFFICIENT_HISTORY'
+    };
+  },
+
+  calculateDomainClosurePriority(domainId) {
+    const r = this.getDomainAdaptationResult(domainId) || this.buildDomainAdaptationResult(domainId);
+    const gaps = this.getDomainDataGaps(domainId);
+    const readiness = this.calculateDomainClosureReadiness(domainId);
+    const config = this.getDomainConfiguration(domainId);
+    let score = 0;
+    if (r?.closedLoopStatus === 'PARTIAL_CLOSED_LOOP') score += 40;
+    if (['finance', 'overseas'].includes(domainId)) score += 25;
+    score += gaps.filter(g => g.gapLevel === 'CRITICAL').length * 15;
+    score += gaps.filter(g => g.gapLevel === 'HIGH').length * 8;
+    score += (readiness.domainClosureReadiness || 0) * 0.2;
+    if (config?.openQualityIssueCount) score += 10;
+    if (r?.closedLoopStatus === 'FULL_CLOSED_LOOP') score = Math.max(0, score - 50);
+    if (r?.closedLoopStatus === 'INSUFFICIENT_REAL_DATA' && !r.sourceIds.length) score = Math.max(0, score - 20);
+    if (score >= 70) return 'CRITICAL';
+    if (score >= 50) return 'HIGH';
+    if (score >= 25) return 'MEDIUM';
+    return 'LOW';
+  },
+
+  buildDomainClosurePlan(domainId) {
+    const r = this.getDomainAdaptationResult(domainId) || this.buildDomainAdaptationResult(domainId);
+    const config = this.getDomainConfiguration(domainId);
+    const gaps = this.getDomainDataGaps(domainId).length ? this.getDomainDataGaps(domainId) : this.analyzeDomainDataGaps(domainId);
+    const readiness = this.calculateDomainClosureReadiness(domainId);
+    const priority = this.calculateDomainClosurePriority(domainId);
+    const actionMap = {
+      NO_DATA_SOURCE: '补充数据源',
+      NO_DATASET: '完成数据接入',
+      NO_BUSINESS_OBJECT_MAPPING: '完成业务对象映射',
+      NO_METRIC: '配置监管指标',
+      NO_KRI: '配置并完成KRI计算',
+      NO_WARNING_CHAIN: '建立预警链路',
+      NO_ACTION_CHAIN: '联动监管行动',
+      NO_RECTIFICATION_CHAIN: '关联整改任务',
+      NO_VERIFICATION_CHAIN: '完成整改验证'
+    };
+    const requiredActions = [...new Set(gaps.map(g => actionMap[g.gapType]).filter(Boolean))];
+    const resolved = gaps.filter(g => g.gapStatus === 'RESOLVED').length;
+    const completionRate = gaps.length ? Math.round((1 - gaps.filter(g => g.gapStatus === 'OPEN').length / gaps.length) * (readiness.domainClosureReadiness / 100) * 1000) / 10 : (r?.closedLoopStatus === 'FULL_CLOSED_LOOP' ? 100 : 0);
+    const blockers = gaps.filter(g => g.gapStatus === 'OPEN' && g.gapLevel === 'CRITICAL').map(g => g.evidence);
+    if (r?.qualityStatus === 'QUALITY_FAILED') blockers.push('数据质量未达标');
+    if (r?.closedLoopStatus === 'INSUFFICIENT_REAL_DATA') blockers.push('真实业务数据不足');
+    let status = 'NOT_STARTED';
+    if (r?.closedLoopStatus === 'FULL_CLOSED_LOOP') status = 'COMPLETED';
+    else if (blockers.some(b => b.includes('数据不足'))) status = 'BLOCKED';
+    else if (gaps.some(g => g.gapStatus === 'IN_PROGRESS') || readiness.domainClosureReadiness > 30) status = 'IN_PROGRESS';
+    return {
+      planId: 'DCP-' + domainId,
+      domainId,
+      domainName: r?.domainName || config?.domainName,
+      currentLevel: readiness.currentMaturityLevel,
+      targetLevel: readiness.targetMaturityLevel,
+      priority,
+      gapIds: gaps.map(g => g.gapId),
+      requiredActions: requiredActions.length ? requiredActions : (r?.closedLoopStatus === 'FULL_CLOSED_LOOP' ? ['维持闭环运行'] : ['评估数据基础']),
+      ownerOrgId: config?.responsibleOrganizationId || 'G001',
+      status,
+      completionRate,
+      blockers,
+      sourceTraceability: { sourceIds: r?.sourceIds || [], dataSetIds: r?.dataSetIds || [], kriIds: r?.kriIds || [] },
+      closedLoopStatus: r?.closedLoopStatus,
+      dataStatus: r?.closedLoopStatus === 'INSUFFICIENT_REAL_DATA' ? 'INSUFFICIENT_REAL_DATA' : 'OK'
+    };
+  },
+
+  refreshDomainClosurePlans() {
+    const domains = APP_DATA.regulatoryDomainConfigurations || [];
+    APP_DATA.regulatoryDomainClosurePlans = domains.map(d => this.buildDomainClosurePlan(d.domainId));
+    return APP_DATA.regulatoryDomainClosurePlans;
+  },
+
+  getDomainClosurePlan(domainId) {
+    return (APP_DATA.regulatoryDomainClosurePlans || []).find(p => p.domainId === domainId);
+  },
+
+  computeDomainClosureMetrics() {
+    const results = APP_DATA.regulatoryDomainAdaptationResults || [];
+    const gaps = APP_DATA.regulatoryDomainDataGaps || [];
+    const plans = APP_DATA.regulatoryDomainClosurePlans || [];
+    const full = results.filter(r => r.closedLoopStatus === 'FULL_CLOSED_LOOP').length;
+    const partial = results.filter(r => r.closedLoopStatus === 'PARTIAL_CLOSED_LOOP').length;
+    const insufficient = results.filter(r => r.closedLoopStatus === 'INSUFFICIENT_REAL_DATA').length;
+    APP_DATA.regulatoryDomainClosureMetrics = {
+      totalDomainCount: results.length,
+      fullClosedLoopCount: full,
+      partialClosedLoopCount: partial,
+      insufficientRealDataCount: insufficient,
+      domainClosureCoverage: results.length ? Math.round(full / results.length * 1000) / 10 : null,
+      openGapCount: gaps.filter(g => g.gapStatus === 'OPEN').length,
+      criticalGapCount: gaps.filter(g => g.gapLevel === 'CRITICAL' && g.gapStatus === 'OPEN').length,
+      activePlanCount: plans.filter(p => p.status === 'IN_PROGRESS').length,
+      blockedPlanCount: plans.filter(p => p.status === 'BLOCKED').length,
+      focusDomains: ['finance', 'overseas'],
+      avgClosureReadiness: results.length ? Math.round(results.reduce((s, r) => s + (this.calculateDomainClosureReadiness(r.domainId).domainClosureReadiness || 0), 0) / results.length * 10) / 10 : null,
+      trendStatus: 'INSUFFICIENT_HISTORY'
+    };
+    return APP_DATA.regulatoryDomainClosureMetrics;
+  },
+
+  renderDomainClosureDashboardPanel() {
+    const m = APP_DATA.regulatoryDomainClosureMetrics || {};
+    const results = APP_DATA.regulatoryDomainAdaptationResults || [];
+    const statusRows = [
+      ['FULL_CLOSED_LOOP', results.filter(r => r.closedLoopStatus === 'FULL_CLOSED_LOOP').length],
+      ['PARTIAL_CLOSED_LOOP', results.filter(r => r.closedLoopStatus === 'PARTIAL_CLOSED_LOOP').length],
+      ['INSUFFICIENT_REAL_DATA', results.filter(r => r.closedLoopStatus === 'INSUFFICIENT_REAL_DATA').length]
+    ].map(([s, c]) => `<tr><td>${this.renderPublicUnifiedStatusBadge(s)}</td><td>${c}</td></tr>`).join('');
+    return `<div class="card"><div class="card-title">领域闭环覆盖 ${m.trendStatus === 'INSUFFICIENT_HISTORY' ? this.renderPublicUnifiedStatusBadge('INSUFFICIENT_HISTORY') : ''}</div>
+      <div class="group-metrics">${[
+        [m.fullClosedLoopCount, '完整闭环', `App.navigatePublic('regulatory-data-governance')`],
+        [m.partialClosedLoopCount, '部分闭环', `App.navigatePublic('regulatory-data-governance')`],
+        [m.insufficientRealDataCount, '数据不足', `App.navigatePublic('regulatory-data-sources')`],
+        [m.openGapCount, '开放缺口', `App.navigatePublic('regulatory-analysis-center')`],
+        [m.avgClosureReadiness != null ? m.avgClosureReadiness + '%' : '—', '平均准备度', `App.navigatePublic('regulatory-analysis-center')`],
+        [m.criticalGapCount, '关键缺口', `App.navigatePublic('regulatory-improvement-center')`]
+      ].map(([v, l, n]) => this.renderPublicKpiCard(l, v, n)).join('')}</div>
+      <table class="data-table"><thead><tr><th>闭环状态</th><th>领域数</th></tr></thead><tbody>${statusRows}</tbody></table>
+    </div>`;
+  },
+
+  renderDomainDataGapsPanel(domainId) {
+    const gaps = domainId ? this.getDomainDataGaps(domainId) : (APP_DATA.regulatoryDomainDataGaps || []);
+    const rows = gaps.map(g => {
+      const dom = (APP_DATA.regulatoryDomainConfigurations || []).find(d => d.domainId === g.domainId);
+      return `<tr class="clickable" onclick="App.navigatePublic('regulatory-data-governance')"><td>${dom?.domainName || g.domainId}</td><td>${g.gapType}</td><td>${g.gapLevel}</td><td>${this.renderPublicUnifiedStatusBadge(g.gapStatus)}</td><td>${this.escHtml(g.evidence || '')}</td><td>${g.currentMaturityLevel}</td></tr>`;
+    }).join('');
+    return `<div class="card"><div class="card-title">领域数据缺口${domainId ? ' · ' + domainId : ''}</div>
+      ${rows ? `<table class="data-table"><thead><tr><th>领域</th><th>缺口类型</th><th>级别</th><th>状态</th><th>证据</th><th>成熟度</th></tr></thead><tbody>${rows}</tbody></table>` : this.renderPublicEmptyState('暂无缺口')}
+    </div>`;
+  },
+
+  renderDomainClosurePlansPanel() {
+    const plans = (APP_DATA.regulatoryDomainClosurePlans || []).slice().sort((a, b) => {
+      const ord = { CRITICAL: 0, HIGH: 1, MEDIUM: 2, LOW: 3 };
+      return (ord[a.priority] || 9) - (ord[b.priority] || 9);
+    });
+    const rows = plans.map(p => `<tr class="clickable" onclick="App.navigatePublic('regulatory-improvement-center')"><td>${p.domainName || p.domainId}</td><td>${p.currentLevel}</td><td>${p.targetLevel}</td><td>${this.renderPublicPriorityBadge(p.priority)}</td><td>${p.completionRate}%</td><td>${this.renderPublicUnifiedStatusBadge(p.status)}</td><td>${this.renderPublicUnifiedStatusBadge(p.closedLoopStatus)}</td><td>${(p.blockers || []).slice(0, 1).join('') || '—'}</td></tr>`).join('');
+    return `<div class="card"><div class="card-title">领域闭环提升计划</div>
+      ${rows ? `<table class="data-table"><thead><tr><th>领域</th><th>当前</th><th>目标</th><th>优先级</th><th>完成率</th><th>状态</th><th>闭环</th><th>阻塞</th></tr></thead><tbody>${rows}</tbody></table>` : this.renderPublicEmptyState('暂无计划')}
+    </div>`;
+  },
+
+  renderDomainClosureReadinessPanel(domainId) {
+    const domains = domainId ? [domainId] : (APP_DATA.regulatoryDomainConfigurations || []).map(d => d.domainId);
+    const rows = domains.map(id => {
+      const rd = this.calculateDomainClosureReadiness(id);
+      const pr = this.calculateDomainClosurePriority(id);
+      const dom = (APP_DATA.regulatoryDomainConfigurations || []).find(d => d.domainId === id);
+      return `<tr><td>${dom?.domainName || id}</td><td>${rd.currentMaturityLevel}</td><td>${rd.domainClosureReadiness}%</td><td>${rd.dataReadiness}%</td><td>${rd.kriReadiness}%</td><td>${rd.closureReadiness}%</td><td>${this.renderPublicPriorityBadge(pr)}</td></tr>`;
+    }).join('');
+    return `<div class="card"><div class="card-title">领域闭环准备度</div>
+      <table class="data-table"><thead><tr><th>领域</th><th>成熟度</th><th>综合准备度</th><th>数据</th><th>KRI</th><th>闭环</th><th>优先级</th></tr></thead><tbody>${rows}</tbody></table>
+    </div>`;
+  },
+
+  renderDomainClosureRolePanel(roleType) {
+    const m = APP_DATA.regulatoryDomainClosureMetrics || {};
+    const plans = APP_DATA.regulatoryDomainClosurePlans || [];
+    const gaps = APP_DATA.regulatoryDomainDataGaps || [];
+    if (roleType === 'GROUP_LEADER') {
+      return `<div class="card"><div class="card-title">集团领域闭环提升</div>
+        <div class="group-metrics">${[
+          [m.domainClosureCoverage != null ? m.domainClosureCoverage + '%' : '—', '闭环覆盖率', `App.navigatePublic('regulatory-analysis-center')`],
+          [plans.filter(p => p.priority === 'HIGH' || p.priority === 'CRITICAL').length, '重点提升领域', `App.navigatePublic('regulatory-improvement-center')`],
+          [m.criticalGapCount, '重大数据缺口', `App.navigatePublic('regulatory-data-governance')`],
+          [m.avgClosureReadiness != null ? m.avgClosureReadiness + '%' : '—', '平均准备度', `App.navigatePublic('regulatory-analysis-center')`]
+        ].map(([v, l, n]) => this.renderPublicKpiCard(l, v, n)).join('')}</div>
+        <p class="insight-note">闭环趋势：${m.trendStatus === 'INSUFFICIENT_HISTORY' ? '历史数据不足' : '—'}</p></div>`;
+    }
+    if (roleType === 'GROUP_REGULATORY') {
+      return `<div class="card"><div class="card-title">领域缺口与待补齐闭环</div>
+        <p>开放缺口 <b>${m.openGapCount}</b> · KRI缺口 <b>${gaps.filter(g => g.gapType === 'NO_KRI').length}</b> · 验证缺口 <b>${gaps.filter(g => g.gapType === 'NO_VERIFICATION_CHAIN').length}</b></p>
+        ${this.renderPublicLinkButton('数据治理', `App.navigatePublic('regulatory-data-governance')`)} ${this.renderPublicLinkButton('提升计划', `App.navigatePublic('regulatory-improvement-center')`)}</div>`;
+    }
+    if (roleType === 'DOMAIN_REGULATOR') {
+      const scopeDomain = this.regulatoryRoleScopeId || 'finance';
+      const plan = this.getDomainClosurePlan(scopeDomain);
+      const rd = this.calculateDomainClosureReadiness(scopeDomain);
+      return `<div class="card"><div class="card-title">本领域闭环状态</div>
+        <p>成熟度 <b>${rd.currentMaturityLevel}</b> · 准备度 <b>${rd.domainClosureReadiness}%</b> · 闭环 <b>${plan?.closedLoopStatus || '—'}</b></p>
+        ${this.renderPublicLinkButton('KRI监测', `App.navigatePublic('regulatory-kri-monitoring')`)} ${this.renderPublicLinkButton('预警', `App.navigatePublic('regulatory-warning-center')`)}</div>`;
+    }
+    const entityId = this.regulatoryRoleScopeId || this.getCurrentRegulatoryUser()?.organizationId;
+    const entityGaps = gaps.filter(g => (g.relatedSourceIds || []).some(sid => {
+      const src = (APP_DATA.regulatoryDataSources || []).find(s => s.sourceId === sid);
+      return src?.ownerOrganizationId === entityId;
+    }));
+    return `<div class="card"><div class="card-title">本法人数据缺口</div>
+      <p>关联缺口 <b>${entityGaps.length}</b> · 待验证整改 <b>${(APP_DATA.rectificationTasks || []).filter(t => t.entityId === entityId && t.verificationStatus !== '已验证').length}</b></p>
+      ${this.renderPublicLinkButton('数据质量', `App.navigatePublic('regulatory-data-quality')`)} ${this.renderPublicLinkButton('整改', `App.navigatePublic('rectification')`)}</div>`;
+  },
+
   renderPlatformHealthPanel() {
     const ph = this.computePlatformHealth();
     const dims = ph.dimensions || {};
@@ -5739,6 +6036,7 @@ Object.assign(App, {
         </div>
       </div>
       ${this.renderBatchAdaptationWorkbenchPanel()}
+      ${this.renderDomainClosureDashboardPanel()}
       ${this.renderPlatformHealthPanel()}
       ${this.renderCapabilityMapOverview()}
       ${this.renderBusinessScenarioPanel()}`;
@@ -5922,7 +6220,7 @@ Object.assign(App, {
       <div class="card"><div class="card-title">数据运行视图</div>
         ${(() => {
           const roleType = role.roleType;
-          return this.renderBatchAdaptationRolePanel(roleType) + (() => {
+          return this.renderDomainClosureRolePanel(roleType) + this.renderBatchAdaptationRolePanel(roleType) + (() => {
           const dm = APP_DATA.regulatoryDataGovernanceMetrics || {};
           if (roleType === 'GROUP_LEADER') return [
             [dm.overallQualityScore ?? '—', '集团数据质量', `App.navigatePublic('regulatory-data-quality')`],
@@ -6388,9 +6686,13 @@ Object.assign(App, {
     }).join('');
     node.innerHTML = `${this.renderPublicBackButton('regulatory-data-governance')}
       <div class="group-hero"><div><span>数据运行</span><h2>集团监管数据治理中心</h2><p>质量问题 → 确认 → 责任主体 → 治理任务 → 整改 → 复核 → 关闭</p></div><div>任务 <b>${tasks.length}</b></div></div>
+      ${this.renderDomainClosureDashboardPanel()}
       ${this.renderBatchAdaptationCoveragePanel()}
       ${this.renderRegulatoryDomainConfigPanel()}
       ${this.renderDomainAdaptationMaturityPanel()}
+      ${this.renderDomainClosureReadinessPanel()}
+      ${this.renderDomainDataGapsPanel()}
+      ${this.renderDomainClosurePlansPanel()}
       <div class="card"><div class="card-title">治理任务</div>${rows ? `<table class="data-table"><thead><tr><th>任务ID</th><th>质量问题</th><th>责任主体</th><th>状态</th><th>截止</th><th>验证</th><th>关联整改</th></tr></thead><tbody>${rows}</tbody></table>` : this.renderPublicEmptyState('暂无')}</div>
       <div id="regulatoryDataGovernanceDetail"></div>`;
     if (this.regulatoryDataGovernanceFocusId) setTimeout(() => this.showRegulatoryDataGovernanceDetail(this.regulatoryDataGovernanceFocusId), 0);
@@ -6620,7 +6922,9 @@ Object.assign(App, {
       `<tr class="clickable" onclick="App.navigatePublic('regulatory-risk-concentration',{concentrationId:'${c.concentrationId}'})"><td>${c.dimension}</td><td>${c.objectName}</td><td>${c.count}</td><td>${Math.round(c.concentrationRate * 100)}%</td><td>${c.concentrationLevel}</td><td>${c.riskLevel}</td><td>${c.interpretation}</td></tr>`
     ).join('');
     node.innerHTML = `${this.renderPublicBackButton('regulatory-analysis-center')}
-      <div class="group-hero"><div><span>综合研判</span><h2>集团监管综合分析中心</h2><p>多源监管数据汇聚为集团层面综合研判能力</p></div></div>
+      <div class="group-hero"><div><span>综合研判</span><h2>集团监管综合分析中心</h2><p>多源监管数据汇聚为集团层面综合研判能力 · 含领域闭环准备度</p></div></div>
+      ${this.renderDomainClosureDashboardPanel()}
+      ${this.renderDomainClosureReadinessPanel()}
       <div class="group-metrics">${[
         [health.compositeHealthScore ?? '—', '综合监管健康度'],
         [am.highRiskEntityCount, '高风险法人'],
@@ -6793,6 +7097,8 @@ Object.assign(App, {
     node.innerHTML = `${this.renderPublicBackButton('regulatory-improvement-center')}
       <div class="group-hero"><div><span>持续改进</span><h2>集团监管持续改进中心</h2><p>发现问题 → 分析原因 → 形成改进方案 → 人工决策 → 实施优化 → 验证效果</p></div></div>
       <div class="group-metrics">${[[cm.pendingOpportunityCount,'待分析机会'],[cm.highPriorityOpportunityCount,'高优先级'],[cm.pendingPlanDecisionCount,'待决策方案'],[cm.implementingCount,'实施中'],[cm.pendingValidationCount,'待验证'],[cm.validatedEffectiveCount,'已验证有效'],[cm.improvementClosureRate!=null?cm.improvementClosureRate+'%':'—','闭环率'],[cm.improvementEffectivenessRate!=null?cm.improvementEffectivenessRate+'%':'—','效果达成率']].map(([v,l])=>this.renderPublicKpiCard(l,v,`App.navigatePublic('regulatory-improvement-center')`)).join('')}</div>
+      ${this.renderDomainClosurePlansPanel()}
+      ${this.renderDomainDataGapsPanel()}
       <div class="filter-bar" style="margin-bottom:12px"><select onchange="App.regulatoryImprovementCenterFilter={...(App.regulatoryImprovementCenterFilter||{}),sourceCategory:this.value||null};App.renderRegulatoryImprovementCenter()"><option value="">全部来源</option>${cats.map(c=>`<option value="${c}" ${f.sourceCategory===c?'selected':''}>${c}</option>`).join('')}</select></div>
       <div class="card"><div class="card-title">改进机会清单</div>${rows ? `<table class="data-table"><thead><tr><th>ID</th><th>来源</th><th>标题</th><th>优先级</th><th>状态</th><th>问题表现</th></tr></thead><tbody>${rows}</tbody></table>` : this.renderPublicEmptyState('暂无')}</div>
       <div id="regulatoryOpportunityDetail"></div>`;

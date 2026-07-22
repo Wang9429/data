@@ -6250,3 +6250,17 @@ Object.assign(APP_DATA, {
   APP_DATA.regulatoryBatchAdaptationFailures = APP_DATA.regulatoryBatchAdaptationFailures || [];
   APP_DATA.regulatoryBatchAdaptationMetrics = APP_DATA.regulatoryBatchAdaptationMetrics || {};
 })();
+
+(function () {
+  APP_DATA.regulatoryDomainClosureScenarios = [
+    { scenarioId: 'DC-01', name: '领域数据缺口识别', roleType: 'GROUP_REGULATORY', startPage: 'regulatory-data-governance', pagePath: ['regulatory-data-governance', 'regulatory-analysis-center'], steps: ['查看9大领域', '识别数据缺口', '查看缺口证据'], expectedResult: '缺口动态生成且可追踪', dataChain: 'regulatoryDomainDataGaps → regulatoryDomainAdaptationResults' },
+    { scenarioId: 'DC-02', name: '财务领域闭环提升', roleType: 'GROUP_REGULATORY', startPage: 'regulatory-data-governance', pagePath: ['regulatory-data-governance', 'regulatory-kri-monitoring', 'regulatory-warning-center', 'regulatory-actions', 'rectification'], steps: ['财务领域成熟度', '识别验证缺口', '查看提升计划'], expectedResult: 'PARTIAL→FULL 仅当真实数据支持', dataChain: 'finance → gaps → closurePlan' },
+    { scenarioId: 'DC-03', name: '境外领域数据补齐', roleType: 'DOMAIN_REGULATOR', startPage: 'regulatory-data-governance', pagePath: ['regulatory-data-sources', 'regulatory-data-integration', 'regulatory-data-governance'], steps: ['境外数据源', 'INSUFFICIENT_REAL_DATA', '补齐计划'], expectedResult: '不伪造境外数据', dataChain: 'overseas → gaps → plan' },
+    { scenarioId: 'DC-04', name: 'KRI缺口识别', roleType: 'GROUP_REGULATORY', startPage: 'regulatory-kri-monitoring', pagePath: ['regulatory-kri-monitoring', 'regulatory-data-quality', 'regulatory-data-governance'], steps: ['KRI清单', '可信度', 'NO_KRI缺口'], expectedResult: 'KRI缺口与质量关联', dataChain: 'kriIds → gaps' },
+    { scenarioId: 'DC-05', name: '整改验证缺口', roleType: 'GROUP_REGULATORY', startPage: 'rectification', pagePath: ['rectification', 'regulatory-data-governance', 'regulatory-improvement-center'], steps: ['整改任务', '验证状态', 'NO_VERIFICATION_CHAIN'], expectedResult: '缺验证不标记完整闭环', dataChain: 'rects → verified → gaps' },
+    { scenarioId: 'DC-06', name: '领域成熟度提升', roleType: 'GROUP_LEADER', startPage: 'regulatory-analysis-center', pagePath: ['regulatory-analysis-center', 'regulatory-data-governance', 'regulatory-improvement-center'], steps: ['成熟度', '闭环准备度', '优先级'], expectedResult: '成熟度与准备度动态计算', dataChain: 'maturity → readiness → priority' }
+  ];
+  APP_DATA.regulatoryDomainDataGaps = APP_DATA.regulatoryDomainDataGaps || [];
+  APP_DATA.regulatoryDomainClosurePlans = APP_DATA.regulatoryDomainClosurePlans || [];
+  APP_DATA.regulatoryDomainClosureMetrics = APP_DATA.regulatoryDomainClosureMetrics || {};
+})();
