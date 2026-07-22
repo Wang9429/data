@@ -4924,3 +4924,272 @@ Object.assign(APP_DATA, {
   rpm['ROLE-ENTITY-REG'] = [...new Set([...(rpm['ROLE-ENTITY-REG'] || []), 'DATA_VIEW', 'DATA_GOVERNANCE_ASSIGN'])];
   APP_DATA.regulatoryRolePermissionMap = rpm;
 })();
+
+(function () {
+  const TODAY = '2026-07-22';
+  const indicators = APP_DATA.dataIndicators || [];
+  const kris = APP_DATA.groupKris || [];
+  const riskWarnings = APP_DATA.warnings || [];
+  const priorityObjects = APP_DATA.regulatoryPriorityObjects || [];
+  const actions = APP_DATA.regulatoryActions || [];
+  const strategy = APP_DATA.regulatoryStrategyAnalysis || {};
+  const dataSets = APP_DATA.regulatoryDataSets || [];
+  const dataObjects = APP_DATA.dataObjects || [];
+  const qualityIssues = APP_DATA.regulatoryDataQualityIssues || [];
+  const lineage = APP_DATA.regulatoryDataLineage || [];
+  const entities = APP_DATA.globalLegalEntities || [];
+
+  const parseNum = (v) => {
+    if (v == null) return null;
+    const n = parseFloat(String(v).replace(/[^\d.]/g, ''));
+    return Number.isFinite(n) ? n : null;
+  };
+
+  const qualityToMetricStatus = (qs) => {
+    if (qs === '异常') return 'WARNING';
+    if (qs === '关注') return 'ATTENTION';
+    return 'NORMAL';
+  };
+
+  const kriStatusFromLegacy = (s) => {
+    if (s === '重大预警') return 'CRITICAL';
+    if (s === '较大预警') return 'WARNING';
+    if (s === '预警') return 'WARNING';
+    if (s === '关注') return 'ATTENTION';
+    return 'NORMAL';
+  };
+
+  const calcMetricCredibility = (ind) => {
+    const ds = dataSets.find(d => d.dataSetId === ind.sourceObject);
+    if (!ds || ds.dataStatus === 'INSUFFICIENT_DATA' || ds.qualityScore == null) {
+      return { credibilityScore: null, dataStatus: 'INSUFFICIENT_DATA' };
+    }
+    const lineageComplete = lineage.some(l => l.targetId === ind.indicatorId || l.sourceId === ind.sourceObject) ? 0.95 : 0.85;
+    const freshness = ds.lastUpdatedAt && ds.lastUpdatedAt >= '2026-07-21' ? 1 : 0.88;
+    const credibilityScore = Math.round(ds.qualityScore * lineageComplete * freshness * 10) / 10;
+    if (ind.qualityStatus === '异常' && credibilityScore > 80) return { credibilityScore: 76, dataStatus: 'OK' };
+    return { credibilityScore, dataStatus: 'OK' };
+  };
+
+  const metricValueMap = {
+    IND001: { currentValue: 72, targetValue: 100, unit: '%' },
+    IND002: { currentValue: 68, targetValue: 100, unit: '%' },
+    IND003: { currentValue: 1.15, targetValue: 1.2, unit: '倍' },
+    IND004: { currentValue: 3.2, targetValue: 0, unit: '%' },
+    IND005: { currentValue: 91.4, targetValue: 98, unit: '%' },
+    IND006: { currentValue: 58, targetValue: 85, unit: '%' }
+  };
+
+  const regulatoryMetrics = indicators.map(ind => {
+    const obj = dataObjects.find(o => o.objectId === ind.sourceObject);
+    const cred = calcMetricCredibility(ind);
+    const vals = metricValueMap[ind.indicatorId] || { currentValue: null, targetValue: null, unit: '—' };
+    const hasIssue = qualityIssues.some(q => q.indicatorId === ind.indicatorId && q.status !== 'CLOSED');
+    let status = qualityToMetricStatus(ind.qualityStatus);
+    if (cred.dataStatus === 'INSUFFICIENT_DATA') status = 'INSUFFICIENT_DATA';
+    else if (hasIssue && status === 'NORMAL') status = 'ATTENTION';
+    return {
+      metricId: ind.indicatorId,
+      metricName: ind.indicatorName,
+      metricType: ind.indicatorType,
+      scopeType: obj?.entityId === 'G001' ? 'GROUP' : 'ENTITY',
+      scopeId: obj?.entityId || 'G001',
+      sourceDataSetIds: ind.sourceObject ? [ind.sourceObject] : [],
+      currentValue: cred.dataStatus === 'INSUFFICIENT_DATA' ? null : vals.currentValue,
+      targetValue: vals.targetValue,
+      unit: vals.unit,
+      dataStatus: cred.dataStatus,
+      credibilityScore: cred.credibilityScore,
+      status,
+      calculatedAt: TODAY + ' 08:00:00',
+      legacyIndicatorId: ind.indicatorId,
+      kriId: ind.kriId
+    };
+  });
+
+  const regulatoryMetricCalculationLogs = regulatoryMetrics.map(m => ({
+    calculationLogId: 'MCL-' + m.metricId,
+    metricId: m.metricId,
+    calculationTime: m.calculatedAt,
+    sourceDataSetIds: m.sourceDataSetIds,
+    qualityStatus: m.dataStatus === 'INSUFFICIENT_DATA' ? 'INSUFFICIENT' : 'OK',
+    calculationStatus: m.dataStatus === 'INSUFFICIENT_DATA' ? 'SKIPPED' : 'SUCCESS',
+    result: m.dataStatus === 'INSUFFICIENT_DATA' ? 'INSUFFICIENT_DATA' : m.currentValue
+  }));
+
+  let krtSeq = 1;
+  const regulatoryKriRuntime = kris.map(kri => {
+    const metricId = (kri.sourceIndicatorIds || [])[0] || null;
+    const metric = metricId ? regulatoryMetrics.find(m => m.metricId === metricId) : null;
+    const entityId = (kri.applicableEntityIds || [])[0] || null;
+    const openIssues = qualityIssues.filter(q => q.kriId === kri.id && q.status !== 'CLOSED');
+    let credibilityScore = metric?.credibilityScore ?? null;
+    let dataStatus = metric?.dataStatus || (openIssues.length ? 'OK' : 'OK');
+    if (openIssues.length && credibilityScore != null) {
+      credibilityScore = Math.max(0, Math.round((credibilityScore - openIssues.length * 8) * 10) / 10);
+    }
+    if (credibilityScore != null && credibilityScore < 70) dataStatus = 'INSUFFICIENT_DATA';
+    const currentValue = parseNum(kri.value);
+    const threshold = kri.threshold || '';
+    const isLowerBetter = threshold.includes('≥') || threshold.includes('>=') || /≥\s*\d+%/.test(threshold);
+    let status = kriStatusFromLegacy(kri.status);
+    if (dataStatus === 'INSUFFICIENT_DATA') status = 'INSUFFICIENT_DATA';
+    else if (currentValue != null) {
+      const thr = parseNum(threshold);
+      if (thr != null) {
+        if (isLowerBetter) {
+          if (currentValue < thr * 0.85) status = 'CRITICAL';
+          else if (currentValue < thr * 0.92) status = 'WARNING';
+          else if (currentValue < thr) status = 'ATTENTION';
+          else status = 'NORMAL';
+        } else {
+          if (currentValue >= thr * 1.2) status = 'CRITICAL';
+          else if (currentValue >= thr) status = 'WARNING';
+          else if (currentValue >= thr * 0.9) status = 'ATTENTION';
+          else status = 'NORMAL';
+        }
+      }
+    }
+    return {
+      kriRuntimeId: 'KRT-' + String(krtSeq++).padStart(3, '0'),
+      kriId: kri.id,
+      kriName: kri.name,
+      metricId,
+      riskScenarioId: kri.riskScenarioId,
+      scopeType: entityId ? 'ENTITY' : 'GROUP',
+      scopeId: entityId || 'G001',
+      currentValue: kri.value,
+      currentValueNumeric: currentValue,
+      threshold: kri.threshold,
+      thresholdDirection: isLowerBetter ? 'LOWER' : 'UPPER',
+      status,
+      credibilityScore,
+      dataStatus,
+      calculatedAt: TODAY + ' 08:00:00'
+    };
+  });
+
+  let rwSeq = 1;
+  const regulatoryWarnings = [];
+  regulatoryKriRuntime.forEach(rt => {
+    if (!['ATTENTION', 'WARNING', 'CRITICAL'].includes(rt.status)) return;
+    const levelMap = { ATTENTION: 'ATTENTION', WARNING: 'WARNING', CRITICAL: 'CRITICAL' };
+    const entityId = rt.scopeId;
+    const po = priorityObjects.find(p => p.objectId === entityId);
+    const entStrategy = (strategy.entities || []).find(e => e.objectId === entityId);
+    const linkedRisk = riskWarnings.find(w => w.kriId === rt.kriId && w.entityId === entityId)
+      || riskWarnings.find(w => w.kriId === rt.kriId);
+    const linkedAction = actions.find(a => (a.sourceRiskMatterIds || []).includes(linkedRisk?.id) && a.entityId === entityId)
+      || actions.find(a => a.entityId === entityId && ['RECOMMENDED', 'ASSIGNED', 'IN_PROGRESS'].includes(a.status));
+    regulatoryWarnings.push({
+      regulatoryWarningId: 'RW-' + String(rwSeq++).padStart(3, '0'),
+      kriRuntimeId: rt.kriRuntimeId,
+      kriId: rt.kriId,
+      metricId: rt.metricId,
+      entityId,
+      warningLevel: levelMap[rt.status] || 'NOTICE',
+      status: linkedRisk ? 'REVIEWED' : 'PENDING_REVIEW',
+      riskMatterId: null,
+      relatedRiskEventId: null,
+      priorityId: po?.objectId || entityId,
+      strategyLevel: entStrategy?.strategyLevel || po?.priority === 'CRITICAL' ? 'FOCUS' : 'SPECIAL',
+      actionId: linkedAction?.actionId || null,
+      credibilityScore: rt.credibilityScore,
+      dataStatus: rt.dataStatus,
+      createdAt: TODAY + ' 08:00:00'
+    });
+  });
+
+  const regulatoryKriEvaluations = kris.map(kri => ({
+    evaluationId: 'KEV-' + kri.id,
+    kriId: kri.id,
+    period: 'CURRENT',
+    hitRate: null,
+    riskConversionRate: null,
+    actionConversionRate: null,
+    falsePositiveRate: null,
+    dataCredibility: regulatoryKriRuntime.find(r => r.kriId === kri.id)?.credibilityScore ?? null,
+    dataStatus: 'INSUFFICIENT_HISTORY'
+  }));
+
+  const regulatoryWarningStrategies = regulatoryWarnings.map(w => {
+    const po = priorityObjects.find(p => p.objectId === w.entityId);
+    const cred = w.credibilityScore;
+    let recommendedLevel = w.warningLevel;
+    let reason = '基于当前KRI监测结果';
+    if (w.dataStatus === 'INSUFFICIENT_DATA' || w.credibilityScore == null || w.credibilityScore < 70) {
+      recommendedLevel = w.warningLevel;
+      reason = 'DATA_QUALITY_REVIEW_REQUIRED';
+    } else if (w.warningLevel === 'CRITICAL' && cred >= 85) {
+      recommendedLevel = 'CRITICAL';
+      reason = '建议提升监管优先级';
+    }
+    const linkedRule = (APP_DATA.regulatoryRules || []).find(r => (r.relatedKriIds || []).includes(w.kriId) && r.status === 'ACTIVE');
+    return {
+      strategyAnalysisId: 'WSA-' + w.regulatoryWarningId,
+      warningId: w.regulatoryWarningId,
+      currentLevel: w.warningLevel,
+      recommendedLevel,
+      reason,
+      relatedRuleId: linkedRule?.ruleId || null,
+      relatedActionId: w.actionId,
+      status: w.status === 'PENDING_REVIEW' ? 'PENDING' : 'ANALYZED',
+      priorityAdjustmentSuggestion: reason === 'DATA_QUALITY_REVIEW_REQUIRED' ? 'DATA_QUALITY_REVIEW_REQUIRED'
+        : (w.warningLevel === 'CRITICAL' && cred >= 85 ? 'ELEVATE' : 'MONITOR'),
+      strategyLevel: w.strategyLevel
+    };
+  });
+
+  APP_DATA.regulatoryMetrics = regulatoryMetrics;
+  APP_DATA.regulatoryKriRuntime = regulatoryKriRuntime;
+  APP_DATA.regulatoryWarnings = regulatoryWarnings;
+  APP_DATA.regulatoryKriEvaluations = regulatoryKriEvaluations;
+  APP_DATA.regulatoryWarningStrategies = regulatoryWarningStrategies;
+  APP_DATA.regulatoryMetricCalculationLogs = regulatoryMetricCalculationLogs;
+  APP_DATA.regulatoryMetricKriMetrics = {
+    metricCount: regulatoryMetrics.length,
+    normalMetricCount: regulatoryMetrics.filter(m => m.status === 'NORMAL').length,
+    warningMetricCount: regulatoryMetrics.filter(m => m.status === 'WARNING').length,
+    criticalMetricCount: regulatoryMetrics.filter(m => m.status === 'CRITICAL').length,
+    insufficientDataMetricCount: regulatoryMetrics.filter(m => m.dataStatus === 'INSUFFICIENT_DATA').length,
+    avgCredibility: Math.round(regulatoryMetrics.filter(m => m.credibilityScore != null).reduce((s, m) => s + m.credibilityScore, 0) / Math.max(1, regulatoryMetrics.filter(m => m.credibilityScore != null).length) * 10) / 10,
+    kriCount: regulatoryKriRuntime.length,
+    normalKriCount: regulatoryKriRuntime.filter(k => k.status === 'NORMAL').length,
+    attentionKriCount: regulatoryKriRuntime.filter(k => k.status === 'ATTENTION').length,
+    warningKriCount: regulatoryKriRuntime.filter(k => k.status === 'WARNING').length,
+    criticalKriCount: regulatoryKriRuntime.filter(k => k.status === 'CRITICAL').length,
+    insufficientDataKriCount: regulatoryKriRuntime.filter(k => k.status === 'INSUFFICIENT_DATA').length,
+    warningTotalCount: regulatoryWarnings.length,
+    noticeCount: regulatoryWarnings.filter(w => w.warningLevel === 'NOTICE').length,
+    attentionWarningCount: regulatoryWarnings.filter(w => w.warningLevel === 'ATTENTION').length,
+    warningLevelCount: regulatoryWarnings.filter(w => w.warningLevel === 'WARNING').length,
+    criticalWarningCount: regulatoryWarnings.filter(w => w.warningLevel === 'CRITICAL').length,
+    pendingReviewCount: regulatoryWarnings.filter(w => w.status === 'PENDING_REVIEW').length,
+    pendingRiskConversionCount: regulatoryWarnings.filter(w => w.status === 'PENDING_REVIEW' && !w.riskMatterId).length,
+    impactedEntityCount: [...new Set(regulatoryWarnings.map(w => w.entityId))].length,
+    impactedRegionCount: [...new Set(regulatoryWarnings.map(w => (entities.find(e => e.entityId === w.entityId) || {}).regionId).filter(Boolean))].length,
+    priorityElevateSuggestions: regulatoryWarningStrategies.filter(s => s.priorityAdjustmentSuggestion === 'ELEVATE').length,
+    strategyAdjustSuggestions: regulatoryWarningStrategies.filter(s => s.status === 'PENDING').length,
+    evaluationDataStatus: 'INSUFFICIENT_HISTORY'
+  };
+
+  const phase19Perms = [
+    { permissionSetId: 'PS-024', permissionCode: 'METRIC_VIEW', resourceType: 'regulatoryMetrics', action: 'VIEW', riskLevel: 'LOW' },
+    { permissionSetId: 'PS-025', permissionCode: 'METRIC_EXPORT', resourceType: 'regulatoryMetrics', action: 'EXPORT', riskLevel: 'HIGH' },
+    { permissionSetId: 'PS-026', permissionCode: 'KRI_VIEW', resourceType: 'regulatoryKriRuntime', action: 'VIEW', riskLevel: 'LOW' },
+    { permissionSetId: 'PS-027', permissionCode: 'KRI_EXPORT', resourceType: 'regulatoryKriRuntime', action: 'EXPORT', riskLevel: 'HIGH' },
+    { permissionSetId: 'PS-028', permissionCode: 'KRI_THRESHOLD_CHANGE', resourceType: 'regulatoryRules', action: 'UPDATE', riskLevel: 'CRITICAL' },
+    { permissionSetId: 'PS-029', permissionCode: 'WARNING_VIEW', resourceType: 'regulatoryWarnings', action: 'VIEW', riskLevel: 'LOW' },
+    { permissionSetId: 'PS-030', permissionCode: 'WARNING_JUDGE', resourceType: 'regulatoryWarnings', action: 'JUDGE', riskLevel: 'MEDIUM' },
+    { permissionSetId: 'PS-031', permissionCode: 'WARNING_CONVERT', resourceType: 'regulatoryWarnings', action: 'CONVERT', riskLevel: 'HIGH' },
+    { permissionSetId: 'PS-032', permissionCode: 'WARNING_CLOSE', resourceType: 'regulatoryWarnings', action: 'CLOSE', riskLevel: 'MEDIUM' },
+    { permissionSetId: 'PS-033', permissionCode: 'WARNING_STRATEGY_VIEW', resourceType: 'regulatoryWarningStrategies', action: 'VIEW', riskLevel: 'LOW' }
+  ];
+  APP_DATA.regulatoryPermissionSets = [...(APP_DATA.regulatoryPermissionSets || []), ...phase19Perms];
+  const rpm2 = APP_DATA.regulatoryRolePermissionMap || {};
+  rpm2['ROLE-GROUP-LEADER'] = [...new Set([...(rpm2['ROLE-GROUP-LEADER'] || []), 'METRIC_VIEW', 'KRI_VIEW', 'WARNING_VIEW', 'WARNING_STRATEGY_VIEW'])];
+  rpm2['ROLE-GROUP-REG'] = [...new Set([...(rpm2['ROLE-GROUP-REG'] || []), 'METRIC_VIEW', 'METRIC_EXPORT', 'KRI_VIEW', 'KRI_EXPORT', 'WARNING_VIEW', 'WARNING_JUDGE', 'WARNING_CONVERT', 'WARNING_CLOSE', 'WARNING_STRATEGY_VIEW'])];
+  rpm2['ROLE-DOMAIN-REG'] = [...new Set([...(rpm2['ROLE-DOMAIN-REG'] || []), 'METRIC_VIEW', 'KRI_VIEW', 'WARNING_VIEW', 'WARNING_JUDGE', 'WARNING_STRATEGY_VIEW'])];
+  rpm2['ROLE-ENTITY-REG'] = [...new Set([...(rpm2['ROLE-ENTITY-REG'] || []), 'METRIC_VIEW', 'KRI_VIEW', 'WARNING_VIEW', 'WARNING_JUDGE'])];
+  APP_DATA.regulatoryRolePermissionMap = rpm2;
+})();

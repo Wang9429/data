@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * 公共监管底座 Phase 18 验收脚本
+ * 公共监管底座 Phase 19 验收脚本
  */
 const fs = require('fs');
 const path = require('path');
@@ -37,6 +37,13 @@ const governanceFails = [];
 const lineageFails = [];
 const qualityCalcFails = [];
 const lineageImpactFails = [];
+const metricCalcFails = [];
+const kriRuntimeFails = [];
+const warningGenFails = [];
+const warningRiskFails = [];
+const kriEffectivenessFails = [];
+const warningStrategyFails = [];
+const dataCredibilityFails = [];
 
 function req(id, label) {
   if (!id) errors.push(`缺失ID: ${label}`);
@@ -78,6 +85,8 @@ const expectedPages = [
   'regulatory-access-control', 'regulatory-authorization', 'regulatory-audit-trail', 'regulatory-system-settings',
   'regulatory-data-sources', 'regulatory-data-integration', 'regulatory-data-quality',
   'regulatory-data-governance', 'regulatory-data-lineage',
+  'regulatory-metric-center', 'regulatory-kri-monitoring', 'regulatory-warning-center',
+  'regulatory-kri-effectiveness', 'regulatory-warning-strategy',
   'major'
 ];
 expectedPages.forEach(pid => {
@@ -85,16 +94,22 @@ expectedPages.forEach(pid => {
 });
 
 const publicPageCount = (pubJs.match(/pageId: '/g) || []).length;
-if (publicPageCount !== 55) warnings.push(`公共页面数=${publicPageCount}，期望55`);
+if (publicPageCount !== 60) warnings.push(`公共页面数=${publicPageCount}，期望60`);
 
 const components = [
   'canRegulatoryAccess', 'createRegulatoryAuditLog', 'executeRegulatoryStateChange',
   'calculateDataSetQuality', 'calculateOverallQualityScore', 'getKriDataCredibility', 'getPriorityCredibilityImpact',
   'getDataLineageChain', 'getDataSourceImpactAnalysis', 'retryDataIntegrationJob',
   'assignDataGovernanceTask', 'closeDataGovernanceTask',
+  'calculateRegulatoryMetric', 'calculateKriRuntimeStatus', 'getWarningPrioritySuggestion',
+  'filterKriByUserScope', 'filterWarningsByUserScope',
+  'reviewRegulatoryWarning', 'convertRegulatoryWarningToRisk', 'closeRegulatoryWarning', 'attemptKriThresholdChange',
   'renderRegulatoryDataSources', 'renderRegulatoryDataIntegration', 'renderRegulatoryDataQuality',
   'renderRegulatoryDataGovernance', 'renderRegulatoryDataLineage',
-  'showRegulatoryDataSourceDetail', 'showRegulatoryDataIntegrationDetail', 'showRegulatoryDataQualityDetail', 'showRegulatoryDataGovernanceDetail'
+  'renderRegulatoryMetricCenter', 'renderRegulatoryKriMonitoring', 'renderRegulatoryWarningCenter',
+  'renderRegulatoryKriEffectiveness', 'renderRegulatoryWarningStrategy',
+  'showRegulatoryDataSourceDetail', 'showRegulatoryDataIntegrationDetail', 'showRegulatoryDataQualityDetail', 'showRegulatoryDataGovernanceDetail',
+  'showRegulatoryMetricDetail', 'showRegulatoryKriRuntimeDetail', 'showRegulatoryWarningDetail'
 ];
 components.forEach(fn => {
   if (!pubJs.includes(fn)) errors.push(`公共组件缺失: ${fn}`);
@@ -174,6 +189,66 @@ if (!D.regulatoryDataGovernanceTasks?.length) errors.push('regulatoryDataGoverna
 if (!D.regulatoryDataLineage?.length) errors.push('regulatoryDataLineage 未生成');
 if (!D.regulatoryDataGovernanceMetrics) errors.push('regulatoryDataGovernanceMetrics 未生成');
 
+// Phase 19 metric/KRI/warning checks
+if (!D.regulatoryMetrics?.length) errors.push('regulatoryMetrics 未生成');
+if (!D.regulatoryKriRuntime?.length) errors.push('regulatoryKriRuntime 未生成');
+if (!D.regulatoryKriEvaluations?.length) errors.push('regulatoryKriEvaluations 未生成');
+if (!D.regulatoryMetricCalculationLogs?.length) errors.push('regulatoryMetricCalculationLogs 未生成');
+if (!D.regulatoryMetricKriMetrics) errors.push('regulatoryMetricKriMetrics 未生成');
+
+(D.regulatoryMetrics || []).forEach(m => {
+  req(m.metricId, 'metricId');
+  if (m.dataStatus === 'INSUFFICIENT_DATA' && m.currentValue != null) metricCalcFails.push(`指标 ${m.metricId} 数据不足不得伪造正常值`);
+  if (m.credibilityScore != null && (m.credibilityScore < 0 || m.credibilityScore > 100)) metricCalcFails.push(`指标 ${m.metricId} 可信度无效`);
+});
+
+(D.regulatoryKriRuntime || []).forEach(k => {
+  req(k.kriRuntimeId, 'kriRuntimeId');
+  req(k.kriId, 'kriId');
+  if (!['NORMAL', 'ATTENTION', 'WARNING', 'CRITICAL', 'INSUFFICIENT_DATA'].includes(k.status)) kriRuntimeFails.push(`KRI ${k.kriId} 状态无效 ${k.status}`);
+  if (k.dataStatus === 'INSUFFICIENT_DATA' && k.status !== 'INSUFFICIENT_DATA') kriRuntimeFails.push(`KRI ${k.kriId} 数据不足时状态应为 INSUFFICIENT_DATA`);
+  if (k.metricId) resolve(k.metricId, D.regulatoryMetrics, 'metricId', 'kri.metric');
+});
+
+(D.regulatoryWarnings || []).forEach(w => {
+  req(w.regulatoryWarningId, 'regulatoryWarningId');
+  resolve(w.kriRuntimeId, D.regulatoryKriRuntime, 'kriRuntimeId', 'warning.kriRuntime');
+  if (!['NOTICE', 'ATTENTION', 'WARNING', 'CRITICAL'].includes(w.warningLevel)) warningGenFails.push(`预警 ${w.regulatoryWarningId} 等级无效`);
+  const rt = (D.regulatoryKriRuntime || []).find(k => k.kriRuntimeId === w.kriRuntimeId);
+  if (rt && !['ATTENTION', 'WARNING', 'CRITICAL'].includes(rt.status)) warningGenFails.push(`预警 ${w.regulatoryWarningId} 不应由正常KRI生成`);
+});
+
+// 预警不等于风险事件：初始 riskMatterId 应为 null，不得自动创建新风险
+(D.regulatoryWarnings || []).forEach(w => {
+  if (w.status === 'PENDING_REVIEW' && w.riskMatterId) warningRiskFails.push(`待研判预警 ${w.regulatoryWarningId} 不应预置 riskMatterId`);
+});
+const autoCreatedRisks = (D.warnings || []).filter(w => w.sourceType === 'REGULATORY_WARNING_AUTO');
+if (autoCreatedRisks.length) warningRiskFails.push('不得自动创建第二套风险库');
+
+(D.regulatoryKriEvaluations || []).forEach(e => {
+  req(e.evaluationId, 'evaluationId');
+  if (e.dataStatus === 'INSUFFICIENT_HISTORY') {
+    if (e.hitRate != null || e.riskConversionRate != null) kriEffectivenessFails.push(`评价 ${e.evaluationId} 不得伪造历史命中率`);
+  }
+});
+if ((D.regulatoryMetricKriMetrics || {}).evaluationDataStatus !== 'INSUFFICIENT_HISTORY') {
+  kriEffectivenessFails.push('evaluationDataStatus 应为 INSUFFICIENT_HISTORY');
+}
+
+(D.regulatoryWarningStrategies || []).forEach(s => {
+  req(s.strategyAnalysisId, 'strategyAnalysisId');
+  resolve(s.warningId, D.regulatoryWarnings, 'regulatoryWarningId', 'strategy.warning');
+  if (s.reason === 'DATA_QUALITY_REVIEW_REQUIRED' && s.priorityAdjustmentSuggestion !== 'DATA_QUALITY_REVIEW_REQUIRED') {
+    warningStrategyFails.push(`策略 ${s.strategyAnalysisId} 数据不足应仅建议 DATA_QUALITY_REVIEW_REQUIRED`);
+  }
+});
+
+// 数据可信度不足时不直接调整优先级（策略仅建议）
+(D.regulatoryWarnings || []).filter(w => w.dataStatus === 'INSUFFICIENT_DATA' || (w.credibilityScore != null && w.credibilityScore < 70)).forEach(w => {
+  const strat = (D.regulatoryWarningStrategies || []).find(s => s.warningId === w.regulatoryWarningId);
+  if (strat && strat.priorityAdjustmentSuggestion === 'ELEVATE') dataCredibilityFails.push(`预警 ${w.regulatoryWarningId} 可信度不足不得建议直接提升优先级`);
+});
+
 // Quality calculation
 const groupSnap = (D.regulatoryDataQualitySnapshots || []).find(s => s.scopeType === 'GROUP');
 if (groupSnap && groupSnap.dataStatus === 'OK') {
@@ -199,23 +274,30 @@ Object.keys(rolePermMap).forEach(roleId => {
 
 [
   'page-regulatory-data-sources', 'page-regulatory-data-integration', 'page-regulatory-data-quality',
-  'page-regulatory-data-governance', 'page-regulatory-data-lineage'
+  'page-regulatory-data-governance', 'page-regulatory-data-lineage',
+  'page-regulatory-metric-center', 'page-regulatory-kri-monitoring', 'page-regulatory-warning-center',
+  'page-regulatory-kri-effectiveness', 'page-regulatory-warning-strategy'
 ].forEach(id => {
   if (!html.includes(id)) errors.push(`index.html 缺失: ${id}`);
 });
 
-if (!appJs.includes('renderRegulatoryDataSources')) errors.push('app.js 未调用 renderRegulatoryDataSources');
-if (!pubJs.includes('数据接入健康') || !pubJs.includes('数据质量健康') || !pubJs.includes('数据血缘影响')) {
-  errors.push('驾驶舱 Phase 18 模块缺失');
+if (!appJs.includes('renderRegulatoryMetricCenter')) errors.push('app.js 未调用 renderRegulatoryMetricCenter');
+if (!pubJs.includes('监管指标健康') || !pubJs.includes('KRI运行健康') || !pubJs.includes('监管预警')) {
+  errors.push('驾驶舱 Phase 19 模块缺失');
 }
-if (!pubJs.includes('我的数据治理任务')) errors.push('工作台 Phase 18 模块缺失');
+if (!pubJs.includes('待研判预警') || !pubJs.includes('指标与预警待办')) errors.push('工作台 Phase 19 模块缺失');
 
 const navChecks = [
   "navigatePublic('regulatory-data-sources')",
   "navigatePublic('regulatory-data-integration')",
   "navigatePublic('regulatory-data-quality')",
   "navigatePublic('regulatory-data-governance')",
-  "navigatePublic('regulatory-data-lineage')"
+  "navigatePublic('regulatory-data-lineage')",
+  "navigatePublic('regulatory-metric-center')",
+  "navigatePublic('regulatory-kri-monitoring')",
+  "navigatePublic('regulatory-warning-center')",
+  "navigatePublic('regulatory-kri-effectiveness')",
+  "navigatePublic('regulatory-warning-strategy')"
 ];
 const unifiedNavigationCheck = navChecks.every(s => pubJs.includes(s));
 
@@ -248,6 +330,13 @@ const result = {
   dataLineageCheck: lineageFails.length === 0 ? '通过' : '不通过',
   qualityCalculationCheck: qualityCalcFails.length === 0 ? '通过' : '不通过',
   lineageImpactCheck: lineageImpactFails.length === 0 ? '通过' : '不通过',
+  metricCalculationCheck: metricCalcFails.length === 0 ? '通过' : '不通过',
+  kriRuntimeCheck: kriRuntimeFails.length === 0 ? '通过' : '不通过',
+  warningGenerationCheck: warningGenFails.length === 0 ? '通过' : '不通过',
+  warningRiskSeparationCheck: warningRiskFails.length === 0 ? '通过' : '不通过',
+  kriEffectivenessCheck: kriEffectivenessFails.length === 0 ? '通过' : '不通过',
+  warningStrategyCheck: warningStrategyFails.length === 0 ? '通过' : '不通过',
+  dataCredibilityCheck: dataCredibilityFails.length === 0 ? '通过' : '不通过',
   permissionCalculationCheck: permFails.length === 0 ? '通过' : '不通过',
   auditTrailCheck: auditFails.length === 0 ? '通过' : '不通过',
   unifiedNavigationCheck: unifiedNavigationCheck ? '通过' : '不通过',
@@ -258,6 +347,13 @@ const result = {
   lineageFails: lineageFails.slice(0, 10),
   qualityCalcFails,
   lineageImpactFails,
+  metricCalcFails,
+  kriRuntimeFails,
+  warningGenFails,
+  warningRiskFails,
+  kriEffectivenessFails,
+  warningStrategyFails,
+  dataCredibilityFails,
   permFails: permFails.slice(0, 10),
   errors: errors.slice(0, 40),
   warnings: warnings.slice(0, 15),
@@ -272,5 +368,7 @@ console.log(JSON.stringify(result, null, 2));
 process.exit(
   errors.length || freezeFails.length || hardcodeOffsetCount || dataSourceFails.length
   || integrationFails.length || qualityFails.length || governanceFails.length || lineageFails.length
-  || qualityCalcFails.length || lineageImpactFails.length || permFails.length ? 1 : 0
+  || qualityCalcFails.length || lineageImpactFails.length || metricCalcFails.length || kriRuntimeFails.length
+  || warningGenFails.length || warningRiskFails.length || kriEffectivenessFails.length
+  || warningStrategyFails.length || dataCredibilityFails.length || permFails.length ? 1 : 0
 );

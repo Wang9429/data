@@ -59,6 +59,11 @@ Object.assign(App, {
     { pageId: 'regulatory-data-quality', label: '集团监管数据质量中心', category: '数据运行', entryFromGroupOverview: false, supportsPublicNavigation: true, supportsBackNavigation: true },
     { pageId: 'regulatory-data-governance', label: '集团监管数据治理中心', category: '数据运行', entryFromGroupOverview: false, supportsPublicNavigation: true, supportsBackNavigation: true },
     { pageId: 'regulatory-data-lineage', label: '集团监管数据血缘中心', category: '数据运行', entryFromGroupOverview: false, supportsPublicNavigation: true, supportsBackNavigation: true },
+    { pageId: 'regulatory-metric-center', label: '集团监管指标中心', category: '指标运行', entryFromGroupOverview: false, supportsPublicNavigation: true, supportsBackNavigation: true },
+    { pageId: 'regulatory-kri-monitoring', label: '集团KRI运行监测中心', category: '指标运行', entryFromGroupOverview: false, supportsPublicNavigation: true, supportsBackNavigation: true },
+    { pageId: 'regulatory-warning-center', label: '集团监管预警中心', category: '指标运行', entryFromGroupOverview: false, supportsPublicNavigation: true, supportsBackNavigation: true },
+    { pageId: 'regulatory-kri-effectiveness', label: '集团KRI有效性评价中心', category: '指标运行', entryFromGroupOverview: false, supportsPublicNavigation: true, supportsBackNavigation: true },
+    { pageId: 'regulatory-warning-strategy', label: '集团预警策略分析中心', category: '指标运行', entryFromGroupOverview: false, supportsPublicNavigation: true, supportsBackNavigation: true },
     { pageId: 'major', label: '重大事项监管', category: '重大事项', entryFromGroupOverview: false, supportsPublicNavigation: false, supportsBackNavigation: false }
   ],
 
@@ -121,6 +126,11 @@ Object.assign(App, {
     if (pageId === 'regulatory-data-quality') return { ...(this.regulatoryDataQualityFilter || {}) };
     if (pageId === 'regulatory-data-governance') return { ...(this.regulatoryDataGovernanceFilter || {}) };
     if (pageId === 'regulatory-data-lineage') return { ...(this.regulatoryDataLineageFilter || {}) };
+    if (pageId === 'regulatory-metric-center') return { ...(this.regulatoryMetricCenterFilter || {}) };
+    if (pageId === 'regulatory-kri-monitoring') return { ...(this.regulatoryKriMonitoringFilter || {}) };
+    if (pageId === 'regulatory-warning-center') return { ...(this.regulatoryWarningCenterFilter || {}) };
+    if (pageId === 'regulatory-kri-effectiveness') return { ...(this.regulatoryKriEffectivenessFilter || {}) };
+    if (pageId === 'regulatory-warning-strategy') return { ...(this.regulatoryWarningStrategyFilter || {}) };
     if (pageId === 'regulatory-actions') return { ...(this.regulatoryActionFilter || {}) };
     if (pageId === 'regulatory-action-execution') return { ...(this.regulatoryActionExecutionFilter || {}) };
     if (pageId === 'data-governance') return { ...(this.dataGovFilter || {}) };
@@ -201,6 +211,11 @@ Object.assign(App, {
     if (pageId === 'regulatory-data-quality') ctx.qualityIssueId = this.regulatoryDataQualityFocusId;
     if (pageId === 'regulatory-data-governance') ctx.governanceTaskId = this.regulatoryDataGovernanceFocusId;
     if (pageId === 'regulatory-data-lineage') { ctx.lineageId = this.regulatoryDataLineageFocusId; ctx.sourceId = this.regulatoryDataLineageSourceId; }
+    if (pageId === 'regulatory-metric-center') ctx.metricId = this.regulatoryMetricFocusId;
+    if (pageId === 'regulatory-kri-monitoring') ctx.kriRuntimeId = this.regulatoryKriRuntimeFocusId;
+    if (pageId === 'regulatory-warning-center') ctx.regulatoryWarningId = this.regulatoryWarningFocusId;
+    if (pageId === 'regulatory-kri-effectiveness') ctx.evaluationId = this.regulatoryKriEvaluationFocusId;
+    if (pageId === 'regulatory-warning-strategy') ctx.strategyAnalysisId = this.regulatoryWarningStrategyFocusId;
     return ctx;
   },
 
@@ -234,6 +249,11 @@ Object.assign(App, {
     if (pageId === 'regulatory-data-quality') this.regulatoryDataQualityFilter = { ...filters };
     if (pageId === 'regulatory-data-governance') this.regulatoryDataGovernanceFilter = { ...filters };
     if (pageId === 'regulatory-data-lineage') this.regulatoryDataLineageFilter = { ...filters };
+    if (pageId === 'regulatory-metric-center') this.regulatoryMetricCenterFilter = { ...filters };
+    if (pageId === 'regulatory-kri-monitoring') this.regulatoryKriMonitoringFilter = { ...filters };
+    if (pageId === 'regulatory-warning-center') this.regulatoryWarningCenterFilter = { ...filters };
+    if (pageId === 'regulatory-kri-effectiveness') this.regulatoryKriEffectivenessFilter = { ...filters };
+    if (pageId === 'regulatory-warning-strategy') this.regulatoryWarningStrategyFilter = { ...filters };
     if (pageId === 'regulatory-actions') this.regulatoryActionFilter = { ...filters };
     if (pageId === 'regulatory-action-execution') this.regulatoryActionExecutionFilter = { ...filters };
     if (pageId === 'data-governance') this.dataGovFilter = { ...filters };
@@ -447,7 +467,13 @@ Object.assign(App, {
       'regulatoryDataSources:VIEW': 'DATA_VIEW', 'regulatoryDataSources:UPDATE': 'DATA_MANAGE',
       'regulatoryDataIntegrationJobs:RETRY': 'DATA_INTEGRATION_RETRY', 'regulatoryDataGovernanceTasks:ASSIGN': 'DATA_GOVERNANCE_ASSIGN',
       'regulatoryDataGovernanceTasks:CLOSE': 'DATA_GOVERNANCE_CLOSE', 'regulatoryDataSets:EXPORT': 'DATA_EXPORT',
-      'regulatoryDataLineage:VIEW': 'DATA_LINEAGE_VIEW'
+      'regulatoryDataLineage:VIEW': 'DATA_LINEAGE_VIEW',
+      'regulatoryMetrics:VIEW': 'METRIC_VIEW', 'regulatoryMetrics:EXPORT': 'METRIC_EXPORT',
+      'regulatoryKriRuntime:VIEW': 'KRI_VIEW', 'regulatoryKriRuntime:EXPORT': 'KRI_EXPORT',
+      'regulatoryRules:UPDATE': 'KRI_THRESHOLD_CHANGE',
+      'regulatoryWarnings:VIEW': 'WARNING_VIEW', 'regulatoryWarnings:JUDGE': 'WARNING_JUDGE',
+      'regulatoryWarnings:CONVERT': 'WARNING_CONVERT', 'regulatoryWarnings:CLOSE': 'WARNING_CLOSE',
+      'regulatoryWarningStrategies:VIEW': 'WARNING_STRATEGY_VIEW'
     };
     if (map[resourceType + ':' + action]) return map[resourceType + ':' + action];
     if (action === 'APPROVE') return 'ACTION_APPROVE';
@@ -474,6 +500,12 @@ Object.assign(App, {
     if (src) { entityId = src.ownerOrganizationId; regionId = src.regionId; }
     if (ds) { entityId = ds.ownerOrganizationId; domainId = ds.domain; }
     if (gov) entityId = gov.responsibleOrganizationId;
+    const krt = (APP_DATA.regulatoryKriRuntime || []).find(k => k.kriRuntimeId === resourceId);
+    const metric = (APP_DATA.regulatoryMetrics || []).find(m => m.metricId === resourceId);
+    const rw = (APP_DATA.regulatoryWarnings || []).find(w => w.regulatoryWarningId === resourceId);
+    if (krt) { entityId = krt.scopeId; domainId = (APP_DATA.groupKris || []).find(k => k.id === krt.kriId)?.category; }
+    if (metric) { entityId = metric.scopeType === 'ENTITY' ? metric.scopeId : entityId; }
+    if (rw) entityId = rw.entityId;
     if (scopeType === 'ENTITY') return scopeIds.includes(entityId);
     if (scopeType === 'DOMAIN') return scopeIds.includes(domainId || 'investment');
     if (scopeType === 'REGION') return scopeIds.includes(regionId);
@@ -791,6 +823,100 @@ Object.assign(App, {
     const ds = issue ? this.calculateDataSetQuality(issue.dataSetId) : null;
     this.createRegulatoryAuditLog({ actionType: 'CLOSE', objectType: 'regulatoryDataGovernanceTasks', objectId: governanceTaskId, beforeState: before, afterState: { status: task.status, verificationStatus: task.verificationStatus }, reason: reason || '数据治理任务关闭' });
     return { success: true, task, qualityRecovery: ds };
+  },
+
+  calculateRegulatoryMetric(metricId) {
+    const metric = (APP_DATA.regulatoryMetrics || []).find(m => m.metricId === metricId);
+    if (!metric) return { dataStatus: 'NOT_FOUND' };
+    if (metric.dataStatus === 'INSUFFICIENT_DATA') return { ...metric, dataStatus: 'INSUFFICIENT_DATA' };
+    const dsIds = metric.sourceDataSetIds || [];
+    const qualities = dsIds.map(id => this.calculateDataSetQuality(id)).filter(q => q.dataStatus === 'OK');
+    const avgQ = qualities.length ? qualities.reduce((s, q) => s + (q.overallScore || 0), 0) / qualities.length : null;
+    const lineageComplete = (APP_DATA.regulatoryDataLineage || []).some(l => l.targetId === metricId) ? 0.95 : 0.85;
+    const freshness = dsIds.some(id => ((APP_DATA.regulatoryDataSets || []).find(d => d.dataSetId === id) || {}).lastUpdatedAt >= '2026-07-21') ? 1 : 0.88;
+    const credibilityScore = avgQ != null ? Math.round(avgQ * lineageComplete * freshness * 10) / 10 : metric.credibilityScore;
+    return { ...metric, credibilityScore, lineageComplete, sourceFreshness: freshness };
+  },
+
+  calculateKriRuntimeStatus(kriRuntimeId) {
+    const rt = (APP_DATA.regulatoryKriRuntime || []).find(k => k.kriRuntimeId === kriRuntimeId);
+    if (!rt) return { status: 'NOT_FOUND' };
+    if (rt.dataStatus === 'INSUFFICIENT_DATA') return { ...rt, status: 'INSUFFICIENT_DATA' };
+    const cred = rt.credibilityScore != null ? { credibility: rt.credibilityScore, dataStatus: 'OK' } : this.getKriDataCredibility(rt.kriId);
+    if (cred.dataStatus === 'INSUFFICIENT_DATA' || (cred.credibility != null && cred.credibility < 70)) {
+      return { ...rt, status: 'INSUFFICIENT_DATA', credibilityScore: cred.credibility, priorityAdjustment: 'DATA_QUALITY_REVIEW_REQUIRED' };
+    }
+    return { ...rt, credibilityScore: cred.credibility ?? rt.credibilityScore };
+  },
+
+  getWarningPrioritySuggestion(regulatoryWarningId) {
+    const w = (APP_DATA.regulatoryWarnings || []).find(x => x.regulatoryWarningId === regulatoryWarningId);
+    if (!w) return null;
+    const strat = (APP_DATA.regulatoryWarningStrategies || []).find(s => s.warningId === regulatoryWarningId);
+    if (w.dataStatus === 'INSUFFICIENT_DATA' || w.credibilityScore == null || w.credibilityScore < 70) {
+      return { priorityAdjustmentSuggestion: 'DATA_QUALITY_REVIEW_REQUIRED', applyPriorityChange: false, reason: '数据可信度不足，不直接调整真实优先级' };
+    }
+    const severity = w.warningLevel === 'CRITICAL' ? 1 : w.warningLevel === 'WARNING' ? 0.8 : 0.5;
+    const credFactor = (w.credibilityScore || 80) / 100;
+    const score = severity * credFactor;
+    return {
+      priorityAdjustmentSuggestion: score >= 0.75 ? 'ELEVATE' : score >= 0.5 ? 'MONITOR' : 'HOLD',
+      applyPriorityChange: false,
+      reason: strat?.reason || '基于预警可信度与严重程度生成建议',
+      strategyLevel: w.strategyLevel
+    };
+  },
+
+  filterKriByUserScope(items) {
+    return this.filterDataByUserScope(items, k => k.scopeId, k => (APP_DATA.groupKris || []).find(g => g.id === k.kriId)?.category);
+  },
+
+  filterWarningsByUserScope(items) {
+    return this.filterDataByUserScope(items, w => w.entityId);
+  },
+
+  reviewRegulatoryWarning(regulatoryWarningId, notes) {
+    const w = (APP_DATA.regulatoryWarnings || []).find(x => x.regulatoryWarningId === regulatoryWarningId);
+    if (!w) return { success: false, message: '预警不存在' };
+    const access = this.canRegulatoryAccess(this.getCurrentRegulatoryUser()?.userId, 'regulatoryWarnings', regulatoryWarningId, 'JUDGE');
+    if (!access.allowed) return { success: false, denied: true, message: access.reason };
+    const before = { status: w.status };
+    w.status = 'REVIEWED';
+    w.reviewNotes = notes || '';
+    this.createRegulatoryAuditLog({ actionType: 'UPDATE', objectType: 'regulatoryWarnings', objectId: regulatoryWarningId, beforeState: before, afterState: { status: w.status }, reason: notes || '预警研判' });
+    return { success: true, warning: w };
+  },
+
+  convertRegulatoryWarningToRisk(regulatoryWarningId) {
+    const w = (APP_DATA.regulatoryWarnings || []).find(x => x.regulatoryWarningId === regulatoryWarningId);
+    if (!w) return { success: false, message: '预警不存在' };
+    const access = this.canRegulatoryAccess(this.getCurrentRegulatoryUser()?.userId, 'regulatoryWarnings', regulatoryWarningId, 'CONVERT');
+    if (!access.allowed) return { success: false, denied: true, message: access.reason };
+    const existing = (APP_DATA.warnings || []).find(r => r.kriId === w.kriId && r.entityId === w.entityId)
+      || (APP_DATA.warnings || []).find(r => r.kriId === w.kriId);
+    if (!existing) return { success: false, message: '无可关联的现有风险事项，不得新建第二套风险库' };
+    const before = { status: w.status, riskMatterId: w.riskMatterId };
+    w.status = 'CONVERTED';
+    w.riskMatterId = existing.id;
+    this.createRegulatoryAuditLog({ actionType: 'UPDATE', objectType: 'regulatoryWarnings', objectId: regulatoryWarningId, beforeState: before, afterState: { status: w.status, riskMatterId: w.riskMatterId }, reason: '预警转风险（关联现有风险事项）' });
+    return { success: true, warning: w, riskMatter: existing };
+  },
+
+  closeRegulatoryWarning(regulatoryWarningId, reason) {
+    const w = (APP_DATA.regulatoryWarnings || []).find(x => x.regulatoryWarningId === regulatoryWarningId);
+    if (!w) return { success: false, message: '预警不存在' };
+    const access = this.canRegulatoryAccess(this.getCurrentRegulatoryUser()?.userId, 'regulatoryWarnings', regulatoryWarningId, 'CLOSE');
+    if (!access.allowed) return { success: false, denied: true, message: access.reason };
+    const before = { status: w.status };
+    w.status = 'CLOSED';
+    this.createRegulatoryAuditLog({ actionType: 'CLOSE', objectType: 'regulatoryWarnings', objectId: regulatoryWarningId, beforeState: before, afterState: { status: w.status }, reason: reason || '预警关闭' });
+    return { success: true, warning: w };
+  },
+
+  attemptKriThresholdChange(kriId) {
+    const rule = (APP_DATA.regulatoryRules || []).find(r => (r.relatedKriIds || []).includes(kriId) && r.status === 'ACTIVE');
+    this.createRegulatoryAuditLog({ actionType: 'UPDATE', objectType: 'regulatoryRules', objectId: rule?.ruleId || kriId, reason: 'KRI阈值调整请求（需走规则治理闭环）' });
+    return { success: false, needRuleWorkflow: true, message: 'KRI阈值调整必须走规则治理闭环（仿真→影响分析→审批→发布→部署）', nextPageId: 'regulatory-rule-config' };
   },
 
   renderPublicAuthStatusBadge(status) {
@@ -1392,6 +1518,11 @@ Object.assign(App, {
     if (pageId === 'regulatory-data-quality') return this.regulatoryDataQualityFilter || {};
     if (pageId === 'regulatory-data-governance') return this.regulatoryDataGovernanceFilter || {};
     if (pageId === 'regulatory-data-lineage') return this.regulatoryDataLineageFilter || {};
+    if (pageId === 'regulatory-metric-center') return this.regulatoryMetricCenterFilter || {};
+    if (pageId === 'regulatory-kri-monitoring') return this.regulatoryKriMonitoringFilter || {};
+    if (pageId === 'regulatory-warning-center') return this.regulatoryWarningCenterFilter || {};
+    if (pageId === 'regulatory-kri-effectiveness') return this.regulatoryKriEffectivenessFilter || {};
+    if (pageId === 'regulatory-warning-strategy') return this.regulatoryWarningStrategyFilter || {};
     if (pageId === 'regulatory-actions') return this.regulatoryActionFilter || {};
     if (pageId === 'regulatory-action-execution') return this.regulatoryActionExecutionFilter || {};
     if (pageId === 'cross-border-compliance') return this.cbFilter || {};
@@ -1428,6 +1559,11 @@ Object.assign(App, {
       : pageId === 'regulatory-data-quality' ? 'regulatoryDataQualityFilter'
       : pageId === 'regulatory-data-governance' ? 'regulatoryDataGovernanceFilter'
       : pageId === 'regulatory-data-lineage' ? 'regulatoryDataLineageFilter'
+      : pageId === 'regulatory-metric-center' ? 'regulatoryMetricCenterFilter'
+      : pageId === 'regulatory-kri-monitoring' ? 'regulatoryKriMonitoringFilter'
+      : pageId === 'regulatory-warning-center' ? 'regulatoryWarningCenterFilter'
+      : pageId === 'regulatory-kri-effectiveness' ? 'regulatoryKriEffectivenessFilter'
+      : pageId === 'regulatory-warning-strategy' ? 'regulatoryWarningStrategyFilter'
       : pageId === 'regulatory-actions' ? 'regulatoryActionFilter'
       : pageId === 'regulatory-action-execution' ? 'regulatoryActionExecutionFilter'
       : pageId === 'data-governance' ? 'dataGovFilter'
@@ -1466,6 +1602,11 @@ Object.assign(App, {
     else if (pageId === 'regulatory-data-quality') { this.regulatoryDataQualityFilter = {}; this.regulatoryDataQualityFocusId = null; }
     else if (pageId === 'regulatory-data-governance') { this.regulatoryDataGovernanceFilter = {}; this.regulatoryDataGovernanceFocusId = null; }
     else if (pageId === 'regulatory-data-lineage') { this.regulatoryDataLineageFilter = {}; this.regulatoryDataLineageFocusId = null; this.regulatoryDataLineageSourceId = null; }
+    else if (pageId === 'regulatory-metric-center') { this.regulatoryMetricCenterFilter = {}; this.regulatoryMetricFocusId = null; }
+    else if (pageId === 'regulatory-kri-monitoring') { this.regulatoryKriMonitoringFilter = {}; this.regulatoryKriRuntimeFocusId = null; }
+    else if (pageId === 'regulatory-warning-center') { this.regulatoryWarningCenterFilter = {}; this.regulatoryWarningFocusId = null; }
+    else if (pageId === 'regulatory-kri-effectiveness') { this.regulatoryKriEffectivenessFilter = {}; this.regulatoryKriEvaluationFocusId = null; }
+    else if (pageId === 'regulatory-warning-strategy') { this.regulatoryWarningStrategyFilter = {}; this.regulatoryWarningStrategyFocusId = null; }
     else if (pageId === 'regulatory-actions') { this.regulatoryActionFilter = {}; this.regulatoryActionFocusId = null; }
     else if (pageId === 'regulatory-action-execution') { this.regulatoryActionExecutionFilter = {}; this.regulatoryActionExecutionFocusId = null; this.regulatoryActionFeedbackFocusId = null; }
     else if (pageId === 'cross-border-compliance') { this.cbFilter = {}; this.cbFocusActivityId = null; }
@@ -2454,6 +2595,42 @@ Object.assign(App, {
             [dm.offlineSourceCount, '异常数据源', `App.navigatePublic('regulatory-data-sources')`]
           ].map(([v, l, nav]) => this.renderPublicKpiCard(l, v, nav)).join(''); })()}
         </div>
+      </div>
+      <div class="group-three">
+        <div class="card"><div class="card-title">监管指标健康</div>
+          ${(() => { const km = APP_DATA.regulatoryMetricKriMetrics || {}; return [
+            [km.metricCount, '指标总数', `App.navigatePublic('regulatory-metric-center')`],
+            [km.normalMetricCount, '正常', `App.navigatePublic('regulatory-metric-center')`],
+            [km.warningMetricCount, '预警', `App.navigatePublic('regulatory-metric-center')`],
+            [km.criticalMetricCount, '严重', `App.navigatePublic('regulatory-metric-center')`],
+            [km.insufficientDataMetricCount, '数据不足', `App.navigatePublic('regulatory-metric-center')`]
+          ].map(([v, l, nav]) => this.renderPublicKpiCard(l, v, nav)).join(''); })()}
+        </div>
+        <div class="card"><div class="card-title">KRI运行健康</div>
+          ${(() => { const km = APP_DATA.regulatoryMetricKriMetrics || {}; return [
+            [km.kriCount, 'KRI总数', `App.navigatePublic('regulatory-kri-monitoring')`],
+            [km.warningKriCount, 'WARNING', `App.navigatePublic('regulatory-kri-monitoring')`],
+            [km.criticalKriCount, 'CRITICAL', `App.navigatePublic('regulatory-kri-monitoring')`],
+            [km.insufficientDataKriCount, '数据可信度不足', `App.navigatePublic('regulatory-kri-monitoring')`]
+          ].map(([v, l, nav]) => this.renderPublicKpiCard(l, v, nav)).join(''); })()}
+        </div>
+        <div class="card"><div class="card-title">监管预警</div>
+          ${(() => { const km = APP_DATA.regulatoryMetricKriMetrics || {}; return [
+            [km.attentionWarningCount, 'ATTENTION', `App.navigatePublic('regulatory-warning-center')`],
+            [km.warningLevelCount, 'WARNING', `App.navigatePublic('regulatory-warning-center')`],
+            [km.criticalWarningCount, 'CRITICAL', `App.navigatePublic('regulatory-warning-center')`],
+            [km.pendingReviewCount, '待研判', `App.navigatePublic('regulatory-warning-center')`],
+            [km.pendingRiskConversionCount, '待转风险', `App.navigatePublic('regulatory-warning-center')`]
+          ].map(([v, l, nav]) => this.renderPublicKpiCard(l, v, nav)).join(''); })()}
+        </div>
+      </div>
+      <div class="card"><div class="card-title">预警影响</div>
+        ${(() => { const km = APP_DATA.regulatoryMetricKriMetrics || {}; return [
+          [km.impactedEntityCount, '受影响法人', `App.navigatePublic('regulatory-warning-strategy')`],
+          [km.impactedRegionCount, '受影响区域', `App.navigatePublic('regulatory-warning-strategy')`],
+          [km.priorityElevateSuggestions, '优先级上升建议', `App.navigatePublic('regulatory-warning-strategy')`],
+          [km.strategyAdjustSuggestions, '策略调整建议', `App.navigatePublic('regulatory-warning-strategy')`]
+        ].map(([v, l, nav]) => this.renderPublicKpiCard(l, v, nav)).join(''); })()}
       </div>`;
   },
 
@@ -4083,6 +4260,26 @@ Object.assign(App, {
           ].map(([v, l, nav]) => this.renderPublicKpiCard(l, v, nav)).join('')}
         </div>
       </div>
+      <div class="group-two">
+        <div class="card"><div class="card-title">指标与预警待办</div>
+          ${(() => { const km = APP_DATA.regulatoryMetricKriMetrics || {}; const warns = (APP_DATA.regulatoryWarnings || []).filter(w => w.status === 'PENDING_REVIEW').slice(0, 4);
+            return [
+              [km.pendingReviewCount, '待研判预警', `App.navigatePublic('regulatory-warning-center')`],
+              [km.criticalWarningCount, '严重预警', `App.navigatePublic('regulatory-warning-center')`],
+              [km.insufficientDataKriCount, '数据可信度不足', `App.navigatePublic('regulatory-kri-monitoring')`],
+              [km.pendingRiskConversionCount, '待转风险事项', `App.navigatePublic('regulatory-warning-center')`],
+              [km.strategyAdjustSuggestions, '待策略调整', `App.navigatePublic('regulatory-warning-strategy')`]
+            ].map(([v,l,n]) => this.renderPublicKpiCard(l,v,n)).join('') + (warns.length ? warns.map(w => `<p class="insight-note clickable" onclick="App.navigatePublic('regulatory-warning-center',{regulatoryWarningId:'${w.regulatoryWarningId}'})">${w.regulatoryWarningId} · ${w.warningLevel} · ${w.kriId}</p>`).join('') : '');
+          })()}
+        </div>
+        <div class="card"><div class="card-title">KRI运行概览</div>
+          ${(() => { const km = APP_DATA.regulatoryMetricKriMetrics || {}; return [
+            [km.kriCount, 'KRI总数', `App.navigatePublic('regulatory-kri-monitoring')`],
+            [km.warningKriCount + km.criticalKriCount, '异常KRI', `App.navigatePublic('regulatory-kri-monitoring')`],
+            [km.metricCount, '监管指标', `App.navigatePublic('regulatory-metric-center')`]
+          ].map(([v,l,n]) => this.renderPublicKpiCard(l,v,n)).join(''); })()}
+        </div>
+      </div>
       <div class="card"><div class="card-title">监管闭环状态</div>${this.renderPublicWorkbenchLoop(wbM.loopStatus)}</div>`;
   },
 
@@ -4281,6 +4478,32 @@ Object.assign(App, {
           const entityIssues = (APP_DATA.regulatoryDataQualityIssues || []).filter(i => { const ds = APP_DATA.regulatoryDataSets.find(d => d.dataSetId === i.dataSetId); return ds?.ownerOrganizationId === scopeId; });
           const entityGov = (APP_DATA.regulatoryDataGovernanceTasks || []).filter(t => t.responsibleOrganizationId === scopeId && t.status !== 'CLOSED');
           return `<p>本法人数据异常 <b>${entityIssues.filter(i => i.status !== 'CLOSED').length}</b> · 治理任务 <b>${entityGov.length}</b></p>${this.renderPublicLinkButton('数据质量', `App.navigatePublic('regulatory-data-quality')`)} ${this.renderPublicLinkButton('数据治理', `App.navigatePublic('regulatory-data-governance')`)}`;
+        })()}
+      </div>
+      <div class="card"><div class="card-title">指标与预警视图</div>
+        ${(() => {
+          const km = APP_DATA.regulatoryMetricKriMetrics || {};
+          const roleType = role.roleType;
+          if (roleType === 'GROUP_LEADER') return [
+            [km.criticalWarningCount, '集团严重预警', `App.navigatePublic('regulatory-warning-center')`],
+            [km.impactedEntityCount, '高风险法人', `App.navigatePublic('regulatory-warning-strategy')`],
+            [km.evaluationDataStatus, '预警趋势', `App.navigatePublic('regulatory-kri-effectiveness')`],
+            [km.pendingRiskConversionCount, '待转风险', `App.navigatePublic('regulatory-warning-center')`]
+          ].map(([v,l,n]) => this.renderPublicKpiCard(l,v,n)).join('');
+          if (roleType === 'GROUP_REGULATORY') return [
+            [km.pendingReviewCount, '待研判预警', `App.navigatePublic('regulatory-warning-center')`],
+            [km.pendingRiskConversionCount, '待转风险', `App.navigatePublic('regulatory-warning-center')`],
+            [km.warningKriCount + km.criticalKriCount, '重点KRI', `App.navigatePublic('regulatory-kri-monitoring')`],
+            [km.strategyAdjustSuggestions, '预警策略', `App.navigatePublic('regulatory-warning-strategy')`]
+          ].map(([v,l,n]) => this.renderPublicKpiCard(l,v,n)).join('');
+          if (roleType === 'DOMAIN_REGULATOR') {
+            const kris = this.filterKriByUserScope(APP_DATA.regulatoryKriRuntime || []);
+            const warns = this.filterWarningsByUserScope(APP_DATA.regulatoryWarnings || []);
+            return `<p>本领域KRI <b>${kris.length}</b> · 预警 <b>${warns.filter(w => w.status === 'PENDING_REVIEW').length}</b></p>${this.renderPublicLinkButton('KRI监测', `App.navigatePublic('regulatory-kri-monitoring')`)} ${this.renderPublicLinkButton('预警中心', `App.navigatePublic('regulatory-warning-center')`)}`;
+          }
+          const ek = (APP_DATA.regulatoryKriRuntime || []).filter(k => k.scopeId === scopeId);
+          const ew = (APP_DATA.regulatoryWarnings || []).filter(w => w.entityId === scopeId && w.status === 'PENDING_REVIEW');
+          return `<p>本法人KRI <b>${ek.length}</b> · 预警 <b>${ew.length}</b> · 待研判 <b>${ew.length}</b></p>${this.renderPublicLinkButton('KRI监测', `App.navigatePublic('regulatory-kri-monitoring')`)} ${this.renderPublicLinkButton('预警中心', `App.navigatePublic('regulatory-warning-center')`)}`;
         })()}
       </div>`;
   },
@@ -4691,6 +4914,165 @@ Object.assign(App, {
       <div id="regulatoryDataLineageDetail"></div>`;
   },
 
+  renderRegulatoryMetricCenter() {
+    const node = document.getElementById('regulatoryMetricCenter');
+    if (!node) return;
+    let metrics = APP_DATA.regulatoryMetrics || [];
+    const km = APP_DATA.regulatoryMetricKriMetrics || {};
+    const rows = metrics.map(m => `<tr class="clickable" onclick="App.showRegulatoryMetricDetail('${m.metricId}')"><td>${m.metricId}</td><td>${m.metricName}</td><td>${m.metricType}</td><td>${m.scopeType}:${m.scopeId}</td><td>${m.currentValue ?? '—'}${m.unit || ''}</td><td>${m.targetValue ?? '—'}</td><td>${m.credibilityScore ?? '—'}</td><td>${this.renderPublicStatusBadge(m.status)}</td></tr>`).join('');
+    node.innerHTML = `${this.renderPublicBackButton('regulatory-metric-center')}
+      <div class="group-hero"><div><span>指标运行</span><h2>集团监管指标中心</h2><p>可信数据 → 指标计算 → 数据质量穿透</p></div><div>指标 <b>${metrics.length}</b></div></div>
+      <div class="group-metrics">${[[km.metricCount,'指标总数'],[km.normalMetricCount,'正常'],[km.warningMetricCount,'预警'],[km.criticalMetricCount,'严重'],[km.insufficientDataMetricCount,'数据不足'],[km.avgCredibility,'平均可信度']].map(([v,l])=>this.renderPublicKpiCard(l,v,`App.navigatePublic('regulatory-metric-center')`)).join('')}</div>
+      <div class="card"><div class="card-title">监管指标清单</div>${rows ? `<table class="data-table"><thead><tr><th>ID</th><th>名称</th><th>类型</th><th>范围</th><th>当前值</th><th>目标</th><th>可信度</th><th>状态</th></tr></thead><tbody>${rows}</tbody></table>` : this.renderPublicEmptyState('暂无')}</div>
+      <div id="regulatoryMetricDetail"></div>`;
+    if (this.regulatoryMetricFocusId) setTimeout(() => this.showRegulatoryMetricDetail(this.regulatoryMetricFocusId), 0);
+  },
+
+  showRegulatoryMetricDetail(metricId) {
+    const m = (APP_DATA.regulatoryMetrics || []).find(x => x.metricId === metricId);
+    const node = document.getElementById('regulatoryMetricDetail');
+    this.regulatoryMetricFocusId = metricId;
+    this.showPublicDetailOrNotFound(node, m, () => {
+      const calc = this.calculateRegulatoryMetric(metricId);
+      node.innerHTML = this.buildPublicDetailPanel({ objectType: '监管指标', objectName: m.metricName, objectId: m.metricId, status: m.status,
+        sections: [
+          { title: '一、指标信息', content: this.renderPublicMetaGrid([this.renderPublicIdField(m.metricId, '指标 ID'), { label: '当前值', value: m.currentValue != null ? m.currentValue + (m.unit || '') : 'INSUFFICIENT_DATA' }, { label: '目标', value: m.targetValue }, { label: '可信度', value: calc.credibilityScore ?? '—' }, { label: '数据状态', value: m.dataStatus }]) },
+          { title: '二、数据穿透', content: (m.sourceDataSetIds || []).map(id => this.renderPublicLinkButton(id, `App.navigatePublic('regulatory-data-quality')`)).join(' ') || '—' },
+          { title: '三、KRI关联', content: m.kriId ? this.renderPublicLinkButton(m.kriId, `App.navigatePublic('regulatory-kri-monitoring',{kriId:'${m.kriId}'})`) : this.renderPublicEmptyState('无') }
+        ],
+        footer: `${this.renderPublicLinkButton('数据血缘', `App.navigatePublic('regulatory-data-lineage')`)} ${m.kriId ? this.renderPublicLinkButton('KRI监测', `App.navigatePublic('regulatory-kri-monitoring',{kriId:'${m.kriId}'})`) : ''}`
+      });
+    }, '指标');
+  },
+
+  renderRegulatoryKriMonitoring() {
+    const node = document.getElementById('regulatoryKriMonitoring');
+    if (!node) return;
+    const f = this.regulatoryKriMonitoringFilter || {};
+    let kris = this.filterKriByUserScope(APP_DATA.regulatoryKriRuntime || []);
+    if (f.kriId) kris = kris.filter(k => k.kriId === f.kriId);
+    if (f.status) kris = kris.filter(k => k.status === f.status);
+    const km = APP_DATA.regulatoryMetricKriMetrics || {};
+    const rows = kris.map(k => `<tr class="clickable" onclick="App.showRegulatoryKriRuntimeDetail('${k.kriRuntimeId}')"><td>${k.kriId}</td><td>${k.kriName}</td><td>${k.metricId || '—'}</td><td>${k.threshold}</td><td>${k.currentValue}</td><td>${this.renderPublicStatusBadge(k.status)}</td><td>${k.credibilityScore ?? '—'}</td></tr>`).join('');
+    node.innerHTML = `${this.renderPublicBackButton('regulatory-kri-monitoring')}
+      <div class="group-hero"><div><span>指标运行</span><h2>集团KRI运行监测中心</h2><p>KRI监测 → 阈值判断 → 预警识别</p></div></div>
+      <div class="group-metrics">${[[km.kriCount,'KRI总数'],[km.normalKriCount,'正常'],[km.attentionKriCount,'关注'],[km.warningKriCount,'预警'],[km.criticalKriCount,'严重'],[km.insufficientDataKriCount,'数据不足']].map(([v,l])=>this.renderPublicKpiCard(l,v,`App.navigatePublic('regulatory-kri-monitoring')`)).join('')}</div>
+      <div class="card"><div class="card-title">KRI运行清单</div>${rows ? `<table class="data-table"><thead><tr><th>KRI</th><th>名称</th><th>指标</th><th>阈值</th><th>当前值</th><th>状态</th><th>可信度</th></tr></thead><tbody>${rows}</tbody></table>` : this.renderPublicEmptyState('无可见KRI')}</div>
+      <div id="regulatoryKriRuntimeDetail"></div>`;
+    if (this.regulatoryKriRuntimeFocusId) setTimeout(() => this.showRegulatoryKriRuntimeDetail(this.regulatoryKriRuntimeFocusId), 0);
+  },
+
+  showRegulatoryKriRuntimeDetail(kriRuntimeId) {
+    const k = (APP_DATA.regulatoryKriRuntime || []).find(x => x.kriRuntimeId === kriRuntimeId);
+    const node = document.getElementById('regulatoryKriRuntimeDetail');
+    this.regulatoryKriRuntimeFocusId = kriRuntimeId;
+    const access = this.canRegulatoryAccess(this.getCurrentRegulatoryUser()?.userId, 'regulatoryKriRuntime', kriRuntimeId, 'VIEW');
+    if (!access.allowed) { node.innerHTML = this.renderPublicErrorState('无权查看该KRI'); return; }
+    this.showPublicDetailOrNotFound(node, k, () => {
+      const calc = this.calculateKriRuntimeStatus(kriRuntimeId);
+      const warns = (APP_DATA.regulatoryWarnings || []).filter(w => w.kriRuntimeId === kriRuntimeId);
+      node.innerHTML = this.buildPublicDetailPanel({ objectType: 'KRI运行', objectName: k.kriName, objectId: k.kriId, status: k.status,
+        sections: [
+          { title: '一、KRI状态', content: this.renderPublicMetaGrid([{ label: '当前值', value: k.currentValue }, { label: '阈值', value: k.threshold }, { label: '方向', value: k.thresholdDirection }, { label: '可信度', value: calc.credibilityScore ?? '—' }, { label: '数据状态', value: k.dataStatus }]) },
+          { title: '二、关联预警', content: warns.map(w => this.renderPublicLinkButton(w.regulatoryWarningId + ' · ' + w.warningLevel, `App.navigatePublic('regulatory-warning-center',{regulatoryWarningId:'${w.regulatoryWarningId}'})`)).join('') || this.renderPublicEmptyState('暂无预警') },
+          { title: '三、指标穿透', content: k.metricId ? this.renderPublicLinkButton(k.metricId, `App.navigatePublic('regulatory-metric-center',{metricId:'${k.metricId}'})`) : '—' }
+        ],
+        footer: `${this.renderRegulatoryActionButton('阈值调整申请', 'regulatoryRules', k.kriId, 'UPDATE', `App.attemptKriThresholdChange('${k.kriId}');alert(App.attemptKriThresholdChange('${k.kriId}').message)`) || ''} ${this.renderPublicLinkButton('规则治理', `App.navigatePublic('regulatory-rule-config')`)}`
+      });
+    }, 'KRI');
+  },
+
+  renderRegulatoryWarningCenter() {
+    const node = document.getElementById('regulatoryWarningCenter');
+    if (!node) return;
+    const f = this.regulatoryWarningCenterFilter || {};
+    let warns = this.filterWarningsByUserScope(APP_DATA.regulatoryWarnings || []);
+    if (f.status) warns = warns.filter(w => w.status === f.status);
+    if (f.warningLevel) warns = warns.filter(w => w.warningLevel === f.warningLevel);
+    const km = APP_DATA.regulatoryMetricKriMetrics || {};
+    const rows = warns.map(w => `<tr class="clickable" onclick="App.showRegulatoryWarningDetail('${w.regulatoryWarningId}')"><td>${w.regulatoryWarningId}</td><td>${w.kriId}</td><td>${this.renderPublicPriorityBadge(w.warningLevel)}</td><td>${w.entityId}</td><td>${w.status}</td><td>${w.credibilityScore ?? '—'}</td><td>${w.riskMatterId || '—'}</td></tr>`).join('');
+    node.innerHTML = `${this.renderPublicBackButton('regulatory-warning-center')}
+      <div class="group-hero"><div><span>指标运行</span><h2>集团监管预警中心</h2><p>KRI异常 → 预警 → 人工研判 → 风险事件（预警≠风险事件）</p></div></div>
+      <div class="group-metrics">${[[km.warningTotalCount,'预警总数'],[km.attentionWarningCount,'ATTENTION'],[km.warningLevelCount,'WARNING'],[km.criticalWarningCount,'CRITICAL'],[km.pendingReviewCount,'待研判']].map(([v,l])=>this.renderPublicKpiCard(l,v,`App.navigatePublic('regulatory-warning-center')`)).join('')}</div>
+      <div class="card"><div class="card-title">监管预警清单</div>${rows ? `<table class="data-table"><thead><tr><th>ID</th><th>KRI</th><th>等级</th><th>法人</th><th>状态</th><th>可信度</th><th>风险事项</th></tr></thead><tbody>${rows}</tbody></table>` : this.renderPublicEmptyState('暂无')}</div>
+      <div id="regulatoryWarningDetail"></div>`;
+    if (this.regulatoryWarningFocusId) setTimeout(() => this.showRegulatoryWarningDetail(this.regulatoryWarningFocusId), 0);
+  },
+
+  showRegulatoryWarningDetail(regulatoryWarningId) {
+    const w = (APP_DATA.regulatoryWarnings || []).find(x => x.regulatoryWarningId === regulatoryWarningId);
+    const node = document.getElementById('regulatoryWarningDetail');
+    this.regulatoryWarningFocusId = regulatoryWarningId;
+    this.showPublicDetailOrNotFound(node, w, () => {
+      const suggestion = this.getWarningPrioritySuggestion(regulatoryWarningId);
+      const canJudge = this.canRegulatoryAccess(this.getCurrentRegulatoryUser()?.userId, 'regulatoryWarnings', regulatoryWarningId, 'JUDGE').allowed;
+      const canConvert = this.canRegulatoryAccess(this.getCurrentRegulatoryUser()?.userId, 'regulatoryWarnings', regulatoryWarningId, 'CONVERT').allowed;
+      node.innerHTML = this.buildPublicDetailPanel({ objectType: '监管预警', objectName: w.regulatoryWarningId, objectId: w.regulatoryWarningId, status: w.status,
+        sections: [
+          { title: '一、预警信息', content: this.renderPublicMetaGrid([{ label: 'KRI', value: w.kriId }, { label: '等级', html: this.renderPublicPriorityBadge(w.warningLevel) }, { label: '法人', value: w.entityId }, { label: '策略', value: w.strategyLevel }, { label: '可信度', value: w.credibilityScore ?? '—' }]) },
+          { title: '二、优先级建议', content: `<p>${suggestion?.priorityAdjustmentSuggestion} — ${suggestion?.reason}</p>` },
+          { title: '三、链路穿透', content: `${this.renderPublicLinkButton('KRI', `App.navigatePublic('regulatory-kri-monitoring',{kriId:'${w.kriId}'})`)} ${w.riskMatterId ? this.renderPublicLinkButton('风险事项', `App.navigatePublic('warnings',{riskMatterId:'${w.riskMatterId}'})`) : ''} ${w.actionId ? this.renderPublicLinkButton('监管行动', `App.navigatePublic('regulatory-actions',{actionId:'${w.actionId}'})`) : ''}` }
+        ],
+        footer: `${canJudge && w.status === 'PENDING_REVIEW' ? `<button class="btn" onclick="App.reviewRegulatoryWarning('${w.regulatoryWarningId}','研判完成');App.renderRegulatoryWarningCenter()">完成研判</button>` : ''}${canConvert && !w.riskMatterId ? `<button class="btn btn-outline" onclick="App.convertRegulatoryWarningToRisk('${w.regulatoryWarningId}');App.renderRegulatoryWarningCenter()">转风险事项</button>` : ''}${this.renderPublicLinkButton('策略分析', `App.navigatePublic('regulatory-warning-strategy',{strategyAnalysisId:'WSA-${w.regulatoryWarningId}'})`)}`
+      });
+    }, '预警');
+  },
+
+  renderRegulatoryKriEffectiveness() {
+    const node = document.getElementById('regulatoryKriEffectiveness');
+    if (!node) return;
+    const evals = APP_DATA.regulatoryKriEvaluations || [];
+    const rows = evals.map(e => `<tr class="clickable" onclick="App.showRegulatoryKriEvaluationDetail('${e.evaluationId}')"><td>${e.kriId}</td><td>${e.period}</td><td>${e.hitRate ?? '—'}</td><td>${e.riskConversionRate ?? '—'}</td><td>${e.actionConversionRate ?? '—'}</td><td>${e.falsePositiveRate ?? '—'}</td><td>${e.dataCredibility ?? '—'}</td><td>${e.dataStatus}</td></tr>`).join('');
+    node.innerHTML = `${this.renderPublicBackButton('regulatory-kri-effectiveness')}
+      <div class="group-hero"><div><span>指标运行</span><h2>集团KRI有效性评价中心</h2><p>历史数据不足时展示 INSUFFICIENT_HISTORY，不伪造趋势</p></div></div>
+      <div class="card insight-note">当前评价数据状态：<b>${(APP_DATA.regulatoryMetricKriMetrics || {}).evaluationDataStatus || 'INSUFFICIENT_HISTORY'}</b></div>
+      <div class="card"><div class="card-title">KRI有效性评价</div>${rows ? `<table class="data-table"><thead><tr><th>KRI</th><th>周期</th><th>命中率</th><th>转风险率</th><th>转行动率</th><th>误报率</th><th>可信度</th><th>数据状态</th></tr></thead><tbody>${rows}</tbody></table>` : this.renderPublicEmptyState('暂无')}</div>
+      <div id="regulatoryKriEvaluationDetail"></div>`;
+  },
+
+  showRegulatoryKriEvaluationDetail(evaluationId) {
+    const e = (APP_DATA.regulatoryKriEvaluations || []).find(x => x.evaluationId === evaluationId);
+    const node = document.getElementById('regulatoryKriEvaluationDetail');
+    this.regulatoryKriEvaluationFocusId = evaluationId;
+    this.showPublicDetailOrNotFound(node, e, () => {
+      node.innerHTML = this.buildPublicDetailPanel({ objectType: 'KRI评价', objectName: e.kriId, objectId: e.evaluationId, status: e.dataStatus,
+        sections: [{ title: '评价指标', content: e.dataStatus === 'INSUFFICIENT_HISTORY' ? this.renderPublicEmptyState('INSUFFICIENT_HISTORY — 无真实历史监测数据') : `<p>命中率 ${e.hitRate}</p>` }],
+        footer: this.renderPublicLinkButton('KRI监测', `App.navigatePublic('regulatory-kri-monitoring',{kriId:'${e.kriId}'})`)
+      });
+    }, '评价');
+  },
+
+  renderRegulatoryWarningStrategy() {
+    const node = document.getElementById('regulatoryWarningStrategy');
+    if (!node) return;
+    const strategies = APP_DATA.regulatoryWarningStrategies || [];
+    const km = APP_DATA.regulatoryMetricKriMetrics || {};
+    const rows = strategies.map(s => {
+      const w = (APP_DATA.regulatoryWarnings || []).find(x => x.regulatoryWarningId === s.warningId);
+      return `<tr class="clickable" onclick="App.showRegulatoryWarningStrategyDetail('${s.strategyAnalysisId}')"><td>${s.strategyAnalysisId}</td><td>${s.warningId}</td><td>${s.currentLevel}</td><td>${s.recommendedLevel}</td><td>${s.priorityAdjustmentSuggestion}</td><td>${s.strategyLevel || w?.strategyLevel || '—'}</td><td>${s.status}</td></tr>`;
+    }).join('');
+    node.innerHTML = `${this.renderPublicBackButton('regulatory-warning-strategy')}
+      <div class="group-hero"><div><span>指标运行</span><h2>集团预警策略分析中心</h2><p>预警 → 风险 → 监管优先级 → 监管策略 → 监管行动</p></div></div>
+      <div class="group-metrics">${[[km.priorityElevateSuggestions,'优先级上升建议'],[km.strategyAdjustSuggestions,'策略调整建议'],[km.impactedEntityCount,'受影响法人'],[km.impactedRegionCount,'受影响区域']].map(([v,l])=>this.renderPublicKpiCard(l,v,`App.navigatePublic('regulatory-warning-strategy')`)).join('')}</div>
+      <div class="card"><div class="card-title">预警策略分析</div>${rows ? `<table class="data-table"><thead><tr><th>分析ID</th><th>预警</th><th>当前等级</th><th>建议等级</th><th>优先级建议</th><th>策略</th><th>状态</th></tr></thead><tbody>${rows}</tbody></table>` : this.renderPublicEmptyState('暂无')}</div>
+      <div id="regulatoryWarningStrategyDetail"></div>`;
+  },
+
+  showRegulatoryWarningStrategyDetail(strategyAnalysisId) {
+    const s = (APP_DATA.regulatoryWarningStrategies || []).find(x => x.strategyAnalysisId === strategyAnalysisId);
+    const node = document.getElementById('regulatoryWarningStrategyDetail');
+    this.regulatoryWarningStrategyFocusId = strategyAnalysisId;
+    this.showPublicDetailOrNotFound(node, s, () => {
+      const w = (APP_DATA.regulatoryWarnings || []).find(x => x.regulatoryWarningId === s.warningId);
+      node.innerHTML = this.buildPublicDetailPanel({ objectType: '预警策略', objectName: s.strategyAnalysisId, objectId: s.strategyAnalysisId, status: s.status,
+        sections: [
+          { title: '一、策略分析', content: this.renderPublicMetaGrid([{ label: '预警', value: s.warningId }, { label: '建议', value: s.priorityAdjustmentSuggestion }, { label: '原因', value: s.reason }, { label: '策略层级', value: s.strategyLevel }]) },
+          { title: '二、链路穿透', content: `${this.renderPublicLinkButton('预警', `App.navigatePublic('regulatory-warning-center',{regulatoryWarningId:'${s.warningId}'})`)} ${w?.actionId ? this.renderPublicLinkButton('监管行动', `App.navigatePublic('regulatory-actions',{actionId:'${w.actionId}'})`) : ''} ${this.renderPublicLinkButton('监管策略', `App.navigatePublic('regulatory-strategy')`)} ${s.relatedRuleId ? this.renderPublicLinkButton('关联规则', `App.navigatePublic('regulatory-rule-config')`) : ''}` }
+        ]
+      });
+    }, '策略分析');
+  },
+
   rerenderPublicPage(pageId) {
     const routeId = this.resolvePublicRouteId(pageId);
     const fn = {
@@ -4746,7 +5128,12 @@ Object.assign(App, {
       'regulatory-data-integration': 'renderRegulatoryDataIntegration',
       'regulatory-data-quality': 'renderRegulatoryDataQuality',
       'regulatory-data-governance': 'renderRegulatoryDataGovernance',
-      'regulatory-data-lineage': 'renderRegulatoryDataLineage'
+      'regulatory-data-lineage': 'renderRegulatoryDataLineage',
+      'regulatory-metric-center': 'renderRegulatoryMetricCenter',
+      'regulatory-kri-monitoring': 'renderRegulatoryKriMonitoring',
+      'regulatory-warning-center': 'renderRegulatoryWarningCenter',
+      'regulatory-kri-effectiveness': 'renderRegulatoryKriEffectiveness',
+      'regulatory-warning-strategy': 'renderRegulatoryWarningStrategy'
     }[routeId];
     if (fn && this[fn]) this[fn]();
   }

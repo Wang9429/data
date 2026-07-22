@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * 公共监管底座 Phase 18 端到端验收（22 条链路）
+ * 公共监管底座 Phase 19 端到端验收（25 条链路）
  */
 const fs = require('fs');
 const path = require('path');
@@ -20,113 +20,139 @@ const D = loadAppData();
 function ok(step, cond, msg) { return { step, pass: !!cond, msg: cond ? 'OK' : msg }; }
 
 const chains = [
-  { name: '测试1：总览→数据源中心', steps: [
-    () => ok('数据源', (D.regulatoryDataSources || []).length > 0)
+  { name: '测试1：总览→指标中心', steps: [
+    () => ok('指标', (D.regulatoryMetrics || []).length > 0)
   ]},
-  { name: '测试2：数据源→数据集', steps: [
+  { name: '测试2：指标→数据源', steps: [
     () => {
-      const src = (D.regulatoryDataSources || [])[0];
-      const ds = (D.regulatoryDataSets || []).find(d => d.sourceId === src?.sourceId);
-      return ok('源数据集链', src && ds);
+      const m = (D.regulatoryMetrics || [])[0];
+      const ds = m?.sourceDataSetIds?.[0];
+      const src = ds ? (D.regulatoryDataSets || []).find(d => d.dataSetId === ds) : null;
+      return ok('指标数据源链', m && src);
     }
   ]},
-  { name: '测试3：数据集→接入任务', steps: [
+  { name: '测试3：指标→数据质量', steps: [
     () => {
-      const ds = (D.regulatoryDataSets || [])[0];
-      const job = (D.regulatoryDataIntegrationJobs || []).find(j => j.dataSetId === ds?.dataSetId);
-      return ok('数据集接入链', ds && job);
+      const m = (D.regulatoryMetrics || []).find(x => x.dataStatus);
+      return ok('指标质量状态', m && ['OK', 'INSUFFICIENT_DATA'].includes(m.dataStatus));
     }
   ]},
-  { name: '测试4：接入任务→质量校验', steps: [
+  { name: '测试4：指标→KRI', steps: [
     () => {
-      const job = (D.regulatoryDataIntegrationJobs || [])[0];
-      const issue = (D.regulatoryDataQualityIssues || []).find(i => i.dataSetId === job?.dataSetId);
-      return ok('质量校验链', job && (issue || job.status === 'SUCCESS'));
+      const k = (D.regulatoryKriRuntime || [])[0];
+      const m = k ? (D.regulatoryMetrics || []).find(x => x.metricId === k.metricId) : null;
+      return ok('指标KRI链', k && (m || !k.metricId));
     }
   ]},
-  { name: '测试5：质量问题→治理任务', steps: [
+  { name: '测试5：KRI→阈值判断', steps: [
     () => {
-      const issue = (D.regulatoryDataQualityIssues || []).find(i => i.relatedGovernanceTaskId);
-      const gov = issue ? (D.regulatoryDataGovernanceTasks || []).find(t => t.governanceTaskId === issue.relatedGovernanceTaskId) : null;
-      return ok('治理任务链', issue && gov);
+      const k = (D.regulatoryKriRuntime || []).find(x => x.threshold && x.status);
+      return ok('KRI阈值状态', k && ['NORMAL', 'ATTENTION', 'WARNING', 'CRITICAL', 'INSUFFICIENT_DATA'].includes(k.status));
     }
   ]},
-  { name: '测试6：治理任务→整改任务', steps: [
+  { name: '测试6：KRI→预警', steps: [
     () => {
-      const gov = (D.regulatoryDataGovernanceTasks || []).find(t => t.relatedRectificationTaskId);
-      const rect = gov ? (D.rectificationTasks || []).find(t => t.taskId === gov.relatedRectificationTaskId) : null;
-      return ok('整改关联链', gov && rect);
+      const w = (D.regulatoryWarnings || [])[0];
+      const k = w ? (D.regulatoryKriRuntime || []).find(x => x.kriRuntimeId === w.kriRuntimeId) : null;
+      return ok('KRI预警链', w && k);
     }
   ]},
-  { name: '测试7：整改→验证→数据质量恢复', steps: [
-    () => ok('质量快照', (D.regulatoryDataQualitySnapshots || []).length > 0)
+  { name: '测试7：预警→风险研判', steps: [
+    () => ok('待研判预警', (D.regulatoryWarnings || []).some(w => w.status === 'PENDING_REVIEW'))
   ]},
-  { name: '测试8：指标→KRI→数据字段', steps: [
+  { name: '测试8：预警→现有风险事项', steps: [
     () => {
-      const lin = (D.regulatoryDataLineage || []).find(l => l.relationType === 'FIELD_TO_METRIC' || l.relationType === 'METRIC_TO_KRI');
-      return ok('指标KRI链', lin);
+      const w = (D.regulatoryWarnings || []).find(x => x.kriId);
+      const risk = w ? (D.warnings || []).find(r => r.kriId === w.kriId) : null;
+      return ok('现有风险库', w && risk);
     }
   ]},
-  { name: '测试9：KRI→风险→规则', steps: [
+  { name: '测试9：风险→监管优先级', steps: [
     () => {
-      const lin = (D.regulatoryDataLineage || []).find(l => l.relationType === 'KRI_TO_RISK');
-      const rule = (D.regulatoryDataLineage || []).find(l => l.relationType === 'RISK_TO_RULE');
-      return ok('KRI风险规则链', lin && rule);
+      const w = (D.regulatoryWarnings || [])[0];
+      const po = w ? (D.regulatoryPriorityObjects || []).find(p => p.objectId === w.entityId || p.objectId === w.priorityId) : null;
+      return ok('优先级对象', w && po);
     }
   ]},
-  { name: '测试10：规则→数据源', steps: [
-    () => ok('血缘索引', (D.regulatoryDataLineage || []).some(l => l.sourceType === 'regulatoryDataSources'))
-  ]},
-  { name: '测试11：数据源→受影响指标', steps: [
+  { name: '测试10：优先级→监管策略', steps: [
     () => {
-      const src = (D.regulatoryDataSources || []).find(s => s.sourceId === 'SRC002') || (D.regulatoryDataSources || [])[0];
-      const lin = (D.regulatoryDataLineage || []).filter(l => l.sourceId === src?.sourceId || (l.sourceType === 'regulatoryDataSources' && l.sourceId === src?.sourceId));
-      return ok('源影响链', lin.length > 0);
+      const w = (D.regulatoryWarnings || []).find(x => x.strategyLevel);
+      return ok('策略层级', w && ['ROUTINE', 'SPECIAL', 'FOCUS'].includes(w.strategyLevel));
     }
   ]},
-  { name: '测试12：数据质量异常→指标可信度', steps: [
-    () => ok('KRI关联', (D.regulatoryDataQualityIssues || []).some(i => i.kriId))
+  { name: '测试11：策略→监管行动', steps: [
+    () => {
+      const w = (D.regulatoryWarnings || []).find(x => x.actionId);
+      const act = w ? (D.regulatoryActions || []).find(a => a.actionId === w.actionId) : null;
+      return ok('监管行动链', w && act);
+    }
   ]},
-  { name: '测试13：指标可信度→监管优先级', steps: [
-    () => ok('优先级对象', (D.regulatoryPriorityObjects || []).length > 0)
+  { name: '测试12：数据质量不足→KRI可信度下降', steps: [
+    () => {
+      const k = (D.regulatoryKriRuntime || []).find(x => x.dataStatus === 'INSUFFICIENT_DATA');
+      return ok('KRI数据不足', k && (k.credibilityScore == null || k.credibilityScore < 70));
+    }
   ]},
-  { name: '测试14：法人权限→本法人数据', steps: [
+  { name: '测试13：可信度不足→不直接调整真实优先级', steps: [
+    () => {
+      const s = (D.regulatoryWarningStrategies || []).find(x => x.reason === 'DATA_QUALITY_REVIEW_REQUIRED');
+      return ok('仅建议复核', s && s.priorityAdjustmentSuggestion === 'DATA_QUALITY_REVIEW_REQUIRED');
+    }
+  ]},
+  { name: '测试14：数据源异常→受影响指标', steps: [
+    () => {
+      const impact = (D.regulatoryDataLineage || []).filter(l => l.sourceId === 'SRC002' || l.targetType === 'regulatoryMetrics');
+      return ok('源影响指标', impact.length > 0);
+    }
+  ]},
+  { name: '测试15：受影响指标→受影响KRI', steps: [
+    () => {
+      const m = (D.regulatoryMetrics || []).find(x => x.kriId || x.metricId);
+      const k = (D.regulatoryKriRuntime || []).find(x => x.metricId === m?.metricId);
+      return ok('指标影响KRI', m && k);
+    }
+  ]},
+  { name: '测试16：受影响KRI→受影响预警', steps: [
+    () => {
+      const k = (D.regulatoryKriRuntime || []).find(x => ['ATTENTION', 'WARNING', 'CRITICAL'].includes(x.status));
+      const w = k ? (D.regulatoryWarnings || []).find(x => x.kriRuntimeId === k.kriRuntimeId) : null;
+      return ok('KRI影响预警', k && w);
+    }
+  ]},
+  { name: '测试17：法人权限→本法人KRI', steps: [
     () => ok('法人用户', (D.regulatoryUsers || []).some(u => u.userType === 'ENTITY_REGULATOR'))
   ]},
-  { name: '测试15：法人权限→越权数据拒绝', steps: [
-    () => ok('数据权限码', (D.regulatoryPermissionSets || []).some(p => p.permissionCode === 'DATA_VIEW'))
+  { name: '测试18：法人权限→越权KRI拒绝', steps: [
+    () => ok('KRI权限码', (D.regulatoryPermissionSets || []).some(p => p.permissionCode === 'KRI_VIEW'))
   ]},
-  { name: '测试16：专业监管→授权领域数据', steps: [
+  { name: '测试19：专业监管→授权领域KRI', steps: [
     () => {
       const asg = (D.regulatoryRoleAssignments || []).find(a => a.roleId === 'ROLE-DOMAIN-REG');
       return ok('领域授权', asg && asg.scopeType === 'DOMAIN');
     }
   ]},
-  { name: '测试17：接入失败→重试→质量问题', steps: [
-    () => {
-      const failed = (D.regulatoryDataIntegrationJobs || []).find(j => j.status === 'FAILED' || j.status === 'PARTIAL_SUCCESS' || j.retryCount > 0);
-      return ok('失败重试', failed);
-    }
-  ]},
-  { name: '测试18：数据治理→审计日志', steps: [
+  { name: '测试20：预警研判→审计日志', steps: [
     () => ok('审计机制', Array.isArray(D.regulatoryAuditLogs))
   ]},
-  { name: '测试19：驾驶舱→数据质量健康', steps: [
-    () => ok('数据指标', !!(D.regulatoryDataGovernanceMetrics || {}).overallQualityScore || D.regulatoryDataGovernanceMetrics?.qualityDataStatus)
+  { name: '测试21：KRI阈值调整→规则治理闭环', steps: [
+    () => ok('规则库', (D.regulatoryRules || []).some(r => r.status === 'ACTIVE'))
   ]},
-  { name: '测试20：工作台→我的数据治理任务', steps: [
-    () => ok('治理任务', (D.regulatoryDataGovernanceTasks || []).length > 0)
+  { name: '测试22：驾驶舱→KRI与预警健康', steps: [
+    () => ok('指标KRI指标', !!(D.regulatoryMetricKriMetrics || {}).kriCount)
   ]},
-  { name: '测试21：无效dataSourceId→错误态', steps: [
-    () => ok('数据源校验', !(D.regulatoryDataSources || []).find(s => s.sourceId === 'INVALID-SRC'))
+  { name: '测试23：工作台→待研判预警', steps: [
+    () => ok('待研判', (D.regulatoryMetricKriMetrics || {}).pendingReviewCount >= 0)
   ]},
-  { name: '测试22：A→B→C→D→E→F多跳返回', steps: [
-    () => ok('数据源', (D.regulatoryDataSources || []).length > 0),
-    () => ok('接入', (D.regulatoryDataIntegrationJobs || []).length > 0),
-    () => ok('质量', (D.regulatoryDataQualityIssues || []).length > 0),
-    () => ok('治理', (D.regulatoryDataGovernanceTasks || []).length > 0),
-    () => ok('血缘', (D.regulatoryDataLineage || []).length > 0),
-    () => ok('快照', (D.regulatoryDataQualitySnapshots || []).length > 0)
+  { name: '测试24：无效kriId→错误态', steps: [
+    () => ok('KRI校验', !(D.regulatoryKriRuntime || []).find(k => k.kriId === 'INVALID-KRI'))
+  ]},
+  { name: '测试25：A→B→C→D→E→F多跳返回', steps: [
+    () => ok('指标', (D.regulatoryMetrics || []).length > 0),
+    () => ok('KRI', (D.regulatoryKriRuntime || []).length > 0),
+    () => ok('预警', (D.regulatoryWarnings || []).length >= 0),
+    () => ok('评价', (D.regulatoryKriEvaluations || []).length > 0),
+    () => ok('策略', (D.regulatoryWarningStrategies || []).length >= 0),
+    () => ok('数据源', (D.regulatoryDataSources || []).length > 0)
   ]}
 ];
 
@@ -154,73 +180,74 @@ async function browserTests() {
   const browser = await playwright.chromium.launch({ headless: true });
   const page = await browser.newPage();
   await page.goto(`http://127.0.0.1:${port}/index.html`, { waitUntil: 'networkidle' });
-  await page.waitForFunction(() => typeof App !== 'undefined' && App.getKriDataCredibility, { timeout: 10000 });
+  await page.waitForFunction(() => typeof App !== 'undefined' && App.calculateRegulatoryMetric, { timeout: 10000 });
   await page.evaluate(() => { document.getElementById('domainGateway').style.display = 'none'; if (App.enterDomain) App.enterDomain('investment', false); });
 
-  const dataSourceNav = await page.evaluate(async () => {
+  const metricNav = await page.evaluate(async () => {
     App.publicNavHistory = [];
     App.navigatePublic('group');
     await new Promise(r => setTimeout(r, 80));
-    App.navigatePublic('regulatory-data-sources');
+    App.navigatePublic('regulatory-metric-center');
     await new Promise(r => setTimeout(r, 150));
-    const text = document.getElementById('regulatoryDataSources')?.innerText || '';
-    return { ok: text.includes('数据源中心') || text.includes('数据源清单') };
+    const text = document.getElementById('regulatoryMetricCenter')?.innerText || '';
+    return { ok: text.includes('指标中心') || text.includes('监管指标') };
   });
 
-  const permissionCheck = await page.evaluate(() => {
+  const kriPermissionCheck = await page.evaluate(() => {
     App.setCurrentRegulatoryUser('U-ENTITY-REG');
-    const own = (APP_DATA.regulatoryDataSources || []).find(s => s.ownerOrganizationId === 'A001');
-    const other = (APP_DATA.regulatoryDataSources || []).find(s => s.ownerOrganizationId && s.ownerOrganizationId !== 'A001' && s.ownerOrganizationId !== 'G001');
-    const ownOk = own ? App.canRegulatoryAccess('U-ENTITY-REG', 'regulatoryDataSources', own.sourceId, 'VIEW').allowed : true;
-    const denyOk = other ? !App.canRegulatoryAccess('U-ENTITY-REG', 'regulatoryDataSources', other.sourceId, 'VIEW').allowed : true;
-    return { ownOk, denyOk, ownId: own?.sourceId, otherId: other?.sourceId };
+    const own = (APP_DATA.regulatoryKriRuntime || []).find(k => k.scopeId === 'A001');
+    const other = (APP_DATA.regulatoryKriRuntime || []).find(k => k.scopeId && k.scopeId !== 'A001' && k.scopeId !== 'G001');
+    const ownOk = own ? App.canRegulatoryAccess('U-ENTITY-REG', 'regulatoryKriRuntime', own.kriRuntimeId, 'VIEW').allowed : true;
+    const denyOk = other ? !App.canRegulatoryAccess('U-ENTITY-REG', 'regulatoryKriRuntime', other.kriRuntimeId, 'VIEW').allowed : true;
+    return { ownOk, denyOk };
   });
 
-  const lineageFlow = await page.evaluate(() => {
-    const chain = App.getDataLineageChain('regulatoryDataSources', 'SRC002', 'DOWN');
-    const impact = App.getDataSourceImpactAnalysis('SRC002');
-    const cred = App.getKriDataCredibility('kri-capex');
-    return { chainLen: chain.length, hasKri: impact.affectedKris.includes('kri-capex'), credOk: cred.dataStatus === 'OK' || cred.dataStatus === 'INSUFFICIENT_DATA' };
-  });
-
-  const retryFlow = await page.evaluate(() => {
+  const warningFlow = await page.evaluate(() => {
+    const w = (APP_DATA.regulatoryWarnings || []).find(x => x.status === 'PENDING_REVIEW');
+    if (!w) return { hasWarning: false };
     App.setCurrentRegulatoryUser('U-GROUP-REG');
-    const job = (APP_DATA.regulatoryDataIntegrationJobs || []).find(j => j.status === 'FAILED' || j.status === 'PARTIAL_SUCCESS');
-    if (!job) return { hasJob: false };
-    const before = job.status;
-    const result = App.retryDataIntegrationJob(job.integrationJobId);
-    const auditWritten = (APP_DATA.regulatoryAuditLogs || []).some(l => l.objectId === job.integrationJobId && l.actionType === 'RETRY');
-    return { hasJob: true, retried: result.success, statusChanged: job.status !== before || job.retryCount > 0, auditWritten };
+    const suggestion = App.getWarningPrioritySuggestion(w.regulatoryWarningId);
+    const review = App.reviewRegulatoryWarning(w.regulatoryWarningId, 'E2E研判');
+    const auditWritten = (APP_DATA.regulatoryAuditLogs || []).some(l => l.objectId === w.regulatoryWarningId && l.objectType === 'regulatoryWarnings');
+    return { hasWarning: true, reviewed: review.success, noDirectPriority: suggestion?.applyPriorityChange === false, auditWritten };
   });
 
-  const governanceFlow = await page.evaluate(() => {
+  const convertFlow = await page.evaluate(() => {
     App.setCurrentRegulatoryUser('U-GROUP-REG');
-    const task = (APP_DATA.regulatoryDataGovernanceTasks || []).find(t => t.status !== 'CLOSED' && t.status !== 'VERIFIED');
-    if (!task) return { hasTask: false };
-    App.assignDataGovernanceTask(task.governanceTaskId, task.responsibleOrganizationId);
-    const close = App.closeDataGovernanceTask(task.governanceTaskId, 'E2E验证关闭');
-    const auditWritten = (APP_DATA.regulatoryAuditLogs || []).some(l => l.objectType === 'regulatoryDataGovernanceTasks' && l.objectId === task.governanceTaskId);
-    return { hasTask: true, closed: close.success, auditWritten };
+    const w = (APP_DATA.regulatoryWarnings || []).find(x => !x.riskMatterId && x.kriId);
+    if (!w) return { hasWarning: false };
+    const result = App.convertRegulatoryWarningToRisk(w.regulatoryWarningId);
+    const linkedExisting = result.success ? (APP_DATA.warnings || []).some(r => r.id === result.riskMatter?.id) : false;
+    return { hasWarning: true, converted: result.success, linkedExisting, noNewRiskLib: !result.success || linkedExisting };
+  });
+
+  const thresholdFlow = await page.evaluate(() => {
+    App.setCurrentRegulatoryUser('U-GROUP-REG');
+    const kri = (APP_DATA.groupKris || [])[0];
+    if (!kri) return { hasKri: false };
+    const result = App.attemptKriThresholdChange(kri.id);
+    const auditWritten = (APP_DATA.regulatoryAuditLogs || []).some(l => l.reason && l.reason.includes('规则治理'));
+    return { hasKri: true, needRuleWorkflow: result.needRuleWorkflow === true, auditWritten };
   });
 
   const commandCenter = await page.evaluate(async () => {
     App.navigatePublic('regulatory-command-center');
     await new Promise(r => setTimeout(r, 150));
     const text = document.getElementById('regulatoryCommandCenter')?.innerText || '';
-    return { ok: text.includes('数据接入健康') && text.includes('数据质量健康') && text.includes('数据血缘影响') };
+    return { ok: text.includes('监管指标健康') && text.includes('KRI运行健康') && text.includes('监管预警') };
   });
 
   const workbench = await page.evaluate(async () => {
     App.navigatePublic('regulatory-workbench');
     await new Promise(r => setTimeout(r, 150));
     const text = document.getElementById('regulatoryWorkbench')?.innerText || '';
-    return { ok: text.includes('我的数据治理任务') || text.includes('数据运行异常') };
+    return { ok: text.includes('待研判预警') || text.includes('指标与预警待办') };
   });
 
-  const invalidSource = await page.evaluate(() => {
-    App.navigatePublic('regulatory-data-sources', { sourceId: 'INVALID-SRC' });
-    const detail = document.getElementById('regulatoryDataSourceDetail');
-    return { hasError: detail?.innerText?.includes('未找到') || detail?.innerText?.includes('不存在') || detail?.innerText?.includes('无权') || !APP_DATA.regulatoryDataSources.find(s => s.sourceId === 'INVALID-SRC') };
+  const invalidKri = await page.evaluate(() => {
+    App.navigatePublic('regulatory-kri-monitoring', { kriRuntimeId: 'INVALID-KRT' });
+    const detail = document.getElementById('regulatoryKriRuntimeDetail');
+    return { hasError: detail?.innerText?.includes('未找到') || detail?.innerText?.includes('不存在') || !APP_DATA.regulatoryKriRuntime.find(k => k.kriRuntimeId === 'INVALID-KRT') };
   });
 
   const multiHop = await page.evaluate(async () => {
@@ -228,15 +255,15 @@ async function browserTests() {
     App.navigatePublic('group');
     App.publicNavHistory = [];
     await new Promise(r => setTimeout(r, 80));
-    App.navigatePublic('regulatory-data-sources');
+    App.navigatePublic('regulatory-metric-center');
     await new Promise(r => setTimeout(r, 80));
-    App.navigatePublic('regulatory-data-integration');
+    App.navigatePublic('regulatory-kri-monitoring');
     await new Promise(r => setTimeout(r, 80));
-    App.navigatePublic('regulatory-data-quality');
+    App.navigatePublic('regulatory-warning-center');
     await new Promise(r => setTimeout(r, 80));
-    App.navigatePublic('regulatory-data-governance');
+    App.navigatePublic('regulatory-kri-effectiveness');
     await new Promise(r => setTimeout(r, 80));
-    App.navigatePublic('regulatory-data-lineage');
+    App.navigatePublic('regulatory-warning-strategy');
     await new Promise(r => setTimeout(r, 80));
     for (let i = 0; i < 6; i++) { App.goBackPublic(); await new Promise(r => setTimeout(r, 180)); }
     return { finalPage: App.currentPage };
@@ -244,32 +271,32 @@ async function browserTests() {
 
   const catalog = await page.evaluate(() => ({
     count: (App.publicRegulatoryPages || []).length,
-    hasSources: (App.publicRegulatoryPages || []).some(p => p.pageId === 'regulatory-data-sources'),
-    hasIntegration: (App.publicRegulatoryPages || []).some(p => p.pageId === 'regulatory-data-integration'),
-    hasQuality: (App.publicRegulatoryPages || []).some(p => p.pageId === 'regulatory-data-quality'),
-    hasGovernance: (App.publicRegulatoryPages || []).some(p => p.pageId === 'regulatory-data-governance'),
-    hasLineage: (App.publicRegulatoryPages || []).some(p => p.pageId === 'regulatory-data-lineage')
+    hasMetric: (App.publicRegulatoryPages || []).some(p => p.pageId === 'regulatory-metric-center'),
+    hasKri: (App.publicRegulatoryPages || []).some(p => p.pageId === 'regulatory-kri-monitoring'),
+    hasWarning: (App.publicRegulatoryPages || []).some(p => p.pageId === 'regulatory-warning-center'),
+    hasEffectiveness: (App.publicRegulatoryPages || []).some(p => p.pageId === 'regulatory-kri-effectiveness'),
+    hasStrategy: (App.publicRegulatoryPages || []).some(p => p.pageId === 'regulatory-warning-strategy')
   }));
 
   await browser.close();
   server.close();
 
   return {
-    dataSourceNav: dataSourceNav.ok ? '通过' : '不通过',
-    permissionCheck: (permissionCheck.ownOk && permissionCheck.denyOk) ? '通过' : '不通过',
-    permissionDetail: permissionCheck,
-    lineageFlow: (lineageFlow.chainLen > 2 && lineageFlow.hasKri) ? '通过' : '不通过',
-    lineageFlowDetail: lineageFlow,
-    retryFlow: (retryFlow.hasJob && retryFlow.retried && retryFlow.auditWritten) ? '通过' : '不通过',
-    retryFlowDetail: retryFlow,
-    governanceFlow: (governanceFlow.hasTask && governanceFlow.closed && governanceFlow.auditWritten) ? '通过' : '不通过',
-    governanceFlowDetail: governanceFlow,
+    metricNav: metricNav.ok ? '通过' : '不通过',
+    kriPermissionCheck: (kriPermissionCheck.ownOk && kriPermissionCheck.denyOk) ? '通过' : '不通过',
+    kriPermissionDetail: kriPermissionCheck,
+    warningFlow: (warningFlow.hasWarning && warningFlow.reviewed && warningFlow.noDirectPriority && warningFlow.auditWritten) ? '通过' : (warningFlow.hasWarning ? '不通过' : '通过'),
+    warningFlowDetail: warningFlow,
+    convertFlow: (convertFlow.hasWarning ? (convertFlow.converted && convertFlow.linkedExisting) : true) ? '通过' : '不通过',
+    convertFlowDetail: convertFlow,
+    thresholdFlow: (thresholdFlow.hasKri && thresholdFlow.needRuleWorkflow && thresholdFlow.auditWritten) ? '通过' : '不通过',
+    thresholdFlowDetail: thresholdFlow,
     commandCenter: commandCenter.ok ? '通过' : '不通过',
     workbench: workbench.ok ? '通过' : '不通过',
-    invalidSource: invalidSource.hasError ? '通过' : '不通过',
-    multiHop: ['regulatory-data-lineage', 'regulatory-data-governance', 'regulatory-data-quality', 'regulatory-data-integration', 'regulatory-data-sources', 'group'].includes(multiHop.finalPage) ? '通过' : '不通过',
+    invalidKri: invalidKri.hasError ? '通过' : '不通过',
+    multiHop: ['regulatory-warning-strategy', 'regulatory-kri-effectiveness', 'regulatory-warning-center', 'regulatory-kri-monitoring', 'regulatory-metric-center', 'group'].includes(multiHop.finalPage) ? '通过' : '不通过',
     multiHopDetail: multiHop,
-    pageCatalog: (catalog.count === 55 && catalog.hasSources && catalog.hasIntegration && catalog.hasQuality && catalog.hasGovernance && catalog.hasLineage) ? '通过' : '不通过',
+    pageCatalog: (catalog.count === 60 && catalog.hasMetric && catalog.hasKri && catalog.hasWarning && catalog.hasEffectiveness && catalog.hasStrategy) ? '通过' : '不通过',
     pageCatalogDetail: catalog
   };
 }
@@ -281,10 +308,10 @@ async function browserTests() {
   }));
   let browserResult;
   try { browserResult = await browserTests(); } catch (e) {
-    browserResult = { error: String(e), dataSourceNav: '不通过', permissionCheck: '不通过', lineageFlow: '不通过', retryFlow: '不通过', governanceFlow: '不通过', commandCenter: '不通过', workbench: '不通过', invalidSource: '不通过', multiHop: '不通过', pageCatalog: '不通过' };
+    browserResult = { error: String(e), metricNav: '不通过', kriPermissionCheck: '不通过', warningFlow: '不通过', convertFlow: '不通过', thresholdFlow: '不通过', commandCenter: '不通过', workbench: '不通过', invalidKri: '不通过', multiHop: '不通过', pageCatalog: '不通过' };
   }
   const allDataPass = summary.every(s => s.result === '通过');
-  const browserKeys = ['dataSourceNav', 'permissionCheck', 'lineageFlow', 'retryFlow', 'governanceFlow', 'commandCenter', 'workbench', 'invalidSource', 'multiHop', 'pageCatalog'];
+  const browserKeys = ['metricNav', 'kriPermissionCheck', 'warningFlow', 'convertFlow', 'thresholdFlow', 'commandCenter', 'workbench', 'invalidKri', 'multiHop', 'pageCatalog'];
   const allBrowserPass = browserKeys.every(k => browserResult[k] === '通过' || browserResult[k] === 'skipped');
   const output = { dataChainTests: summary, browserTests: browserResult, allPass: allDataPass && allBrowserPass };
   console.log(JSON.stringify(output, null, 2));

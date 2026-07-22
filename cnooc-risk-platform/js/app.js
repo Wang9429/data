@@ -109,7 +109,12 @@ const App = {
     'regulatory-data-integration': '集团监管数据接入中心',
     'regulatory-data-quality': '集团监管数据质量中心',
     'regulatory-data-governance': '集团监管数据治理中心',
-    'regulatory-data-lineage': '集团监管数据血缘中心'
+    'regulatory-data-lineage': '集团监管数据血缘中心',
+    'regulatory-metric-center': '集团监管指标中心',
+    'regulatory-kri-monitoring': '集团KRI运行监测中心',
+    'regulatory-warning-center': '集团监管预警中心',
+    'regulatory-kri-effectiveness': '集团KRI有效性评价中心',
+    'regulatory-warning-strategy': '集团预警策略分析中心'
   },
 
   init() {
@@ -159,6 +164,11 @@ const App = {
     this.renderRegulatoryDataQuality();
     this.renderRegulatoryDataGovernance();
     this.renderRegulatoryDataLineage();
+    this.renderRegulatoryMetricCenter();
+    this.renderRegulatoryKriMonitoring();
+    this.renderRegulatoryWarningCenter();
+    this.renderRegulatoryKriEffectiveness();
+    this.renderRegulatoryWarningStrategy();
     this.renderGlobalLegalEntities();
     this.renderGlobalRegions();
     this.renderCoverageGaps();
@@ -574,6 +584,28 @@ const App = {
       if (params.sourceId) { this.regulatoryDataLineageSourceId = params.sourceId; this.regulatoryDataLineageFilter = { ...(this.regulatoryDataLineageFilter || {}), sourceId: params.sourceId }; }
       if (params.kriId) this.regulatoryDataLineageFilter = { ...(this.regulatoryDataLineageFilter || {}), kriId: params.kriId };
       this.renderRegulatoryDataLineage();
+    }
+    if (pageId === 'regulatory-metric-center') {
+      if (params.metricId) { this.regulatoryMetricFocusId = params.metricId; this.showRegulatoryMetricDetail(params.metricId); }
+      else this.renderRegulatoryMetricCenter();
+    }
+    if (pageId === 'regulatory-kri-monitoring') {
+      if (params.kriRuntimeId) { this.regulatoryKriRuntimeFocusId = params.kriRuntimeId; this.showRegulatoryKriRuntimeDetail(params.kriRuntimeId); }
+      else if (params.kriId) this.regulatoryKriMonitoringFilter = { ...(this.regulatoryKriMonitoringFilter || {}), kriId: params.kriId };
+      else this.renderRegulatoryKriMonitoring();
+    }
+    if (pageId === 'regulatory-warning-center') {
+      if (params.regulatoryWarningId) { this.regulatoryWarningFocusId = params.regulatoryWarningId; this.showRegulatoryWarningDetail(params.regulatoryWarningId); }
+      else this.renderRegulatoryWarningCenter();
+    }
+    if (pageId === 'regulatory-kri-effectiveness') {
+      if (params.evaluationId) { this.regulatoryKriEvaluationFocusId = params.evaluationId; this.showRegulatoryKriEvaluationDetail(params.evaluationId); }
+      else this.renderRegulatoryKriEffectiveness();
+    }
+    if (pageId === 'regulatory-warning-strategy') {
+      if (params.strategyAnalysisId) { this.regulatoryWarningStrategyFocusId = params.strategyAnalysisId; this.showRegulatoryWarningStrategyDetail(params.strategyAnalysisId); }
+      else if (params.warningId) this.regulatoryWarningStrategyFilter = { ...(this.regulatoryWarningStrategyFilter || {}), warningId: params.warningId };
+      else this.renderRegulatoryWarningStrategy();
     }
   },
 
