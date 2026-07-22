@@ -21,6 +21,8 @@ const App = {
   selectedRiskId: null,
   currentDomain: 'investment',
   domainPageTemplates: {},
+  dataGovFilter: {},
+  dataGovLineageFocus: 'LIN001',
 
   menuItems: [
     { id: 'dashboard', icon: '📊', label: '驾驶舱' },
@@ -46,12 +48,22 @@ const App = {
     group: '集团监管总览',
     major: '重大事项监管',
     foundation: '监管基础能力'
-    ,matter: '投资重大事项详情'
+    ,matter: '投资重大事项详情',
+    'global-legal-entities': '全球法人监管',
+    'global-regions': '全球区域/国别监管',
+    'coverage-gaps': '监管对象覆盖与盲区',
+    'platform-operations': '监管运行监测',
+    'data-governance': '数据治理与数据血缘'
   },
 
   init() {
     this.renderNav();
     this.renderGroupOverview();
+    this.renderGlobalLegalEntities();
+    this.renderGlobalRegions();
+    this.renderCoverageGaps();
+    this.renderPlatformOperations();
+    this.renderDataGovernance();
     this.renderMajorMatters();
     this.renderFoundationWorkbench();
     this.renderDashboardMetrics();
@@ -126,6 +138,11 @@ const App = {
   getDomainMenu() {
     const base = [
       { id:'group', icon:'◉', label:'集团监管总览' },
+      { id:'global-legal-entities', icon:'◎', label:'全球法人监管' },
+      { id:'global-regions', icon:'◉', label:'全球区域/国别监管' },
+      { id:'coverage-gaps', icon:'◌', label:'监管对象覆盖与盲区' },
+      { id:'platform-operations', icon:'◍', label:'监管运行监测' },
+      { id:'data-governance', icon:'◧', label:'数据治理与数据血缘' },
       { id:'dashboard', icon:'▦', label:'分领域监管' },
       { id:'major', icon:'◆', label:'重大事项监管' },
       { id:'warnings', icon:'🔔', label:'集团风险预警' },
@@ -195,10 +212,241 @@ const App = {
     const fields=APP_DATA.regulationDomains.slice(0,8);
     node.innerHTML=`<div class="group-hero"><div><span>集团总部监管视角</span><h2>集团监管总览</h2><p>聚焦重点领域、重点法人、重大事项、重大风险和集团督办事项。</p></div><div>数据覆盖率 <b>92.6%</b></div></div>
     <div class="group-metrics">${[['126','纳入监管法人'],['8','纳入监管领域'],['3,286','重点监管事项'],['28','当前重大风险'],['126','当前重点预警'],['43','整改未闭环'],['18','集团重点督办'],['92.6%','数据覆盖率']].map(x=>`<button class="metric-card" onclick="App.navigate('dashboard')"><div class="value">${x[0]}</div><div class="label">${x[1]}</div></button>`).join('')}</div>
+    <div class="card"><div class="card-title">公共监管底座入口</div><div class="field-status-grid"><button onclick="App.navigate('global-legal-entities')"><b>全球法人监管</b><span>全级次法人、项目公司、海外法人</span><em>高风险法人12家</em></button><button onclick="App.navigate('global-regions')"><b>全球区域/国别监管</b><span>区域、国家/地区、项目和风险</span><em>覆盖24个国家/地区</em></button><button onclick="App.navigate('coverage-gaps')"><b>监管对象覆盖与盲区</b><span>法人、系统、数据、KRI、规则覆盖</span><em>覆盖盲区18项</em></button><button onclick="App.navigate('platform-operations')"><b>监管运行监测</b><span>数据接入、质量、KRI、规则、预警与闭环</span><em>运行告警3项</em></button><button onclick="App.navigate('data-governance')"><b>数据治理与数据血缘</b><span>数据源、标准、指标、KRI血缘与质量影响</span><em>质量异常14项</em></button></div></div>
     <div class="card"><div class="card-title">分领域监管态势</div><div class="field-status-grid">${fields.map((f,i)=>`<button onclick="App.selectRegulationDomain('${f.id}')"><b>${f.name}</b><span>重点事项：${[1286,486,238,426,512,186,328,412][i]}项</span><em>重大风险：${[12,3,2,4,5,2,6,4][i]}项</em><small>整改中：${[18,6,4,8,9,3,11,7][i]}项</small></button>`).join('')}</div></div>
     <div class="group-three"><div class="card"><div class="card-title">重点法人监管画像</div><table class="data-table"><thead><tr><th>法人</th><th>高风险领域</th><th>综合关注度</th></tr></thead><tbody><tr><td>A公司</td><td>投资、境外、合同</td><td><span class="badge badge-danger">高</span></td></tr><tr><td>B公司</td><td>投资、财务</td><td><span class="badge badge-warning">较高</span></td></tr><tr><td>D公司</td><td>境外、供应链</td><td><span class="badge badge-warning">较高</span></td></tr></tbody></table></div><div class="card"><div class="card-title">集团重点督办事项</div><div class="supervision-list"><p><b>01</b> 某境外投资项目收益持续偏离 <span class="badge badge-danger">L4</span></p><p><b>02</b> 固定资产项目追加投资接近审批边界 <span class="badge badge-warning">L3</span></p><p><b>03</b> 重大合同履约延期事项 <span class="badge badge-warning">L3</span></p></div></div></div>
     <div class="card"><div class="card-title">全级次法人监管态势</div><table class="data-table"><thead><tr><th>法人层级</th><th>法人数量</th><th>重大风险</th><th>重点预警</th><th>重大事项</th><th>控制规则异常</th><th>整改未闭环</th></tr></thead><tbody><tr><td>集团总部</td><td>1</td><td>0</td><td>0</td><td>18</td><td>0</td><td>6</td></tr><tr><td>一级子企业</td><td>12</td><td>8</td><td>32</td><td>86</td><td>4</td><td>15</td></tr><tr><td>二级子企业</td><td>38</td><td>12</td><td>58</td><td>164</td><td>7</td><td>18</td></tr><tr><td>三级子企业</td><td>52</td><td>6</td><td>29</td><td>73</td><td>3</td><td>4</td></tr><tr><td>四级及以下企业</td><td>23</td><td>2</td><td>7</td><td>21</td><td>1</td><td>0</td></tr></tbody></table></div>
     <div class="group-three"><div class="card"><div class="card-title">跨领域风险与重点区域</div><table class="data-table"><thead><tr><th>风险</th><th>涉及领域</th><th>区域 / 法人</th><th>趋势</th></tr></thead><tbody><tr><td>境外投资收益偏离</td><td>投资、财务、境外</td><td>中东 / B公司</td><td><span class="badge badge-danger">上升</span></td></tr><tr><td>重大合同履约延期</td><td>合同、供应链、工程</td><td>境内 / A公司</td><td><span class="badge badge-warning">关注</span></td></tr></tbody></table></div><div class="card"><div class="card-title">监管覆盖与盲区</div><div class="supervision-list"><p><b>92.6%</b> 重点事项已形成有效监测</p><p><b>8</b> 家法人存在数据更新滞后</p><p><b>14</b> 项重点事项待补充 KRI 或控制证据</p><p><b>6</b> 项整改待集团验证</p></div></div></div>`;
+  },
+
+  renderGlobalLegalEntities() {
+    const node=document.getElementById('globalLegalEntities'); if(!node)return;
+    const entities=APP_DATA.globalLegalEntities;
+    const overseas=entities.filter(e=>e.regionId!=='CN');
+    node.innerHTML=`<div class="group-hero"><div><span>集团级公共监管对象层</span><h2>全球法人监管</h2><p>全球 → 区域 → 国家/地区 → 法人 → 项目公司的全级次监管对象视图。</p></div><div>全球法人 <b>${entities.length + 122}家</b></div></div><div class="group-metrics">${[[entities.length+122,'集团法人总数'],[overseas.length+37,'境外法人'],[APP_DATA.globalCountries.length+21,'国家/地区'],[APP_DATA.globalRegions.length,'覆盖区域'],[entities.filter(e=>e.entityType==='项目公司').length+61,'项目公司'],[entities.reduce((s,e)=>s+(e.siteCount||e.projectSiteCount||0),0)+112,'项目现场'],[entities.filter(e=>e.highRiskCount>0).length+9,'高风险法人'],[entities.filter(e=>e.dataAccessStatus!=='已接入').length+6,'接入不完整法人'],[entities.reduce((s,e)=>s+(e.majorMatterCount||0),0),'重大事项'],[entities.reduce((s,e)=>s+(e.openRectificationCount||e.rectificationCount||0),0),'整改未闭环']].map(x=>`<div class="metric-card"><div class="value">${x[0]}</div><div class="label">${x[1]}</div></div>`).join('')}</div><div class="group-three"><div class="card"><div class="card-title">全级次法人关系</div><div class="kri-lineage">${entities.map(e=>`<button onclick="App.showGlobalEntityDetail('${e.entityId}')"><b>${e.entityName}</b><br>${e.entityLevel} · ${e.regionName||e.regionId} · 项目${e.projectCount}项</button><i>→</i>`).join('')}</div></div><div class="card"><div class="card-title">全球区域分布</div>${APP_DATA.globalRegions.map(r=>`<button class="enterprise-line" onclick="App.showGlobalRegionDetail('${r.regionId}')"><span>${r.regionName}</span><b>法人 ${r.legalEntityCount}</b><b>项目 ${r.projectCount}</b><b class="${r.highRiskCount?'badge-danger':'badge-success'}">高风险 ${r.highRiskCount}</b></button>`).join('')}</div></div><div class="card"><div class="card-title">法人监管画像</div><table class="data-table"><thead><tr><th>法人</th><th>层级/上级</th><th>区域/国家</th><th>业务</th><th>项目</th><th>风险/KRI</th><th>事项/整改</th><th>数据/合规</th></tr></thead><tbody>${entities.map(e=>`<tr class="clickable" onclick="App.showGlobalEntityDetail('${e.entityId}')"><td>${e.entityName}</td><td>${e.entityLevel} / ${e.parentEntityName||e.parentEntityId||'—'}</td><td>${e.regionName||e.regionId} / ${e.countryName||e.countryId}</td><td>${e.businessDomains}</td><td>${e.projectCount}</td><td>${e.riskCount} / ${e.kriExceptionCount}</td><td>${e.majorMatterCount||0} / ${e.openRectificationCount||e.rectificationCount}</td><td>${e.dataAccessStatus} / ${e.dataQualityStatus} / ${e.crossBorderComplianceStatus}</td></tr>`).join('')}</tbody></table></div><div id="globalEntityDetail"></div>`;
+  },
+
+  renderGlobalRegions() {
+    const node=document.getElementById('globalRegions'); if(!node)return;
+    node.innerHTML=`<div class="group-hero"><div><span>集团级公共监管对象层</span><h2>全球区域/国别监管</h2><p>区域 → 国家/地区 → 法人 → 项目 → 业务领域 → 风险事项。</p></div><div>覆盖国家 <b>${APP_DATA.globalCountries.length+21}个</b></div></div><div class="field-status-grid">${APP_DATA.globalRegions.map(r=>`<button onclick="App.showGlobalRegionDetail('${r.regionId}')"><b>${r.regionName}</b><span>法人 ${r.legalEntityCount} · 国家 ${r.countryCount} · 项目 ${r.projectCount}</span><em>风险 ${r.riskCount} · 高风险 ${r.highRiskCount}</em><small>接入率 ${r.dataCoverageRate} · 合规 ${r.complianceStatus}</small></button>`).join('')}</div><div class="card"><div class="card-title">国家/地区监管画像</div><table class="data-table"><thead><tr><th>国家/地区</th><th>法人/项目</th><th>业务领域</th><th>投资金额</th><th>风险/KRI</th><th>重大事项</th><th>整改</th><th>数据质量</th><th>跨境合规</th></tr></thead><tbody>${APP_DATA.globalCountries.map(c=>`<tr class="clickable" onclick="App.showGlobalRegionDetail('${c.regionId}','${c.countryId}')"><td>${c.countryName} · ${c.countryRiskLevel}风险</td><td>${c.legalEntityCount} / ${c.projectCount}</td><td>${c.businessDomains}</td><td>${c.investmentAmount}</td><td>${c.riskCount} / ${c.kriExceptionCount}</td><td>${c.majorMatterCount}</td><td>${c.rectificationCount}</td><td>${c.dataQualityStatus} (${c.dataCoverageRate})</td><td>${c.crossBorderComplianceStatus}</td></tr>`).join('')}</tbody></table></div><div id="globalRegionDetail"></div>`;
+  },
+
+  showGlobalEntityDetail(entityId) {
+    const entity=APP_DATA.globalLegalEntities.find(e=>e.entityId===entityId); const node=document.getElementById('globalEntityDetail');
+    if(!entity||!node)return;
+    const country=APP_DATA.globalCountries.find(c=>c.countryId===entity.countryId);
+    const projects=APP_DATA.globalProjects.filter(p=>p.entityId===entity.entityId);
+    node.innerHTML=`<div class="card"><div class="card-title">${entity.entityName} · 公共监管对象画像</div><div class="info-grid"><div class="info-item"><div class="info-label">组织关系</div><div class="info-value">${entity.entityLevel} · 上级${entity.parentEntityName||entity.parentEntityId||'—'}</div></div><div class="info-item"><div class="info-label">地理位置</div><div class="info-value">${entity.regionName||entity.regionId} / ${country?country.countryName:entity.countryId} / ${entity.city}</div></div><div class="info-item"><div class="info-label">业务与项目</div><div class="info-value">${entity.businessDomains} · 项目${entity.projectCount}项 / 现场${entity.siteCount||entity.projectSiteCount||0}个</div></div><div class="info-item"><div class="info-label">监管状态</div><div class="info-value">风险${entity.riskCount} · KRI异常${entity.kriExceptionCount} · 整改${entity.openRectificationCount||entity.rectificationCount}</div></div><div class="info-item full"><div class="info-label">数据与合规</div><div class="info-value">数据接入：${entity.dataAccessStatus}；质量：${entity.dataQualityStatus}；最近更新：${entity.lastDataUpdateTime||'待补充'}；跨境合规：${entity.crossBorderComplianceStatus}；责任部门：${entity.responsibleDepartment||'待明确'}</div></div></div><p class="insight-note">关联项目：${projects.map(p=>p.projectName).join('、')||'暂无项目明细'}。可继续穿透至数据源与数据血缘。</p></div>`;
+  },
+
+  showGlobalRegionDetail(regionId, countryId) {
+    const region=APP_DATA.globalRegions.find(r=>r.regionId===regionId); const node=document.getElementById('globalRegionDetail')||document.getElementById('globalEntityDetail');
+    if(!region||!node)return;
+    const countries=APP_DATA.globalCountries.filter(c=>c.regionId===regionId);
+    const entities=APP_DATA.globalLegalEntities.filter(e=>e.regionId===regionId && (!countryId||e.countryId===countryId));
+    node.innerHTML=`<div class="card"><div class="card-title">${countryId?(countries.find(c=>c.countryId===countryId)||{}).countryName:region.regionName} · 区域/国别监管详情</div><div class="info-grid"><div class="info-item"><div class="info-label">区域监管</div><div class="info-value">国家${region.countryCount}个 · 法人${region.legalEntityCount}家 · 项目${region.projectCount}项</div></div><div class="info-item"><div class="info-label">风险与整改</div><div class="info-value">风险${region.riskCount} · 高风险${region.highRiskCount} · 未闭环整改${region.rectificationCount}</div></div><div class="info-item full"><div class="info-label">数据与跨境合规</div><div class="info-value">数据接入率${region.dataCoverageRate}；跨境合规状态：${region.complianceStatus}；国家、法人、项目均使用统一 regionId/countryId/entityId 关联。</div></div></div><p class="insight-note">法人：${entities.map(e=>e.entityName).join('、')||'待补充'}；国家：${countries.map(c=>c.countryName).join('、')}。</p></div>`;
+  },
+
+  renderCoverageGaps() {
+    const node=document.getElementById('coverageGaps'); if(!node)return;
+    const matrix=[['法人','系统接入','已覆盖','数据接入','部分覆盖','KRI覆盖','已覆盖','规则覆盖','部分覆盖','整改闭环','部分覆盖'],['项目','系统接入','已覆盖','数据接入','已覆盖','KRI覆盖','部分覆盖','规则覆盖','已覆盖','整改闭环','已覆盖'],['业务领域','系统接入','部分覆盖','数据接入','已覆盖','KRI覆盖','已覆盖','规则覆盖','部分覆盖','整改闭环','已覆盖'],['区域/国家','系统接入','部分覆盖','数据接入','数据异常','KRI覆盖','已覆盖','规则覆盖','部分覆盖','整改闭环','部分覆盖']];
+    node.innerHTML=`<div class="group-hero"><div><span>集团级公共监管底座</span><h2>监管对象覆盖与盲区</h2><p>判断集团是否真正看得到、监得到、管得到、追得上监管对象。</p></div><div>覆盖盲区 <b>18项</b></div></div><div class="group-metrics">${APP_DATA.coverageMetrics.map(m=>`<div class="metric-card"><div class="value">${m[1]}</div><div class="label">${m[0]}</div><div class="sub-items">目标${m[2]} · 较上期${m[3]}<br>异常对象：${m[4]}</div></div>`).join('')}</div><div class="card"><div class="card-title">监管覆盖矩阵</div><table class="data-table"><thead><tr><th>监管对象</th><th>系统接入</th><th>数据接入</th><th>KRI覆盖</th><th>规则覆盖</th><th>整改闭环</th></tr></thead><tbody>${matrix.map(r=>`<tr><td>${r[0]}</td><td>${r[2]}</td><td>${r[4]}</td><td>${r[6]}</td><td>${r[8]}</td><td>${r[10]}</td></tr>`).join('')}</tbody></table></div><div class="card"><div class="card-title">监管盲区清单</div><table class="data-table"><thead><tr><th>对象</th><th>类型</th><th>区域/国家</th><th>上级法人</th><th>领域</th><th>覆盖状态</th><th>缺失环节</th><th>风险影响</th><th>责任部门</th><th>整改状态</th></tr></thead><tbody>${APP_DATA.coverageGaps.map(g=>`<tr><td>${g.name}</td><td>${g.type}</td><td>${g.region}/${g.country}</td><td>${g.parent}</td><td>${g.domain}</td><td><span class="badge ${g.status==='已覆盖'?'badge-success':'badge-warning'}">${g.status}</span></td><td>${g.gaps}</td><td>${g.impact}</td><td>${g.owner}</td><td>${g.rectification}</td></tr>`).join('')}</tbody></table></div><div class="card"><div class="card-title">统一监管覆盖链路</div><div class="kri-lineage"><span>法人</span><i>→</i><span>系统</span><i>→</i><span>数据</span><i>→</i><span>指标</span><i>→</i><span>KRI</span><i>→</i><span>规则</span><i>→</i><span>风险监测</span><i>→</i><span>责任与整改</span></div></div>`;
+  },
+
+  renderPlatformOperations() {
+    const node=document.getElementById('platformOperations'); if(!node)return;
+    const chain=[['监管对象','126','正常122','异常4'],['数据接入','96.8%','正常92.4%','异常3.2%'],['数据质量','97.1%','正常94.6%','异常2.9%'],['指标计算','98.6%','正常238项','失败4项'],['KRI更新','98.2%','成功234项','延迟4项'],['规则执行','99.1%','正常1,173次','异常42次'],['风险预警','97.8%','成功触达','未触达2.2%'],['责任处置','88.4%','及时处置','超期11.6%'],['整改闭环','76.4%','已关闭43项','未闭环18项']];
+    node.innerHTML=`<div class="group-hero"><div><span>集团级公共监管底座</span><h2>监管运行监测</h2><p>监测集团穿透式监管平台从数据接入到风险处置的全链路运行状态。</p></div><div>运行告警 <b>${APP_DATA.platformOperationAlerts.length}项</b></div></div><div class="group-metrics">${APP_DATA.platformOperationMetrics.map(m=>`<div class="metric-card"><div class="value">${m[1]}</div><div class="label">${m[0]}</div><div class="sub-items">目标${m[2]} · 较上期${m[3]}<br>${m[4]}</div></div>`).join('')}</div><div class="card"><div class="card-title">监管运行链路</div><div class="kri-lineage">${chain.map(c=>`<span><b>${c[0]}</b><br>${c[1]}<br><small>${c[2]} · ${c[3]}</small></span><i>→</i>`).join('')}</div></div><div class="card"><div class="card-title">系统与数据源运行状态</div><table class="data-table"><thead><tr><th>系统</th><th>法人</th><th>区域/国家</th><th>领域</th><th>接口/同步</th><th>最近同步</th><th>完整率/及时率</th><th>质量评分</th><th>责任部门</th></tr></thead><tbody>${APP_DATA.platformOperationSources.map(s=>`<tr><td>${s[0]}<br><small>${s[1]}</small></td><td>${s[2]}</td><td>${s[3]}</td><td>${s[4]}</td><td>${s[5]} / ${s[6]}</td><td>${s[7]}</td><td>${s[9]} / ${s[10]}</td><td>${s[11]}</td><td>${s[12]}</td></tr>`).join('')}</tbody></table></div><div class="card"><div class="card-title">监管运行异常清单</div><table class="data-table"><thead><tr><th>异常类型</th><th>等级</th><th>系统</th><th>法人/区域</th><th>领域</th><th>发生时间</th><th>状态</th><th>责任部门</th><th>期限</th><th>影响范围</th></tr></thead><tbody>${APP_DATA.platformOperationAlerts.map(a=>`<tr><td>${a[0]}</td><td>${a[1]}</td><td>${a[2]}</td><td>${a[3]} / ${a[4]}</td><td>${a[5]}</td><td>${a[6]}</td><td>${a[7]}</td><td>${a[8]}</td><td>${a[9]}</td><td>${a[10]}</td></tr>`).join('')}</tbody></table></div><div class="card"><div class="card-title">近7日监管运行趋势</div><table class="data-table"><thead><tr><th>日期</th><th>数据接入率</th><th>数据质量</th><th>KRI更新</th><th>规则执行</th><th>预警触达</th><th>处置及时率</th><th>整改闭环</th></tr></thead><tbody>${APP_DATA.platformOperationHistory.map(h=>`<tr>${h.map(x=>`<td>${x}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+  },
+
+  dataGovQualityBadge(status) {
+    if (status === '正常' || status === '良好') return 'badge-success';
+    if (status === '关注' || status === '整改中' || status === '待处理') return 'badge-warning';
+    return 'badge-danger';
+  },
+
+  getDataGovLineageChain(relationId) {
+    const rel = APP_DATA.dataLineageRelations.find(r => r.relationId === relationId);
+    if (!rel) return null;
+    const src = APP_DATA.dataSourceRegistry.find(s => s.sourceId === rel.sourceId);
+    const obj = APP_DATA.dataObjects.find(o => o.objectId === rel.objectId);
+    const fld = APP_DATA.dataFields.find(f => f.fieldId === rel.fieldId);
+    const std = APP_DATA.dataStandards.find(s => s.standardId === rel.standardId);
+    const ind = APP_DATA.dataIndicators.find(i => i.indicatorId === rel.indicatorId);
+    const kri = rel.kriId ? APP_DATA.groupKris.find(k => k.id === rel.kriId) : null;
+    const scenario = rel.scenarioId ? APP_DATA.groupRiskScenarios.find(s => s.id === rel.scenarioId) : null;
+    const risk = rel.riskMatterId ? APP_DATA.warnings.find(w => w.id === rel.riskMatterId) : null;
+    const rect = rel.rectificationId ? APP_DATA.rectificationTasks.find(t => t.id === rel.rectificationId) : null;
+    return { rel, src, obj, fld, std, ind, kri, scenario, risk, rect };
+  },
+
+  renderDataGovernance() {
+    const node = document.getElementById('dataGovernance');
+    if (!node) return;
+    const f = this.dataGovFilter || {};
+    const sources = APP_DATA.dataSourceRegistry.filter(s =>
+      (!f.entity || s.ownerEntity === f.entity) &&
+      (!f.region || s.regionName === f.region) &&
+      (!f.country || s.countryName === f.country) &&
+      (!f.domain || (s.businessDomains || []).some(d => d.includes(f.domain))) &&
+      (!f.systemType || s.systemType === f.systemType) &&
+      (!f.interfaceStatus || s.interfaceStatus === f.interfaceStatus) &&
+      (!f.qualityStatus || (f.qualityStatus === '正常' ? s.qualityScore >= 90 : f.qualityStatus === '关注' ? s.qualityScore >= 80 && s.qualityScore < 90 : s.qualityScore < 80))
+    );
+    const focusId = this.dataGovLineageFocus || APP_DATA.dataLineageRelations[0].relationId;
+    const chain = this.getDataGovLineageChain(focusId);
+    const stdIssues = APP_DATA.dataStandards.filter(s => s.issueType);
+    node.innerHTML = `
+    <div class="group-hero"><div><span>集团级公共监管底座</span><h2>数据治理与数据血缘</h2><p>面向集团穿透式监管的数据治理与风险监管血缘能力：数据从哪里来、经过什么加工、最终支撑哪个监管指标和风险判断。</p></div><div>质量异常 <b>${APP_DATA.dataQualityIssues.length}项</b></div></div>
+    <div class="group-metrics">${APP_DATA.dataGovernanceMetrics.map(m => `<div class="metric-card"><div class="value">${m[1]}</div><div class="label">${m[0]}</div><div class="sub-items">较上期 ${m[2]} · <span class="badge ${this.dataGovQualityBadge(m[3])}">${m[3]}</span></div></div>`).join('')}</div>
+    <div class="card"><div class="card-title">数据源台账</div>
+      <div class="filter-bar" style="margin-bottom:12px;display:flex;flex-wrap:wrap;gap:8px;">
+        <select onchange="App.dataGovFilter.entity=this.value;App.renderDataGovernance()"><option value="">全部法人</option>${[...new Set(APP_DATA.dataSourceRegistry.map(s=>s.ownerEntity))].map(e=>`<option value="${e}" ${f.entity===e?'selected':''}>${e}</option>`).join('')}</select>
+        <select onchange="App.dataGovFilter.region=this.value;App.renderDataGovernance()"><option value="">全部区域</option>${[...new Set(APP_DATA.dataSourceRegistry.map(s=>s.regionName))].map(e=>`<option value="${e}" ${f.region===e?'selected':''}>${e}</option>`).join('')}</select>
+        <select onchange="App.dataGovFilter.country=this.value;App.renderDataGovernance()"><option value="">全部国家/地区</option>${[...new Set(APP_DATA.dataSourceRegistry.map(s=>s.countryName))].map(e=>`<option value="${e}" ${f.country===e?'selected':''}>${e}</option>`).join('')}</select>
+        <select onchange="App.dataGovFilter.systemType=this.value;App.renderDataGovernance()"><option value="">全部系统类型</option>${[...new Set(APP_DATA.dataSourceRegistry.map(s=>s.systemType))].map(e=>`<option value="${e}" ${f.systemType===e?'selected':''}>${e}</option>`).join('')}</select>
+        <select onchange="App.dataGovFilter.interfaceStatus=this.value;App.renderDataGovernance()"><option value="">全部接口状态</option><option value="正常" ${f.interfaceStatus==='正常'?'selected':''}>正常</option><option value="延迟" ${f.interfaceStatus==='延迟'?'selected':''}>延迟</option><option value="异常" ${f.interfaceStatus==='异常'?'selected':''}>异常</option></select>
+        <select onchange="App.dataGovFilter.qualityStatus=this.value;App.renderDataGovernance()"><option value="">全部质量状态</option><option value="正常" ${f.qualityStatus==='正常'?'selected':''}>正常</option><option value="关注" ${f.qualityStatus==='关注'?'selected':''}>关注</option><option value="异常" ${f.qualityStatus==='异常'?'selected':''}>异常</option></select>
+      </div>
+      <table class="data-table"><thead><tr><th>系统</th><th>所属法人</th><th>区域/国家</th><th>业务领域</th><th>接口状态</th><th>最近同步</th><th>完整率</th><th>及时率</th><th>质量评分</th></tr></thead>
+      <tbody>${sources.map(s => `<tr class="clickable" onclick="App.showDataGovSourceDetail('${s.sourceId}')"><td>${s.systemName}<br><small>${s.systemType}</small></td><td>${s.ownerEntity}</td><td>${s.regionName}/${s.countryName}</td><td>${(s.businessDomains||[]).join('、')}</td><td><span class="badge ${this.dataGovQualityBadge(s.interfaceStatus==='正常'?'正常':'异常')}">${s.interfaceStatus}</span></td><td>${s.lastSyncTime}</td><td>${s.dataCompleteness}</td><td>${s.dataTimeliness}</td><td>${s.qualityScore}</td></tr>`).join('')}</tbody></table>
+    </div>
+    <div id="dataGovSourceDetail"></div>
+    <div class="card"><div class="card-title">数据质量监管</div>
+      <table class="data-table"><thead><tr><th>异常类型</th><th>数据对象</th><th>字段</th><th>完整率</th><th>及时率</th><th>准确性</th><th>质量评分</th><th>责任部门</th><th>整改状态</th><th>风险影响</th></tr></thead>
+      <tbody>${APP_DATA.dataQualityIssues.map(q => {
+        const obj = APP_DATA.dataObjects.find(o => o.objectId === q.objectId);
+        const fld = q.fieldId ? APP_DATA.dataFields.find(f => f.fieldId === q.fieldId) : null;
+        return `<tr class="clickable" onclick="App.showDataGovQualityImpact('${q.issueId}')"><td><span class="badge badge-danger">${q.anomalyType}</span></td><td>${obj?obj.objectName:'—'}</td><td>${fld?fld.fieldName:'—'}</td><td>${q.completeness}</td><td>${q.timeliness}</td><td>${q.accuracy}</td><td>${q.qualityScore}</td><td>${q.ownerDepartment}</td><td><span class="badge ${this.dataGovQualityBadge(q.rectificationStatus)}">${q.rectificationStatus}</span></td><td>${q.impactDesc}</td></tr>`;
+      }).join('')}</tbody></table>
+    </div>
+    <div id="dataGovQualityImpact"></div>
+    <div class="card"><div class="card-title">数据血缘探索</div>
+      <p class="insight-note" style="margin-bottom:12px;">支持从数据向前追溯监管影响，从风险向后追溯数据来源。当前链路：</p>
+      <div class="kri-lineage">${chain ? [
+        ['源系统', chain.src, 'systemName', 'ownerEntity', 'regionName'],
+        ['数据对象', chain.obj, 'objectName', 'ownerEntity', 'businessDomain'],
+        ['数据字段', chain.fld, 'fieldName', 'dataType', 'qualityStatus'],
+        ['数据标准', chain.std, 'standardName', 'ownerDepartment', 'standardType'],
+        ['指标', chain.ind, 'indicatorName', 'responsibleDepartment', 'qualityStatus'],
+        ['KRI', chain.kri, 'name', 'entities', 'status'],
+        ['风险场景', chain.scenario, 'name', 'level', 'control'],
+        ['控制规则', { name: chain.rel.controlRule || '—', owner: chain.scenario?chain.scenario.control:'—', status: chain.rel.controlRule?'已配置':'未配置' }, 'name', 'owner', 'status'],
+        ['风险事项', chain.risk, 'name', 'unit', 'level'],
+        ['整改任务', chain.rect, 'title', 'company', 'status']
+      ].map(([label, item, nKey, eKey, sKey]) => item ? `<button onclick="App.dataGovLineageFocus='${focusId}';App.renderDataGovernance()"><b>${label}</b><br>${item[nKey]||item.name||'—'}<br><small>${item[eKey]||''} · ${item[sKey]||''}</small></button><i>→</i>` : '').join('') : ''}</div>
+      <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="btn btn-outline" onclick="App.traceDataGovLineage('upstream')">查看上游</button>
+        <button class="btn btn-outline" onclick="App.traceDataGovLineage('downstream')">查看下游</button>
+        <button class="btn btn-outline" onclick="App.traceDataGovLineage('impact')">查看影响范围</button>
+        ${APP_DATA.dataLineageRelations.map(r => `<button class="btn btn-outline" onclick="App.dataGovLineageFocus='${r.relationId}';App.renderDataGovernance()">${r.relationId}</button>`).join('')}
+      </div>
+    </div>
+    <div id="dataGovLineageTrace"></div>
+    <div class="card"><div class="card-title">数据对象管理</div>
+      <table class="data-table"><thead><tr><th>数据对象名称</th><th>所属系统</th><th>所属法人</th><th>业务领域</th><th>数据责任部门</th><th>最近更新时间</th><th>质量状态</th><th>下游指标</th><th>下游KRI</th></tr></thead>
+      <tbody>${APP_DATA.dataObjects.map(o => `<tr class="clickable" onclick="App.showDataGovObjectDetail('${o.objectId}')"><td>${o.objectName}</td><td>${o.systemName}</td><td>${o.ownerEntity}</td><td>${o.businessDomain}</td><td>${o.dataOwner}</td><td>${o.lastUpdateTime}</td><td><span class="badge ${this.dataGovQualityBadge(o.qualityStatus)}">${o.qualityStatus}</span></td><td>${o.downstreamIndicatorCount}</td><td>${o.downstreamKriCount}</td></tr>`).join('')}</tbody></table>
+    </div>
+    <div class="card"><div class="card-title">数据标准管理</div>
+      ${stdIssues.length ? `<p class="insight-note">标准问题：${stdIssues.map(s => `<span class="badge badge-warning">${s.standardName}·${s.issueType}</span>`).join(' ')}</p>` : ''}
+      <table class="data-table"><thead><tr><th>标准名称</th><th>标准编码</th><th>定义</th><th>单位</th><th>适用系统</th><th>适用领域</th><th>责任部门</th><th>使用指标</th><th>使用KRI</th><th>问题</th></tr></thead>
+      <tbody>${APP_DATA.dataStandards.map(s => `<tr class="clickable" onclick="App.showDataGovStandardDetail('${s.standardId}')"><td>${s.standardName}</td><td>${s.standardCode}</td><td>${s.definition}</td><td>${s.unit}</td><td>${(s.applicableSystems||[]).join('、')}</td><td>${(s.applicableDomains||[]).join('、')}</td><td>${s.ownerDepartment}</td><td>${s.indicatorCount}</td><td>${s.kriCount}</td><td>${s.issueType ? `<span class="badge badge-warning">${s.issueType}</span>` : '—'}</td></tr>`).join('')}</tbody></table>
+    </div>
+    <div id="dataGovStandardDetail"></div>`;
+  },
+
+  showDataGovSourceDetail(sourceId) {
+    const src = APP_DATA.dataSourceRegistry.find(s => s.sourceId === sourceId);
+    const node = document.getElementById('dataGovSourceDetail');
+    if (!src || !node) return;
+    const objects = APP_DATA.dataObjects.filter(o => o.sourceId === sourceId);
+    const relations = APP_DATA.dataLineageRelations.filter(r => r.sourceId === sourceId);
+    node.innerHTML = `<div class="card"><div class="card-title">${src.systemName} · 数据源穿透</div>
+      <div class="info-grid"><div class="info-item"><div class="info-label">法人/区域/国家</div><div class="info-value">${src.ownerEntity} · ${src.regionName} / ${src.countryName}</div></div>
+      <div class="info-item"><div class="info-label">采集与同步</div><div class="info-value">${src.collectionMethod} · ${src.syncStatus} · ${src.lastSyncTime}</div></div>
+      <div class="info-item"><div class="info-label">数据质量</div><div class="info-value">完整率${src.dataCompleteness} · 及时率${src.dataTimeliness} · 评分${src.qualityScore}</div></div></div>
+      <p class="insight-note">数据对象：${objects.map(o => `<button class="btn btn-outline" style="margin:2px" onclick="App.showDataGovObjectDetail('${o.objectId}')">${o.objectName}</button>`).join('')}</p>
+      <p class="insight-note">血缘链路：${relations.map(r => `<button class="btn btn-outline" style="margin:2px" onclick="App.dataGovLineageFocus='${r.relationId}';App.renderDataGovernance()">${r.relationId}</button>`).join('')}</p></div>`;
+  },
+
+  showDataGovObjectDetail(objectId) {
+    const obj = APP_DATA.dataObjects.find(o => o.objectId === objectId);
+    const node = document.getElementById('dataGovSourceDetail');
+    if (!obj || !node) return;
+    const fields = APP_DATA.dataFields.filter(f => f.objectId === objectId);
+    const indicators = APP_DATA.dataIndicators.filter(i => i.sourceObject === objectId);
+    node.innerHTML = `<div class="card"><div class="card-title">${obj.objectName} · 数据对象详情</div>
+      <div class="info-grid"><div class="info-item"><div class="info-label">所属系统/法人</div><div class="info-value">${obj.systemName} · ${obj.ownerEntity}</div></div>
+      <div class="info-item"><div class="info-label">责任与质量</div><div class="info-value">${obj.dataOwner} · ${obj.qualityStatus} · ${obj.lastUpdateTime}</div></div></div>
+      <p><b>字段：</b>${fields.map(f => `<button class="btn btn-outline" style="margin:2px" onclick="App.showDataGovFieldDetail('${f.fieldId}')">${f.fieldName}</button>`).join('')}</p>
+      <p><b>下游指标：</b>${indicators.map(i => i.indicatorName).join('、') || '—'}</p></div>`;
+  },
+
+  showDataGovFieldDetail(fieldId) {
+    const fld = APP_DATA.dataFields.find(f => f.fieldId === fieldId);
+    const node = document.getElementById('dataGovSourceDetail');
+    if (!fld || !node) return;
+    const std = APP_DATA.dataStandards.find(s => s.standardId === fld.standardId);
+    const indicators = APP_DATA.dataIndicators.filter(i => (i.sourceFields || []).includes(fieldId));
+    node.innerHTML = `<div class="card"><div class="card-title">${fld.fieldName} · 字段详情</div>
+      <p>编码：${fld.fieldCode} · 类型：${fld.dataType} · 敏感级别：${fld.sensitivityLevel} · 质量：${fld.qualityStatus}</p>
+      <p>统一标准：${std ? std.standardName + '（' + std.standardCode + '）' : '—'}</p>
+      <p>关联指标：${indicators.map(i => i.indicatorName).join('、') || '—'}</p></div>`;
+  },
+
+  showDataGovQualityImpact(issueId) {
+    const issue = APP_DATA.dataQualityIssues.find(q => q.issueId === issueId);
+    const node = document.getElementById('dataGovQualityImpact');
+    if (!issue || !node) return;
+    const obj = APP_DATA.dataObjects.find(o => o.objectId === issue.objectId);
+    const fld = issue.fieldId ? APP_DATA.dataFields.find(f => f.fieldId === issue.fieldId) : null;
+    const ind = issue.indicatorId ? APP_DATA.dataIndicators.find(i => i.indicatorId === issue.indicatorId) : null;
+    const kri = issue.kriId ? APP_DATA.groupKris.find(k => k.id === issue.kriId) : null;
+    const scenario = issue.scenarioId ? APP_DATA.groupRiskScenarios.find(s => s.id === issue.scenarioId) : null;
+    node.innerHTML = `<div class="card"><div class="card-title">数据质量影响链路 · ${issue.anomalyType}</div>
+      <div class="kri-lineage">
+        <span><b>数据异常</b><br>${issue.anomalyType}<br><small>${obj?obj.objectName:''} · ${fld?fld.fieldName:''}</small></span><i>→</i>
+        <span><b>影响指标</b><br>${ind?ind.indicatorName:'无法计算'}<br><small>${ind?ind.qualityStatus:'—'}</small></span><i>→</i>
+        <span><b>影响KRI</b><br>${kri?kri.name:'KRI无法更新'}<br><small>${kri?kri.status:'—'}</small></span><i>→</i>
+        <span><b>影响风险场景</b><br>${scenario?scenario.name:'监管盲区'}<br><small>${scenario?scenario.level:'—'}</small></span><i>→</i>
+        <span><b>影响判断</b><br>${issue.impactDesc}</span>
+      </div></div>`;
+  },
+
+  showDataGovStandardDetail(standardId) {
+    const std = APP_DATA.dataStandards.find(s => s.standardId === standardId);
+    const node = document.getElementById('dataGovStandardDetail');
+    if (!std || !node) return;
+    node.innerHTML = `<div class="card"><div class="card-title">${std.standardName} · 数据标准详情</div>
+      <p>${std.definition}</p>
+      <p><b>多系统统一：</b>${(std.aliasFields||[]).map(a => `<em>${a}</em>`).join('、')} → <strong>${std.standardName}</strong></p>
+      <p>适用系统：${(std.applicableSystems||[]).join('、')} · 责任部门：${std.ownerDepartment}</p>
+      <p>使用指标 ${std.indicatorCount} 个 · 使用KRI ${std.kriCount} 个${std.issueType ? ' · <span class="badge badge-warning">' + std.issueType + '</span>' : ''}</p></div>`;
+  },
+
+  traceDataGovLineage(direction) {
+    const rels = APP_DATA.dataLineageRelations;
+    const idx = rels.findIndex(r => r.relationId === this.dataGovLineageFocus);
+    const node = document.getElementById('dataGovLineageTrace');
+    if (!node) return;
+    if (direction === 'upstream') {
+      const prev = idx > 0 ? rels[idx - 1] : rels[rels.length - 1];
+      this.dataGovLineageFocus = prev.relationId;
+      this.renderDataGovernance();
+      return;
+    }
+    if (direction === 'downstream') {
+      const next = idx < rels.length - 1 ? rels[idx + 1] : rels[0];
+      this.dataGovLineageFocus = next.relationId;
+      this.renderDataGovernance();
+      return;
+    }
+    const chain = this.getDataGovLineageChain(this.dataGovLineageFocus);
+    const impacts = APP_DATA.dataQualityIssues.filter(q => q.kriId === chain.rel.kriId || q.indicatorId === chain.rel.indicatorId);
+    node.innerHTML = `<div class="card"><div class="card-title">影响范围 · ${chain.src.systemName}</div>
+      <p>关联指标：${APP_DATA.dataIndicators.filter(i => i.kriId === chain.rel.kriId).map(i => i.indicatorName).join('、') || '—'}</p>
+      <p>关联KRI：${chain.kri ? chain.kri.name : '—'} · 风险场景：${chain.scenario ? chain.scenario.name : '—'}</p>
+      <p>质量异常影响：${impacts.map(q => q.anomalyType + '（' + q.impactDesc + '）').join('；') || '暂无'}</p></div>`;
   },
 
   renderMajorMatters() {

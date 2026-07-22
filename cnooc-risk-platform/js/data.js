@@ -242,6 +242,115 @@ const APP_DATA = {
 };
 
 Object.assign(APP_DATA, {
+  platformOperationMetrics: [
+    ['数据源接入率','96.8%','98%','+1.6%','部分达标'],['境外法人接入率','91.5%','95%','+2.4%','部分达标'],['关键系统接入率','94.2%','95%','+1.8%','部分达标'],['数据完整率','97.1%','98%','+0.8%','正常'],['数据及时率','95.6%','97%','+1.2%','正常'],['KRI更新成功率','98.2%','99%','+0.5%','正常'],['规则执行率','99.1%','99%','+0.7%','正常'],['风险预警触达率','97.8%','98%','+1.1%','正常'],['异常处置及时率','88.4%','95%','+3.2%','部分达标'],['整改闭环率','76.4%','80%','+2.6%','部分达标']
+  ],
+  platformOperationSources: [
+    ['投资管理系统','业务系统','A公司','境内/中国','投资管理','正常','正常','2026-07-22 08:00','日','98.6%','97.2%','96','集团投资管理部'],
+    ['财务系统','业务系统','B公司','中东/中东某国','财务、投资','延迟','延迟','2026-07-21 22:00','日','94.2%','88.5%','89','区域财务部'],
+    ['合同系统','业务系统','C项目公司','中东/中东某国','合同、工程','正常','正常','2026-07-22 07:30','实时','96.8%','98.1%','94','项目合同部'],
+    ['经营分析系统','分析系统','D公司','亚洲/东南亚某国','投资、境外','异常','中断','2026-07-20 18:00','日','82.4%','71.2%','76','区域信息管理岗']
+  ],
+  platformOperationAlerts: [
+    ['接口中断','高','经营分析系统','D公司','亚洲/东南亚某国','境外业务','2026-07-20 18:00','处理中','区域信息管理岗','2026-07-23','影响KRI更新'],
+    ['数据同步延迟','中','财务系统','B公司','中东/中东某国','投资管理','2026-07-21 22:00','待处理','区域财务部','2026-07-24','预警延迟'],
+    ['数据质量异常','中','项目管理系统','C项目公司','中东/中东某国','工程项目','2026-07-21 14:00','处理中','项目管理部','2026-07-25','指标准确性不足']
+  ],
+  platformOperationHistory: [
+    ['07-16','94.2%','95.1%','97.1%','98.3%','96.4%','86.2%','72.1%'],['07-18','95.0%','95.8%','97.6%','98.5%','96.8%','87.1%','73.4%'],['07-20','96.1%','96.4%','98.0%','98.8%','97.2%','87.8%','75.0%'],['07-22','96.8%','97.1%','98.2%','99.1%','97.8%','88.4%','76.4%']
+  ],
+  coverageMetrics: [
+    ['全级次法人覆盖率','96.8%','98.0%','+1.2%','4家'],['境外法人接入率','91.5%','95.0%','+2.4%','5家'],['项目接入率','94.2%','96.0%','+1.8%','18项'],['关键系统覆盖率','93.6%','95.0%','+3.1%','6个'],['数据源接入率','92.8%','95.0%','+2.6%','8个'],['指标覆盖率','89.4%','92.0%','+4.2%','14项'],['KRI覆盖率','87.6%','90.0%','+3.8%','18项'],['风险场景覆盖率','91.2%','93.0%','+2.1%','11项'],['控制规则覆盖率','86.5%','90.0%','+4.5%','16项'],['责任主体覆盖率','97.1%','98.0%','+0.9%','5项'],['整改闭环率','76.4%','80.0%','+2.6%','18项']
+  ],
+  coverageGaps: [
+    { name:'C项目公司', type:'法人', region:'中东', country:'中东某国', parent:'B公司', domain:'境外/投资', status:'部分覆盖', gaps:'数据接入、KRI更新', impact:'经营风险无法持续监测', owner:'信息化管理部', rectification:'待整改' },
+    { name:'某海外项目现场', type:'项目现场', region:'非洲', country:'非洲某国', parent:'D公司', domain:'工程/供应链', status:'数据异常', gaps:'接口同步、数据及时率', impact:'预警结果延迟', owner:'区域信息管理岗', rectification:'整改中' },
+    { name:'某境外法人', type:'法人', region:'亚洲', country:'东南亚某国', parent:'A公司', domain:'合同/供应链', status:'未覆盖', gaps:'风险场景、控制规则', impact:'合同风险无法自动识别', owner:'业务管理部', rectification:'待建立' }
+  ],
+  globalRegions: [
+    { regionId:'CN', regionName:'境内', regionType:'domestic', countryCount:1, legalEntityCount:86, projectCount:926, riskCount:32, highRiskCount:5, rectificationCount:14, dataCoverageRate:'98.6%', complianceStatus:'正常' },
+    { regionId:'ME', regionName:'中东', regionType:'overseas', countryCount:4, legalEntityCount:12, projectCount:126, riskCount:18, highRiskCount:6, rectificationCount:8, dataCoverageRate:'92.1%', complianceStatus:'关注' },
+    { regionId:'AS', regionName:'亚洲', regionType:'overseas', countryCount:6, legalEntityCount:10, projectCount:98, riskCount:12, highRiskCount:3, rectificationCount:5, dataCoverageRate:'94.8%', complianceStatus:'正常' },
+    { regionId:'AF', regionName:'非洲', regionType:'overseas', countryCount:5, legalEntityCount:8, projectCount:76, riskCount:9, highRiskCount:2, rectificationCount:4, dataCoverageRate:'88.5%', complianceStatus:'关注' },
+    { regionId:'EU', regionName:'欧洲及拉美', regionType:'overseas', countryCount:8, legalEntityCount:10, projectCount:60, riskCount:7, highRiskCount:1, rectificationCount:3, dataCoverageRate:'91.2%', complianceStatus:'正常' }
+  ],
+  globalCountries: [
+    { countryId:'CN-CN', countryName:'中国', regionId:'CN', regionName:'境内', countryRiskLevel:'低', legalEntityCount:86, projectCount:926, businessDomains:'投资、财务、合同、工程', investmentAmount:'6,302亿元', riskCount:32, highRiskCount:5, kriExceptionCount:18, majorMatterCount:86, rectificationCount:14, dataCoverageRate:'98.6%', dataQualityStatus:'良好', crossBorderComplianceStatus:'不适用' },
+    { countryId:'ME-A', countryName:'中东某国', regionId:'ME', regionName:'中东', countryRiskLevel:'高', legalEntityCount:6, projectCount:68, businessDomains:'境外、投资、工程', investmentAmount:'628亿元', riskCount:11, highRiskCount:4, kriExceptionCount:9, majorMatterCount:18, rectificationCount:5, dataCoverageRate:'91.4%', dataQualityStatus:'关注', crossBorderComplianceStatus:'待复核' },
+    { countryId:'AS-A', countryName:'东南亚某国', regionId:'AS', regionName:'亚洲', countryRiskLevel:'中', legalEntityCount:5, projectCount:42, businessDomains:'投资、供应链、合同', investmentAmount:'386亿元', riskCount:6, highRiskCount:1, kriExceptionCount:4, majorMatterCount:9, rectificationCount:2, dataCoverageRate:'95.2%', dataQualityStatus:'良好', crossBorderComplianceStatus:'正常' }
+  ],
+  globalLegalEntities: [
+    { entityId:'G001', entityName:'集团总部', parentEntityId:null, parentEntityName:'—', entityLevel:'集团', entityType:'总部', regionId:'CN', regionName:'境内', countryId:'CN-CN', countryName:'中国', city:'北京', businessDomains:'集团监管', projectCount:0, projectSiteCount:0, siteCount:0, riskCount:0, highRiskCount:0, kriExceptionCount:0, majorMatterCount:18, rectificationCount:6, openRectificationCount:6, dataAccessStatus:'已接入', dataQualityStatus:'良好', lastDataUpdateTime:'2026-07-22 08:00', responsibleDepartment:'集团数据治理部', crossBorderComplianceStatus:'统筹监管' },
+    { entityId:'A001', entityName:'A公司', parentEntityId:'G001', entityLevel:'一级', entityType:'一级子企业', regionId:'CN', countryId:'CN-CN', city:'北京', businessDomains:'工程、装备、投资', projectCount:286, projectSiteCount:18, riskCount:20, highRiskCount:5, kriExceptionCount:12, rectificationCount:8, dataAccessStatus:'已接入', dataQualityStatus:'良好', crossBorderComplianceStatus:'不适用' },
+    { entityId:'B001', entityName:'B公司', parentEntityId:'A001', entityLevel:'二级', entityType:'二级子企业', regionId:'ME', countryId:'ME-A', city:'某海外城市', businessDomains:'境外、清洁能源、投资', projectCount:186, projectSiteCount:12, riskCount:14, highRiskCount:4, kriExceptionCount:9, rectificationCount:6, dataAccessStatus:'部分接入', dataQualityStatus:'关注', crossBorderComplianceStatus:'待复核' },
+    { entityId:'C001', entityName:'C项目公司', parentEntityId:'B001', entityLevel:'三级', entityType:'项目公司', regionId:'ME', countryId:'ME-A', city:'项目现场', businessDomains:'境外工程项目', projectCount:42, projectSiteCount:4, riskCount:6, highRiskCount:2, kriExceptionCount:4, rectificationCount:3, dataAccessStatus:'待完善', dataQualityStatus:'待提升', crossBorderComplianceStatus:'关注' }
+  ],
+  globalProjects: [
+    { projectId:'GP001', projectName:'某境外能源项目', entityId:'C001', regionId:'ME', countryId:'ME-A', city:'项目现场', businessDomain:'投资管理', projectType:'境外投资', projectStatus:'投后运营', investmentAmount:'30亿元', riskCount:3, highRiskCount:1, kriExceptionCount:2, rectificationCount:1, dataAccessStatus:'部分接入' }
+  ],
+  dataGovernanceMetrics: [
+    ['数据源总数','28','+2','正常'],['已接入数据源','26','+1','正常'],['数据对象总数','186','+8','正常'],['数据字段总数','1,286','+42','正常'],['数据标准数量','68','+3','正常'],['指标总数','238','+6','正常'],['KRI血缘覆盖率','87.6%','+3.8%','关注'],['数据质量异常数','14','-2','关注'],['未建立血缘关系数','18','-4','关注']
+  ],
+  dataSourceRegistry: [
+    { sourceId:'SRC001', systemName:'投资管理系统', systemType:'业务系统', ownerEntity:'A公司', entityId:'A001', regionId:'CN', regionName:'境内', countryId:'CN-CN', countryName:'中国', businessDomains:['投资管理'], deploymentLocation:'境内/中国', dataOwner:'集团投资管理部', collectionMethod:'API', interfaceStatus:'正常', syncStatus:'正常', lastSyncTime:'2026-07-22 08:00', updateFrequency:'日', dataCompleteness:'98.6%', dataTimeliness:'97.2%', qualityScore:96, coverageStatus:'已接入' },
+    { sourceId:'SRC002', systemName:'财务系统', systemType:'业务系统', ownerEntity:'B公司', entityId:'B001', regionId:'ME', regionName:'中东', countryId:'ME-A', countryName:'中东某国', businessDomains:['财务','投资'], deploymentLocation:'中东/中东某国', dataOwner:'区域财务部', collectionMethod:'数据库同步', interfaceStatus:'延迟', syncStatus:'延迟', lastSyncTime:'2026-07-21 22:00', updateFrequency:'日', dataCompleteness:'94.2%', dataTimeliness:'88.5%', qualityScore:89, coverageStatus:'已接入' },
+    { sourceId:'SRC003', systemName:'合同系统', systemType:'业务系统', ownerEntity:'C项目公司', entityId:'C001', regionId:'ME', regionName:'中东', countryId:'ME-A', countryName:'中东某国', businessDomains:['合同','工程'], deploymentLocation:'中东/中东某国', dataOwner:'项目合同部', collectionMethod:'API', interfaceStatus:'正常', syncStatus:'正常', lastSyncTime:'2026-07-22 07:30', updateFrequency:'实时', dataCompleteness:'96.8%', dataTimeliness:'98.1%', qualityScore:94, coverageStatus:'已接入' },
+    { sourceId:'SRC004', systemName:'采购系统', systemType:'业务系统', ownerEntity:'A公司', entityId:'A001', regionId:'CN', regionName:'境内', countryId:'CN-CN', countryName:'中国', businessDomains:['供应链管理'], deploymentLocation:'境内/中国', dataOwner:'集团采购管理部', collectionMethod:'API', interfaceStatus:'正常', syncStatus:'正常', lastSyncTime:'2026-07-22 06:00', updateFrequency:'日', dataCompleteness:'97.4%', dataTimeliness:'96.8%', qualityScore:95, coverageStatus:'已接入' },
+    { sourceId:'SRC005', systemName:'资金系统', systemType:'业务系统', ownerEntity:'B公司', entityId:'B001', regionId:'ME', regionName:'中东', countryId:'ME-A', countryName:'中东某国', businessDomains:['财务','资金'], deploymentLocation:'中东/中东某国', dataOwner:'区域财务部', collectionMethod:'消息队列', interfaceStatus:'正常', syncStatus:'正常', lastSyncTime:'2026-07-22 08:15', updateFrequency:'实时', dataCompleteness:'95.8%', dataTimeliness:'94.6%', qualityScore:92, coverageStatus:'已接入' },
+    { sourceId:'SRC006', systemName:'项目系统', systemType:'业务系统', ownerEntity:'C项目公司', entityId:'C001', regionId:'ME', regionName:'中东', countryId:'ME-A', countryName:'中东某国', businessDomains:['工程项目'], deploymentLocation:'中东/中东某国', dataOwner:'项目管理部', collectionMethod:'API', interfaceStatus:'正常', syncStatus:'正常', lastSyncTime:'2026-07-22 07:00', updateFrequency:'日', dataCompleteness:'93.6%', dataTimeliness:'91.2%', qualityScore:88, coverageStatus:'已接入' },
+    { sourceId:'SRC007', systemName:'经营分析系统', systemType:'分析系统', ownerEntity:'D公司', entityId:'A001', regionId:'AS', regionName:'亚洲', countryId:'AS-A', countryName:'东南亚某国', businessDomains:['投资','境外'], deploymentLocation:'亚洲/东南亚某国', dataOwner:'区域信息管理岗', collectionMethod:'ETL', interfaceStatus:'异常', syncStatus:'中断', lastSyncTime:'2026-07-20 18:00', updateFrequency:'日', dataCompleteness:'82.4%', dataTimeliness:'71.2%', qualityScore:76, coverageStatus:'部分接入' }
+  ],
+  dataObjects: [
+    { objectId:'OBJ001', objectName:'投资项目主数据', sourceId:'SRC001', systemName:'投资管理系统', ownerEntity:'A公司', entityId:'A001', businessDomain:'投资管理', objectType:'主数据', dataOwner:'集团投资管理部', updateFrequency:'日', qualityStatus:'正常', lastUpdateTime:'2026-07-22 08:00', downstreamIndicatorCount:3, downstreamKriCount:2 },
+    { objectId:'OBJ002', objectName:'法人主数据', sourceId:'SRC001', systemName:'投资管理系统', ownerEntity:'集团总部', entityId:'G001', businessDomain:'产权管理', objectType:'主数据', dataOwner:'集团数据治理部', updateFrequency:'周', qualityStatus:'正常', lastUpdateTime:'2026-07-21 18:00', downstreamIndicatorCount:2, downstreamKriCount:1 },
+    { objectId:'OBJ003', objectName:'合同台账', sourceId:'SRC003', systemName:'合同系统', ownerEntity:'C项目公司', entityId:'C001', businessDomain:'合同管理', objectType:'业务台账', dataOwner:'项目合同部', updateFrequency:'实时', qualityStatus:'正常', lastUpdateTime:'2026-07-22 07:30', downstreamIndicatorCount:2, downstreamKriCount:1 },
+    { objectId:'OBJ004', objectName:'资金支付记录', sourceId:'SRC005', systemName:'资金系统', ownerEntity:'B公司', entityId:'B001', businessDomain:'财务管理', objectType:'业务台账', dataOwner:'区域财务部', updateFrequency:'实时', qualityStatus:'关注', lastUpdateTime:'2026-07-21 22:00', downstreamIndicatorCount:2, downstreamKriCount:2 },
+    { objectId:'OBJ005', objectName:'采购订单', sourceId:'SRC004', systemName:'采购系统', ownerEntity:'A公司', entityId:'A001', businessDomain:'供应链管理', objectType:'业务台账', dataOwner:'集团采购管理部', updateFrequency:'日', qualityStatus:'正常', lastUpdateTime:'2026-07-22 06:00', downstreamIndicatorCount:1, downstreamKriCount:0 },
+    { objectId:'OBJ006', objectName:'项目进度', sourceId:'SRC006', systemName:'项目系统', ownerEntity:'C项目公司', entityId:'C001', businessDomain:'工程项目', objectType:'业务台账', dataOwner:'项目管理部', updateFrequency:'日', qualityStatus:'关注', lastUpdateTime:'2026-07-21 14:00', downstreamIndicatorCount:2, downstreamKriCount:1 },
+    { objectId:'OBJ007', objectName:'风险事项', sourceId:'SRC001', systemName:'投资管理系统', ownerEntity:'B公司', entityId:'B001', businessDomain:'投资管理', objectType:'监管对象', dataOwner:'集团风险管理部', updateFrequency:'实时', qualityStatus:'正常', lastUpdateTime:'2026-07-22 08:00', downstreamIndicatorCount:0, downstreamKriCount:0 },
+    { objectId:'OBJ008', objectName:'整改任务', sourceId:'SRC001', systemName:'投资管理系统', ownerEntity:'A公司', entityId:'A001', businessDomain:'投资管理', objectType:'监管对象', dataOwner:'集团风险管理部', updateFrequency:'日', qualityStatus:'正常', lastUpdateTime:'2026-07-22 07:00', downstreamIndicatorCount:1, downstreamKriCount:0 }
+  ],
+  dataFields: [
+    { fieldId:'FLD001', objectId:'OBJ001', fieldName:'项目投资金额', fieldCode:'INV_AMOUNT', dataType:'金额', required:true, sensitivityLevel:'高', standardId:'STD001', qualityStatus:'异常', lastUpdateTime:'2026-07-21 22:00' },
+    { fieldId:'FLD002', objectId:'OBJ001', fieldName:'项目所属国家', fieldCode:'INV_COUNTRY', dataType:'文本', required:true, sensitivityLevel:'中', standardId:'STD004', qualityStatus:'正常', lastUpdateTime:'2026-07-22 08:00' },
+    { fieldId:'FLD003', objectId:'OBJ002', fieldName:'法人层级', fieldCode:'ENTITY_LEVEL', dataType:'枚举', required:true, sensitivityLevel:'低', standardId:'STD002', qualityStatus:'正常', lastUpdateTime:'2026-07-21 18:00' },
+    { fieldId:'FLD004', objectId:'OBJ004', fieldName:'累计支付金额', fieldCode:'PAY_TOTAL', dataType:'金额', required:true, sensitivityLevel:'高', standardId:'STD006', qualityStatus:'关注', lastUpdateTime:'2026-07-21 22:00' },
+    { fieldId:'FLD005', objectId:'OBJ003', fieldName:'合同金额', fieldCode:'CONTRACT_AMOUNT', dataType:'金额', required:true, sensitivityLevel:'高', standardId:'STD001', qualityStatus:'正常', lastUpdateTime:'2026-07-22 07:30' },
+    { fieldId:'FLD006', objectId:'OBJ007', fieldName:'风险等级', fieldCode:'RISK_LEVEL', dataType:'枚举', required:true, sensitivityLevel:'中', standardId:'STD005', qualityStatus:'正常', lastUpdateTime:'2026-07-22 08:00' },
+    { fieldId:'FLD007', objectId:'OBJ008', fieldName:'整改完成时间', fieldCode:'RECT_CLOSE_TIME', dataType:'日期', required:false, sensitivityLevel:'低', standardId:'STD007', qualityStatus:'正常', lastUpdateTime:'2026-07-22 07:00' }
+  ],
+  dataStandards: [
+    { standardId:'STD001', standardName:'投资金额', standardCode:'DS-INV-AMOUNT', standardType:'业务标准', definition:'项目投资批复及实际投资金额，含批复投资、累计投资、追加投资', unit:'万元', valueRange:'>=0', ownerDepartment:'集团数据治理部', applicableSystems:['投资管理系统','财务系统','经营分析系统'], applicableDomains:['投资管理'], indicatorCount:3, kriCount:2, issueType:null, aliasFields:['项目金额','投资总额','项目投资额'] },
+    { standardId:'STD002', standardName:'法人层级', standardCode:'DS-ENTITY-LEVEL', standardType:'主数据标准', definition:'集团全级次法人组织层级编码', unit:'—', valueRange:'集团/一级/二级/三级/四级', ownerDepartment:'集团数据治理部', applicableSystems:['投资管理系统','产权系统'], applicableDomains:['产权管理'], indicatorCount:1, kriCount:1, issueType:null, aliasFields:['组织层级','企业层级'] },
+    { standardId:'STD003', standardName:'区域', standardCode:'DS-REGION', standardType:'主数据标准', definition:'集团全球区域划分标准', unit:'—', valueRange:'境内/中东/亚洲/非洲/欧洲及拉美', ownerDepartment:'集团数据治理部', applicableSystems:['投资管理系统','财务系统','项目系统'], applicableDomains:['境外业务'], indicatorCount:2, kriCount:1, issueType:null, aliasFields:['所属区域','业务区域'] },
+    { standardId:'STD004', standardName:'国家/地区', standardCode:'DS-COUNTRY', standardType:'主数据标准', definition:'项目及法人所在国家/地区标准编码', unit:'—', valueRange:'ISO国家编码', ownerDepartment:'集团数据治理部', applicableSystems:['投资管理系统','合同系统'], applicableDomains:['境外业务'], indicatorCount:2, kriCount:1, issueType:'标准未统一', aliasFields:['所在国','国别'] },
+    { standardId:'STD005', standardName:'风险等级', standardCode:'DS-RISK-LEVEL', standardType:'监管标准', definition:'风险事项分级标准（重大/较大/一般）', unit:'—', valueRange:'重大/较大/一般', ownerDepartment:'集团风险管理部', applicableSystems:['投资管理系统'], applicableDomains:['投资管理'], indicatorCount:1, kriCount:2, issueType:null, aliasFields:['风险级别','事项等级'] },
+    { standardId:'STD006', standardName:'资金支付金额', standardCode:'DS-PAY-AMOUNT', standardType:'业务标准', definition:'项目资金实际支付累计金额', unit:'万元', valueRange:'>=0', ownerDepartment:'集团财务部', applicableSystems:['资金系统','财务系统'], applicableDomains:['财务管理'], indicatorCount:2, kriCount:2, issueType:null, aliasFields:['付款金额','累计支付'] },
+    { standardId:'STD007', standardName:'整改状态', standardCode:'DS-RECT-STATUS', standardType:'监管标准', definition:'整改任务当前状态及闭环标识', unit:'—', valueRange:'制定/执行/验证/关闭', ownerDepartment:'集团风险管理部', applicableSystems:['投资管理系统'], applicableDomains:['投资管理'], indicatorCount:1, kriCount:0, issueType:'标准缺失', aliasFields:['整改阶段','闭环状态'] }
+  ],
+  dataIndicators: [
+    { indicatorId:'IND001', indicatorName:'投资完成率', indicatorType:'比率指标', calculationFormula:'实际完成投资 ÷ 批复投资金额 × 100%', sourceObject:'OBJ001', sourceFields:['FLD001'], dataStandard:'STD001', businessDomain:'投资管理', responsibleDepartment:'集团投资管理部', updateFrequency:'月', qualityStatus:'异常', kriId:'kri-capex' },
+    { indicatorId:'IND002', indicatorName:'项目资金支付比例', indicatorType:'比率指标', calculationFormula:'累计支付金额 ÷ 批复投资金额 × 100%', sourceObject:'OBJ004', sourceFields:['FLD004'], dataStandard:'STD006', businessDomain:'财务管理', responsibleDepartment:'集团财务部', updateFrequency:'月', qualityStatus:'关注', kriId:'kri-capex' },
+    { indicatorId:'IND003', indicatorName:'项目现金流覆盖率', indicatorType:'比率指标', calculationFormula:'经营现金流 ÷ 到期债务 × 100%', sourceObject:'OBJ004', sourceFields:['FLD004'], dataStandard:'STD006', businessDomain:'财务管理', responsibleDepartment:'集团财务部', updateFrequency:'季', qualityStatus:'正常', kriId:'kri-post' },
+    { indicatorId:'IND004', indicatorName:'合同履约偏差率', indicatorType:'偏差指标', calculationFormula:'(实际履约金额 − 合同金额) ÷ 合同金额 × 100%', sourceObject:'OBJ003', sourceFields:['FLD005'], dataStandard:'STD001', businessDomain:'合同管理', responsibleDepartment:'集团合同管理部', updateFrequency:'月', qualityStatus:'正常', kriId:null },
+    { indicatorId:'IND005', indicatorName:'境外法人数据接入率', indicatorType:'覆盖率指标', calculationFormula:'已接入境外法人数 ÷ 境外法人总数 × 100%', sourceObject:'OBJ002', sourceFields:['FLD003'], dataStandard:'STD002', businessDomain:'境外业务', responsibleDepartment:'集团数据治理部', updateFrequency:'周', qualityStatus:'正常', kriId:'kri-filing' },
+    { indicatorId:'IND006', indicatorName:'整改闭环率', indicatorType:'比率指标', calculationFormula:'已关闭整改任务数 ÷ 整改任务总数 × 100%', sourceObject:'OBJ008', sourceFields:['FLD007'], dataStandard:'STD007', businessDomain:'投资管理', responsibleDepartment:'集团风险管理部', updateFrequency:'月', qualityStatus:'关注', kriId:null }
+  ],
+  dataLineageRelations: [
+    { relationId:'LIN001', sourceId:'SRC002', objectId:'OBJ004', fieldId:'FLD004', standardId:'STD006', indicatorId:'IND002', kriId:'kri-capex', scenarioId:'scenario-capex', controlRule:'资金支付控制规则', riskMatterId:'risk-2', rectificationId:'RECT-202601001' },
+    { relationId:'LIN002', sourceId:'SRC001', objectId:'OBJ001', fieldId:'FLD001', standardId:'STD001', indicatorId:'IND001', kriId:'kri-capex', scenarioId:'scenario-capex', controlRule:'追加投资审批校验规则', riskMatterId:'risk-4', rectificationId:'RECT-202601004' },
+    { relationId:'LIN003', sourceId:'SRC001', objectId:'OBJ001', fieldId:'FLD002', standardId:'STD004', indicatorId:'IND005', kriId:'kri-filing', scenarioId:'scenario-filing', controlRule:'备案状态校验规则', riskMatterId:'risk-5', rectificationId:null },
+    { relationId:'LIN004', sourceId:'SRC005', objectId:'OBJ004', fieldId:'FLD004', standardId:'STD006', indicatorId:'IND003', kriId:'kri-post', scenarioId:'scenario-post', controlRule:'经营指标监测规则', riskMatterId:'risk-2', rectificationId:'RECT-202601002' },
+    { relationId:'LIN005', sourceId:'SRC003', objectId:'OBJ003', fieldId:'FLD005', standardId:'STD001', indicatorId:'IND004', kriId:null, scenarioId:null, controlRule:null, riskMatterId:null, rectificationId:null },
+    { relationId:'LIN006', sourceId:'SRC001', objectId:'OBJ008', fieldId:'FLD007', standardId:'STD007', indicatorId:'IND006', kriId:null, scenarioId:null, controlRule:null, riskMatterId:null, rectificationId:null }
+  ],
+  dataQualityIssues: [
+    { issueId:'DQ001', anomalyType:'数据缺失', objectId:'OBJ001', fieldId:'FLD001', indicatorId:'IND001', kriId:'kri-capex', scenarioId:'scenario-capex', completeness:'82.4%', timeliness:'88.5%', accuracy:'91.2%', qualityScore:76, ownerDepartment:'集团投资管理部', rectificationStatus:'整改中', impactDesc:'投资完成率无法计算，KRI无法更新，风险规则无法正常执行' },
+    { issueId:'DQ002', anomalyType:'数据延迟', objectId:'OBJ004', fieldId:'FLD004', indicatorId:'IND002', kriId:'kri-capex', scenarioId:'scenario-capex', completeness:'94.2%', timeliness:'71.2%', accuracy:'93.6%', qualityScore:82, ownerDepartment:'区域财务部', rectificationStatus:'待处理', impactDesc:'项目资金支付比例更新延迟，预警结果滞后' },
+    { issueId:'DQ003', anomalyType:'数据口径不一致', objectId:'OBJ001', fieldId:'FLD001', indicatorId:'IND001', kriId:'kri-capex', scenarioId:'scenario-capex', completeness:'96.8%', timeliness:'95.1%', accuracy:'78.4%', qualityScore:84, ownerDepartment:'集团数据治理部', rectificationStatus:'整改中', impactDesc:'投资系统与财务系统投资金额口径不一致，影响指标准确性' },
+    { issueId:'DQ004', anomalyType:'数据格式异常', objectId:'OBJ002', fieldId:'FLD003', indicatorId:'IND005', kriId:'kri-filing', scenarioId:'scenario-filing', completeness:'91.6%', timeliness:'92.8%', accuracy:'88.2%', qualityScore:86, ownerDepartment:'集团数据治理部', rectificationStatus:'待处理', impactDesc:'法人层级编码格式不统一，影响境外法人接入率统计' },
+    { issueId:'DQ005', anomalyType:'数据异常波动', objectId:'OBJ006', fieldId:null, indicatorId:null, kriId:'kri-schedule', scenarioId:'scenario-capex', completeness:'93.6%', timeliness:'86.4%', accuracy:'90.1%', qualityScore:88, ownerDepartment:'项目管理部', rectificationStatus:'关注', impactDesc:'项目进度数据异常波动，影响里程碑偏差KRI判断' }
+  ],
   groupKris: [
     { id:'kri-approval', category:'合规准入类', name:'未批先实施暴露金额', value:'1.2亿元', status:'重大预警', scenario:'未按规定履行决策审批程序', formula:'有效投资批复完成前发生的采购、签约、付款、开工金额', threshold:'> 0 元', source:'投资管理、采购、合同、资金、项目系统', control:'阻断合同、付款或开工；升级审批', entities:'A公司、C公司' },
     { id:'kri-authority', category:'授权合规类', name:'授权边界超限金额', value:'0.36亿元', status:'较大预警', scenario:'超越授权审批', formula:'事项金额或累计金额 − 对应审批层级授权上限', threshold:'> 0 元', source:'授权矩阵、投资、合同、资金系统', control:'系统阻断并要求升级审批', entities:'B公司' },
