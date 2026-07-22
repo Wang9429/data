@@ -88,7 +88,13 @@ const App = {
     'regulatory-performance': '集团监管绩效中心',
     'regulatory-resource-allocation': '监管资源调度中心',
     'regulatory-supervision-tasks': '监管任务协同中心',
-    'regulatory-benchmarking': '监管能力对标分析'
+    'regulatory-benchmarking': '监管能力对标分析',
+    'regulatory-strategy-planning': '集团监管战略规划',
+    'regulatory-annual-plan': '年度监管计划中心',
+    'regulatory-target-management': '监管目标管理',
+    'regulatory-focus-management': '年度监管重点管理',
+    'regulatory-plan-execution': '年度监管计划执行中心',
+    'regulatory-strategic-review': '集团监管战略复盘'
   },
 
   init() {
@@ -117,6 +123,12 @@ const App = {
     this.renderRegulatoryResourceAllocation();
     this.renderRegulatorySupervisionTasks();
     this.renderRegulatoryBenchmarking();
+    this.renderRegulatoryStrategyPlanning();
+    this.renderRegulatoryAnnualPlan();
+    this.renderRegulatoryTargetManagement();
+    this.renderRegulatoryFocusManagement();
+    this.renderRegulatoryPlanExecution();
+    this.renderRegulatoryStrategicReview();
     this.renderGlobalLegalEntities();
     this.renderGlobalRegions();
     this.renderCoverageGaps();
@@ -184,7 +196,7 @@ const App = {
       this.renderKriDetail(params.kriId, params.scenarioId);
     }
 
-    if (['global-group-overview', 'group', 'global-legal-entities', 'global-regions', 'coverage-gaps', 'platform-operations', 'data-governance', 'cross-border-compliance', 'cross-domain-risks', 'warnings', 'rectification', 'regulatory-events', 'rectification-operations', 'regulatory-evaluation', 'regulatory-command-center', 'regulatory-actions', 'regulatory-action-execution', 'regulatory-strategy', 'regulatory-maturity', 'regulatory-optimization', 'regulatory-rule-config', 'regulatory-simulation', 'regulatory-rule-history', 'regulatory-rule-versions', 'regulatory-rule-approvals', 'regulatory-rule-impact', 'regulatory-rule-effectiveness', 'regulatory-rule-runtime', 'regulatory-rule-executions', 'regulatory-rule-deployments', 'regulatory-performance', 'regulatory-resource-allocation', 'regulatory-supervision-tasks', 'regulatory-benchmarking'].includes(pageId) && Object.keys(params).length) {
+    if (['global-group-overview', 'group', 'global-legal-entities', 'global-regions', 'coverage-gaps', 'platform-operations', 'data-governance', 'cross-border-compliance', 'cross-domain-risks', 'warnings', 'rectification', 'regulatory-events', 'rectification-operations', 'regulatory-evaluation', 'regulatory-command-center', 'regulatory-actions', 'regulatory-action-execution', 'regulatory-strategy', 'regulatory-maturity', 'regulatory-optimization', 'regulatory-rule-config', 'regulatory-simulation', 'regulatory-rule-history', 'regulatory-rule-versions', 'regulatory-rule-approvals', 'regulatory-rule-impact', 'regulatory-rule-effectiveness', 'regulatory-rule-runtime', 'regulatory-rule-executions', 'regulatory-rule-deployments', 'regulatory-performance', 'regulatory-resource-allocation', 'regulatory-supervision-tasks', 'regulatory-benchmarking', 'regulatory-strategy-planning', 'regulatory-annual-plan', 'regulatory-target-management', 'regulatory-focus-management', 'regulatory-plan-execution', 'regulatory-strategic-review'].includes(pageId) && Object.keys(params).length) {
       setTimeout(() => this.applyPublicNavigationContext(pageId, params), 50);
     }
   },
@@ -282,6 +294,15 @@ const App = {
     if (pageId === 'regulatory-benchmarking') {
       if (ctx.benchmarkId) this.showRegulatoryBenchmarkDetail(ctx.benchmarkId);
       else if (ctx.effectivenessId) this.showRegulatoryResourceEffectivenessDetail(ctx.effectivenessId);
+    }
+    if (pageId === 'regulatory-strategy-planning' && ctx.objectiveId) this.showRegulatoryObjectiveDetail(ctx.objectiveId);
+    if (pageId === 'regulatory-annual-plan' && ctx.planId) this.showRegulatoryPlanDetail(ctx.planId);
+    if (pageId === 'regulatory-target-management' && ctx.targetId) this.showRegulatoryTargetDetail(ctx.targetId);
+    if (pageId === 'regulatory-focus-management' && ctx.focusId) this.showRegulatoryFocusDetail(ctx.focusId);
+    if (pageId === 'regulatory-plan-execution' && ctx.executionId) this.showRegulatoryPlanExecutionDetail(ctx.executionId);
+    if (pageId === 'regulatory-strategic-review') {
+      if (ctx.reviewId) this.showRegulatoryReviewDetail(ctx.reviewId);
+      else if (ctx.recommendationId) this.showRegulatoryNextCycleRecommendationDetail(ctx.recommendationId);
     }
   },
 
@@ -393,6 +414,44 @@ const App = {
       if (params.benchmarkId) { this.regulatoryBenchmarkFocusId = params.benchmarkId; this.showRegulatoryBenchmarkDetail(params.benchmarkId); }
       else if (params.effectivenessId) { this.regulatoryResourceEffectivenessFocusId = params.effectivenessId; this.showRegulatoryResourceEffectivenessDetail(params.effectivenessId); }
       else this.renderRegulatoryBenchmarking();
+    }
+    if (pageId === 'regulatory-strategy-planning') {
+      if (params.status) this.regulatoryStrategyPlanningFilter = { ...(this.regulatoryStrategyPlanningFilter || {}), status: params.status };
+      if (params.objectiveId) { this.regulatoryObjectiveFocusId = params.objectiveId; this.showRegulatoryObjectiveDetail(params.objectiveId); }
+      else this.renderRegulatoryStrategyPlanning();
+    }
+    if (pageId === 'regulatory-annual-plan') {
+      if (params.planStatus) this.regulatoryAnnualPlanFilter = { ...(this.regulatoryAnnualPlanFilter || {}), planStatus: params.planStatus };
+      if (params.priority) this.regulatoryAnnualPlanFilter = { ...(this.regulatoryAnnualPlanFilter || {}), priority: params.priority };
+      if (params.regionId) this.regulatoryAnnualPlanFilter = { ...(this.regulatoryAnnualPlanFilter || {}), regionId: params.regionId };
+      if (params.entityId) this.regulatoryAnnualPlanFilter = { ...(this.regulatoryAnnualPlanFilter || {}), entityId: params.entityId };
+      if (params.domainId) this.regulatoryAnnualPlanFilter = { ...(this.regulatoryAnnualPlanFilter || {}), domainId: params.domainId };
+      if (params.planId) { this.regulatoryPlanFocusId = params.planId; this.showRegulatoryPlanDetail(params.planId); }
+      else this.renderRegulatoryAnnualPlan();
+    }
+    if (pageId === 'regulatory-target-management') {
+      if (params.status) this.regulatoryTargetFilter = { ...(this.regulatoryTargetFilter || {}), status: params.status };
+      if (params.objectiveId) this.regulatoryTargetFilter = { ...(this.regulatoryTargetFilter || {}), objectiveId: params.objectiveId };
+      if (params.targetId) { this.regulatoryTargetFocusId = params.targetId; this.showRegulatoryTargetDetail(params.targetId); }
+      else this.renderRegulatoryTargetManagement();
+    }
+    if (pageId === 'regulatory-focus-management') {
+      if (params.focusType) this.regulatoryFocusFilter = { ...(this.regulatoryFocusFilter || {}), focusType: params.focusType };
+      if (params.priority) this.regulatoryFocusFilter = { ...(this.regulatoryFocusFilter || {}), priority: params.priority };
+      if (params.focusId) { this.regulatoryFocusFocusId = params.focusId; this.showRegulatoryFocusDetail(params.focusId); }
+      else this.renderRegulatoryFocusManagement();
+    }
+    if (pageId === 'regulatory-plan-execution') {
+      if (params.planId) this.regulatoryPlanExecutionFilter = { ...(this.regulatoryPlanExecutionFilter || {}), planId: params.planId };
+      if (params.planStatus) this.regulatoryPlanExecutionFilter = { ...(this.regulatoryPlanExecutionFilter || {}), planStatus: params.planStatus };
+      if (params.overdue) this.regulatoryPlanExecutionFilter = { ...(this.regulatoryPlanExecutionFilter || {}), overdue: params.overdue };
+      if (params.executionId) { this.regulatoryPlanExecutionFocusId = params.executionId; this.showRegulatoryPlanExecutionDetail(params.executionId); }
+      else this.renderRegulatoryPlanExecution();
+    }
+    if (pageId === 'regulatory-strategic-review') {
+      if (params.reviewId) { this.regulatoryReviewFocusId = params.reviewId; this.showRegulatoryReviewDetail(params.reviewId); }
+      else if (params.recommendationId) { this.regulatoryNextCycleRecommendationFocusId = params.recommendationId; this.showRegulatoryNextCycleRecommendationDetail(params.recommendationId); }
+      else this.renderRegulatoryStrategicReview();
     }
   },
 

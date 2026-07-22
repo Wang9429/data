@@ -38,6 +38,12 @@ Object.assign(App, {
     { pageId: 'regulatory-resource-allocation', label: '监管资源调度中心', category: '运营绩效', entryFromGroupOverview: false, supportsPublicNavigation: true, supportsBackNavigation: true },
     { pageId: 'regulatory-supervision-tasks', label: '监管任务协同中心', category: '运营绩效', entryFromGroupOverview: false, supportsPublicNavigation: true, supportsBackNavigation: true },
     { pageId: 'regulatory-benchmarking', label: '监管能力对标分析', category: '运营绩效', entryFromGroupOverview: false, supportsPublicNavigation: true, supportsBackNavigation: true },
+    { pageId: 'regulatory-strategy-planning', label: '集团监管战略规划', category: '战略运营', entryFromGroupOverview: false, supportsPublicNavigation: true, supportsBackNavigation: true },
+    { pageId: 'regulatory-annual-plan', label: '年度监管计划中心', category: '战略运营', entryFromGroupOverview: false, supportsPublicNavigation: true, supportsBackNavigation: true },
+    { pageId: 'regulatory-target-management', label: '监管目标管理', category: '战略运营', entryFromGroupOverview: false, supportsPublicNavigation: true, supportsBackNavigation: true },
+    { pageId: 'regulatory-focus-management', label: '年度监管重点管理', category: '战略运营', entryFromGroupOverview: false, supportsPublicNavigation: true, supportsBackNavigation: true },
+    { pageId: 'regulatory-plan-execution', label: '年度监管计划执行中心', category: '战略运营', entryFromGroupOverview: false, supportsPublicNavigation: true, supportsBackNavigation: true },
+    { pageId: 'regulatory-strategic-review', label: '集团监管战略复盘', category: '战略运营', entryFromGroupOverview: false, supportsPublicNavigation: true, supportsBackNavigation: true },
     { pageId: 'major', label: '重大事项监管', category: '重大事项', entryFromGroupOverview: false, supportsPublicNavigation: false, supportsBackNavigation: false }
   ],
 
@@ -79,6 +85,12 @@ Object.assign(App, {
     if (pageId === 'regulatory-resource-allocation') return { ...(this.regulatoryResourceAllocationFilter || {}) };
     if (pageId === 'regulatory-supervision-tasks') return { ...(this.regulatorySupervisionTaskFilter || {}) };
     if (pageId === 'regulatory-benchmarking') return { ...(this.regulatoryBenchmarkingFilter || {}) };
+    if (pageId === 'regulatory-strategy-planning') return { ...(this.regulatoryStrategyPlanningFilter || {}) };
+    if (pageId === 'regulatory-annual-plan') return { ...(this.regulatoryAnnualPlanFilter || {}) };
+    if (pageId === 'regulatory-target-management') return { ...(this.regulatoryTargetFilter || {}) };
+    if (pageId === 'regulatory-focus-management') return { ...(this.regulatoryFocusFilter || {}) };
+    if (pageId === 'regulatory-plan-execution') return { ...(this.regulatoryPlanExecutionFilter || {}) };
+    if (pageId === 'regulatory-strategic-review') return { ...(this.regulatoryStrategicReviewFilter || {}) };
     if (pageId === 'regulatory-actions') return { ...(this.regulatoryActionFilter || {}) };
     if (pageId === 'regulatory-action-execution') return { ...(this.regulatoryActionExecutionFilter || {}) };
     if (pageId === 'data-governance') return { ...(this.dataGovFilter || {}) };
@@ -135,6 +147,15 @@ Object.assign(App, {
       ctx.benchmarkId = this.regulatoryBenchmarkFocusId;
       ctx.effectivenessId = this.regulatoryResourceEffectivenessFocusId;
     }
+    if (pageId === 'regulatory-strategy-planning') ctx.objectiveId = this.regulatoryObjectiveFocusId;
+    if (pageId === 'regulatory-annual-plan') ctx.planId = this.regulatoryPlanFocusId;
+    if (pageId === 'regulatory-target-management') ctx.targetId = this.regulatoryTargetFocusId;
+    if (pageId === 'regulatory-focus-management') ctx.focusId = this.regulatoryFocusFocusId;
+    if (pageId === 'regulatory-plan-execution') ctx.executionId = this.regulatoryPlanExecutionFocusId;
+    if (pageId === 'regulatory-strategic-review') {
+      ctx.reviewId = this.regulatoryReviewFocusId;
+      ctx.recommendationId = this.regulatoryNextCycleRecommendationFocusId;
+    }
     return ctx;
   },
 
@@ -147,6 +168,12 @@ Object.assign(App, {
     if (pageId === 'regulatory-resource-allocation') this.regulatoryResourceAllocationFilter = { ...filters };
     if (pageId === 'regulatory-supervision-tasks') this.regulatorySupervisionTaskFilter = { ...filters };
     if (pageId === 'regulatory-benchmarking') this.regulatoryBenchmarkingFilter = { ...filters };
+    if (pageId === 'regulatory-strategy-planning') this.regulatoryStrategyPlanningFilter = { ...filters };
+    if (pageId === 'regulatory-annual-plan') this.regulatoryAnnualPlanFilter = { ...filters };
+    if (pageId === 'regulatory-target-management') this.regulatoryTargetFilter = { ...filters };
+    if (pageId === 'regulatory-focus-management') this.regulatoryFocusFilter = { ...filters };
+    if (pageId === 'regulatory-plan-execution') this.regulatoryPlanExecutionFilter = { ...filters };
+    if (pageId === 'regulatory-strategic-review') this.regulatoryStrategicReviewFilter = { ...filters };
     if (pageId === 'regulatory-actions') this.regulatoryActionFilter = { ...filters };
     if (pageId === 'regulatory-action-execution') this.regulatoryActionExecutionFilter = { ...filters };
     if (pageId === 'data-governance') this.dataGovFilter = { ...filters };
@@ -593,6 +620,36 @@ Object.assign(App, {
     }).join('')}</div>`;
   },
 
+  renderPublicObjectiveStatusBadge(status) {
+    const cls = { ACHIEVED: 'badge-success', ON_TRACK: 'badge-success', AT_RISK: 'badge-warning', BEHIND: 'badge-danger' };
+    const labels = { ACHIEVED: '已达成', ON_TRACK: '按期', AT_RISK: '预警', BEHIND: '未达成' };
+    return `<span class="badge ${cls[status] || 'badge-info'}">${labels[status] || status || '—'}</span>`;
+  },
+
+  renderPublicPlanStatusBadge(status) {
+    const cls = { DRAFT: 'badge-info', APPROVED: 'badge-info', IN_PROGRESS: 'badge-warning', AT_RISK: 'badge-warning', COMPLETED: 'badge-success', CLOSED: 'badge-success' };
+    const labels = { DRAFT: '草稿', APPROVED: '已批准', IN_PROGRESS: '执行中', AT_RISK: '存在风险', COMPLETED: '已完成', CLOSED: '已关闭' };
+    return `<span class="badge ${cls[status] || 'badge-info'}">${labels[status] || status || '—'}</span>`;
+  },
+
+  renderPublicTargetStatusBadge(status) {
+    return this.renderPublicObjectiveStatusBadge(status);
+  },
+
+  renderPublicFocusTypeBadge(focusType) {
+    const labels = { REGION: '区域', COUNTRY: '国家', ENTITY: '法人', PROJECT: '项目', DOMAIN: '领域', RISK: '风险', DATA_OBJECT: '数据对象' };
+    return `<span class="badge badge-info">${labels[focusType] || focusType || '—'}</span>`;
+  },
+
+  renderPublicTargetProgress(target, actual, unit) {
+    const rate = target ? Math.min(100, Math.round(actual / target * 100)) : 0;
+    return `<p style="display:flex;align-items:center;gap:8px;margin:6px 0"><span style="width:72px;font-size:12px">完成率</span><i style="flex:1;height:10px;background:#eef3f9;border-radius:4px;display:block"><b style="display:block;height:10px;background:${rate >= 80 ? '#00a651' : rate >= 60 ? '#f5a623' : '#e74c3c'};border-radius:4px;width:${rate}%"></b></i><em style="width:80px;text-align:right">${actual}/${target}${unit || ''}</em></p>`;
+  },
+
+  renderPublicStrategicCycleFlow(steps) {
+    return this.renderPublicResourceFlow(steps);
+  },
+
   renderPublicExecutionResult(before, after, label) {
     return `<p class="insight-note"><b>${label || '结果'}：</b>${before || '—'} → <b>${after || '—'}</b></p>`;
   },
@@ -707,6 +764,12 @@ Object.assign(App, {
     if (pageId === 'regulatory-resource-allocation') return this.regulatoryResourceAllocationFilter || {};
     if (pageId === 'regulatory-supervision-tasks') return this.regulatorySupervisionTaskFilter || {};
     if (pageId === 'regulatory-benchmarking') return this.regulatoryBenchmarkingFilter || {};
+    if (pageId === 'regulatory-strategy-planning') return this.regulatoryStrategyPlanningFilter || {};
+    if (pageId === 'regulatory-annual-plan') return this.regulatoryAnnualPlanFilter || {};
+    if (pageId === 'regulatory-target-management') return this.regulatoryTargetFilter || {};
+    if (pageId === 'regulatory-focus-management') return this.regulatoryFocusFilter || {};
+    if (pageId === 'regulatory-plan-execution') return this.regulatoryPlanExecutionFilter || {};
+    if (pageId === 'regulatory-strategic-review') return this.regulatoryStrategicReviewFilter || {};
     if (pageId === 'regulatory-actions') return this.regulatoryActionFilter || {};
     if (pageId === 'regulatory-action-execution') return this.regulatoryActionExecutionFilter || {};
     if (pageId === 'cross-border-compliance') return this.cbFilter || {};
@@ -722,6 +785,12 @@ Object.assign(App, {
       : pageId === 'regulatory-resource-allocation' ? 'regulatoryResourceAllocationFilter'
       : pageId === 'regulatory-supervision-tasks' ? 'regulatorySupervisionTaskFilter'
       : pageId === 'regulatory-benchmarking' ? 'regulatoryBenchmarkingFilter'
+      : pageId === 'regulatory-strategy-planning' ? 'regulatoryStrategyPlanningFilter'
+      : pageId === 'regulatory-annual-plan' ? 'regulatoryAnnualPlanFilter'
+      : pageId === 'regulatory-target-management' ? 'regulatoryTargetFilter'
+      : pageId === 'regulatory-focus-management' ? 'regulatoryFocusFilter'
+      : pageId === 'regulatory-plan-execution' ? 'regulatoryPlanExecutionFilter'
+      : pageId === 'regulatory-strategic-review' ? 'regulatoryStrategicReviewFilter'
       : pageId === 'regulatory-actions' ? 'regulatoryActionFilter'
       : pageId === 'regulatory-action-execution' ? 'regulatoryActionExecutionFilter'
       : pageId === 'data-governance' ? 'dataGovFilter'
@@ -739,6 +808,12 @@ Object.assign(App, {
     else if (pageId === 'regulatory-resource-allocation') { this.regulatoryResourceAllocationFilter = {}; this.regulatoryAllocationFocusId = null; }
     else if (pageId === 'regulatory-supervision-tasks') { this.regulatorySupervisionTaskFilter = {}; this.regulatorySupervisionTaskFocusId = null; }
     else if (pageId === 'regulatory-benchmarking') { this.regulatoryBenchmarkingFilter = {}; this.regulatoryBenchmarkFocusId = null; this.regulatoryResourceEffectivenessFocusId = null; }
+    else if (pageId === 'regulatory-strategy-planning') { this.regulatoryStrategyPlanningFilter = {}; this.regulatoryObjectiveFocusId = null; }
+    else if (pageId === 'regulatory-annual-plan') { this.regulatoryAnnualPlanFilter = {}; this.regulatoryPlanFocusId = null; }
+    else if (pageId === 'regulatory-target-management') { this.regulatoryTargetFilter = {}; this.regulatoryTargetFocusId = null; }
+    else if (pageId === 'regulatory-focus-management') { this.regulatoryFocusFilter = {}; this.regulatoryFocusFocusId = null; }
+    else if (pageId === 'regulatory-plan-execution') { this.regulatoryPlanExecutionFilter = {}; this.regulatoryPlanExecutionFocusId = null; }
+    else if (pageId === 'regulatory-strategic-review') { this.regulatoryStrategicReviewFilter = {}; this.regulatoryReviewFocusId = null; this.regulatoryNextCycleRecommendationFocusId = null; }
     else if (pageId === 'regulatory-actions') { this.regulatoryActionFilter = {}; this.regulatoryActionFocusId = null; }
     else if (pageId === 'regulatory-action-execution') { this.regulatoryActionExecutionFilter = {}; this.regulatoryActionExecutionFocusId = null; this.regulatoryActionFeedbackFocusId = null; }
     else if (pageId === 'cross-border-compliance') { this.cbFilter = {}; this.cbFocusActivityId = null; }
@@ -1013,7 +1088,7 @@ Object.assign(App, {
   },
 
   renderGroupOverviewPageCatalog(m) {
-    const catalogIds = ['global-legal-entities', 'global-regions', 'coverage-gaps', 'platform-operations', 'data-governance', 'cross-border-compliance', 'cross-domain-risks', 'warnings', 'rectification', 'regulatory-events', 'rectification-operations', 'regulatory-evaluation', 'regulatory-command-center', 'regulatory-actions', 'regulatory-action-execution', 'regulatory-strategy', 'regulatory-maturity', 'regulatory-optimization', 'regulatory-rule-config', 'regulatory-simulation', 'regulatory-rule-history', 'regulatory-rule-versions', 'regulatory-rule-approvals', 'regulatory-rule-impact', 'regulatory-rule-effectiveness', 'regulatory-rule-runtime', 'regulatory-rule-executions', 'regulatory-rule-deployments', 'regulatory-performance', 'regulatory-resource-allocation', 'regulatory-supervision-tasks', 'regulatory-benchmarking'];
+    const catalogIds = ['global-legal-entities', 'global-regions', 'coverage-gaps', 'platform-operations', 'data-governance', 'cross-border-compliance', 'cross-domain-risks', 'warnings', 'rectification', 'regulatory-events', 'rectification-operations', 'regulatory-evaluation', 'regulatory-command-center', 'regulatory-actions', 'regulatory-action-execution', 'regulatory-strategy', 'regulatory-maturity', 'regulatory-optimization', 'regulatory-rule-config', 'regulatory-simulation', 'regulatory-rule-history', 'regulatory-rule-versions', 'regulatory-rule-approvals', 'regulatory-rule-impact', 'regulatory-rule-effectiveness', 'regulatory-rule-runtime', 'regulatory-rule-executions', 'regulatory-rule-deployments', 'regulatory-performance', 'regulatory-resource-allocation', 'regulatory-supervision-tasks', 'regulatory-benchmarking', 'regulatory-strategy-planning', 'regulatory-annual-plan', 'regulatory-target-management', 'regulatory-focus-management', 'regulatory-plan-execution', 'regulatory-strategic-review'];
     const metricMap = {
       'global-legal-entities': { core: `法人 ${m.entityCount}`, anomaly: `高风险 ${(m.entities || []).filter(e => (e.highRiskCount || 0) > 0).length}` },
       'global-regions': { core: `区域 ${m.regionCount} · 国家 ${m.countryCount}`, anomaly: `高风险区域 ${(m.regions || []).filter(r => (r.highRiskCount || 0) > 0).length}` },
@@ -1046,7 +1121,13 @@ Object.assign(App, {
       'regulatory-performance': { core: `有效性 ${(APP_DATA.regulatoryPerformanceSummary || {}).regulatoryEffectivenessScore || 0}`, anomaly: `闭环率 ${Math.round(((APP_DATA.regulatoryPerformanceSummary || {}).rectificationClosureRate || 0) * 100)}%` },
       'regulatory-resource-allocation': { core: `配置 ${(APP_DATA.regulatoryResourceAllocations || []).length}`, anomaly: `高优先 ${(APP_DATA.regulatoryOperationsMetrics || {}).resourceAllocation?.highPriorityCount || 0}` },
       'regulatory-supervision-tasks': { core: `任务 ${(APP_DATA.regulatoryOperationsMetrics || {}).supervisionTasks?.total || 0}`, anomaly: `超期 ${(APP_DATA.regulatoryOperationsMetrics || {}).supervisionTasks?.overdue || 0}` },
-      'regulatory-benchmarking': { core: `对标 ${(APP_DATA.regulatoryBenchmarking || []).length}`, anomaly: `区域差异 ${(APP_DATA.regulatoryOperationsMetrics || {}).benchmarking?.regionVariance || 0}` }
+      'regulatory-benchmarking': { core: `对标 ${(APP_DATA.regulatoryBenchmarking || []).length}`, anomaly: `区域差异 ${(APP_DATA.regulatoryOperationsMetrics || {}).benchmarking?.regionVariance || 0}` },
+      'regulatory-strategy-planning': { core: `目标 ${(APP_DATA.regulatoryStrategicPlanningMetrics || {}).objectiveCount || 0}`, anomaly: `未达成 ${(APP_DATA.regulatoryStrategicPlanningMetrics || {}).behindCount || 0}` },
+      'regulatory-annual-plan': { core: `计划 ${(APP_DATA.regulatoryAnnualPlans || []).length}`, anomaly: `风险 ${(APP_DATA.regulatoryStrategicPlanningMetrics || {}).planAtRisk || 0}` },
+      'regulatory-target-management': { core: `目标 ${(APP_DATA.regulatoryTargets || []).length}`, anomaly: `达成 ${(APP_DATA.regulatoryStrategicPlanningMetrics || {}).targetAchieved || 0}` },
+      'regulatory-focus-management': { core: `重点 ${(APP_DATA.regulatoryStrategicFocus || []).length}`, anomaly: `法人 ${(APP_DATA.regulatoryStrategicPlanningMetrics || {}).focusEntities || 0}` },
+      'regulatory-plan-execution': { core: `执行 ${(APP_DATA.regulatoryPlanExecution || []).length}`, anomaly: `超期 ${(APP_DATA.regulatoryStrategicPlanningMetrics || {}).executionOverdue || 0}` },
+      'regulatory-strategic-review': { core: `复盘 ${(APP_DATA.regulatoryStrategicReview || []).length}`, anomaly: `建议 ${(APP_DATA.regulatoryNextCycleRecommendations || []).length}` }
     };
     const pages = (this.publicRegulatoryPages || []).filter(p => catalogIds.includes(p.pageId));
     return `<div class="card"><div class="card-title">公共监管页面目录</div>
@@ -1472,6 +1553,8 @@ Object.assign(App, {
     const resAlloc = opsM.resourceAllocation || {};
     const supM = opsM.supervisionTasks || {};
     const benchM = opsM.benchmarking || {};
+    const stratM = APP_DATA.regulatoryStrategicPlanningMetrics || {};
+    const maturityData = APP_DATA.regulatoryMaturity || {};
     const ruleGovSteps = [
       ['规则变更', (APP_DATA.regulatoryRuleChangeRequests || []).length, `App.navigatePublic('regulatory-rule-approvals')`],
       ['仿真', (APP_DATA.regulatorySimulations || []).length, `App.navigatePublic('regulatory-simulation')`],
@@ -1565,6 +1648,45 @@ Object.assign(App, {
           [(benchM.bottomEntities || []).map(id => (APP_DATA.globalLegalEntities.find(e => e.entityId === id) || {}).entityName || id).join('、') || '—', '重点提升法人', `App.navigatePublic('regulatory-benchmarking',{benchmarkType:'ENTITY'})`],
           [(benchM.laggingDomains || []).map(d => (APP_DATA.regulationDomains.find(x => x.id === d.scopeId) || {}).name || d.scopeId).join('、') || '—', '能力短板领域', `App.navigatePublic('regulatory-benchmarking',{benchmarkType:'DOMAIN'})`],
           [benchM.regionVariance, '区域差异', `App.navigatePublic('regulatory-benchmarking',{benchmarkType:'REGION'})`]
+        ].map(([v, l, nav]) => this.renderPublicKpiCard(l, v, nav)).join('')}</div>
+      </div>
+      <div class="group-three">
+        <div class="card"><div class="card-title">战略目标达成</div>
+          ${[
+            [stratM.objectiveCount, '战略目标总数', `App.navigatePublic('regulatory-strategy-planning')`],
+            [stratM.achievedCount, '已达成', `App.navigatePublic('regulatory-strategy-planning',{status:'ACHIEVED'})`],
+            [stratM.onTrackCount, '按期', `App.navigatePublic('regulatory-strategy-planning',{status:'ON_TRACK'})`],
+            [stratM.atRiskCount, '预警', `App.navigatePublic('regulatory-strategy-planning',{status:'AT_RISK'})`],
+            [stratM.behindCount, '未达成', `App.navigatePublic('regulatory-strategy-planning',{status:'BEHIND'})`],
+            [Math.round((stratM.averageCompletionRate || 0) * 100) + '%', '平均完成率', `App.navigatePublic('regulatory-strategy-planning')`]
+          ].map(([v, l, nav]) => this.renderPublicKpiCard(l, v, nav)).join('')}
+        </div>
+        <div class="card"><div class="card-title">年度监管重点</div>
+          ${[
+            [stratM.focusRegions, '重点区域', `App.navigatePublic('regulatory-focus-management',{focusType:'REGION'})`],
+            [stratM.focusEntities, '重点法人', `App.navigatePublic('regulatory-focus-management',{focusType:'ENTITY'})`],
+            [stratM.focusDomains, '重点领域', `App.navigatePublic('regulatory-focus-management',{focusType:'DOMAIN'})`],
+            [stratM.focusRisks, '重点风险', `App.navigatePublic('regulatory-focus-management',{focusType:'RISK'})`],
+            [stratM.focusProjects, '重点项目', `App.navigatePublic('regulatory-focus-management',{focusType:'PROJECT'})`]
+          ].map(([v, l, nav]) => this.renderPublicKpiCard(l, v, nav)).join('')}
+        </div>
+        <div class="card"><div class="card-title">年度计划执行</div>
+          ${[
+            [stratM.planCount, '计划总数', `App.navigatePublic('regulatory-annual-plan')`],
+            [stratM.planInProgress, '执行中', `App.navigatePublic('regulatory-plan-execution',{planStatus:'IN_PROGRESS'})`],
+            [stratM.planAtRisk, '存在风险', `App.navigatePublic('regulatory-annual-plan',{planStatus:'AT_RISK'})`],
+            [stratM.executionOverdue, '超期', `App.navigatePublic('regulatory-plan-execution',{overdue:'true'})`],
+            [Math.round((stratM.averagePlanCompletionRate || 0) * 100) + '%', '完成率', `App.navigatePublic('regulatory-plan-execution')`]
+          ].map(([v, l, nav]) => this.renderPublicKpiCard(l, v, nav)).join('')}
+        </div>
+      </div>
+      <div class="card"><div class="card-title">战略复盘</div>
+        <div class="group-metrics" style="margin-bottom:0">${[
+          [Math.round((stratM.averageCompletionRate || 0) * 100) + '%', '年度目标达成', `App.navigatePublic('regulatory-strategic-review')`],
+          [perfS.regulatoryEffectivenessScore, '监管绩效', `App.navigatePublic('regulatory-performance')`],
+          [Math.round((perfS.actionVerificationRate || 0) * 100) + '%', '资源投入效果', `App.navigatePublic('regulatory-resource-allocation')`],
+          [maturityData.overallScore || 0, '成熟度变化', `App.navigatePublic('regulatory-maturity')`],
+          [stratM.recommendationCount, '下一周期重点', `App.navigatePublic('regulatory-strategic-review')`]
         ].map(([v, l, nav]) => this.renderPublicKpiCard(l, v, nav)).join('')}</div>
       </div>`;
   },
@@ -2858,6 +2980,266 @@ Object.assign(App, {
     }, '对标分析');
   },
 
+  getRegulatoryObjective(objectiveId) { return (APP_DATA.regulatoryStrategicObjectives || []).find(o => o.objectiveId === objectiveId); },
+  getRegulatoryPlan(planId) { return (APP_DATA.regulatoryAnnualPlans || []).find(p => p.planId === planId); },
+  getRegulatoryTarget(targetId) { return (APP_DATA.regulatoryTargets || []).find(t => t.targetId === targetId); },
+  getRegulatoryFocus(focusId) { return (APP_DATA.regulatoryStrategicFocus || []).find(f => f.focusId === focusId); },
+  getRegulatoryPlanExecutionRecord(executionId) { return (APP_DATA.regulatoryPlanExecution || []).find(e => e.executionId === executionId); },
+  getRegulatoryReview(reviewId) { return (APP_DATA.regulatoryStrategicReview || []).find(r => r.reviewId === reviewId); },
+  getRegulatoryNextCycleRecommendation(recommendationId) { return (APP_DATA.regulatoryNextCycleRecommendations || []).find(r => r.recommendationId === recommendationId); },
+
+  _focusObjectName(f) {
+    if (f.focusType === 'ENTITY') return (APP_DATA.globalLegalEntities.find(e => e.entityId === f.focusObjectId) || {}).entityName;
+    if (f.focusType === 'REGION') return (APP_DATA.globalRegions.find(r => r.regionId === f.focusObjectId) || {}).regionName;
+    if (f.focusType === 'DOMAIN') return (APP_DATA.regulationDomains.find(d => d.id === f.focusObjectId) || {}).name;
+    if (f.focusType === 'PROJECT') return (APP_DATA.globalProjects.find(p => p.projectId === f.focusObjectId) || {}).projectName;
+    if (f.focusType === 'RISK') return (APP_DATA.warnings.find(w => w.id === f.focusObjectId) || APP_DATA.crossDomainRiskMatters.find(m => m.riskMatterId === f.focusObjectId) || {}).name || (APP_DATA.crossDomainRiskMatters.find(m => m.riskMatterId === f.focusObjectId) || {}).riskMatterName;
+    return f.focusObjectId;
+  },
+
+  renderRegulatoryStrategyPlanning() {
+    const node = document.getElementById('regulatoryStrategyPlanning');
+    if (!node) return;
+    const m = APP_DATA.regulatoryStrategicPlanningMetrics || {};
+    const f = this.regulatoryStrategyPlanningFilter || {};
+    let objs = APP_DATA.regulatoryStrategicObjectives || [];
+    if (f.status) objs = objs.filter(o => o.status === f.status);
+    const cycleSteps = [
+      { label: '战略目标', sub: String(m.objectiveCount), onclick: `App.navigatePublic('regulatory-strategy-planning')` },
+      { label: '年度计划', sub: String(m.planCount), onclick: `App.navigatePublic('regulatory-annual-plan')` },
+      { label: '监管目标', sub: String(m.targetCount), onclick: `App.navigatePublic('regulatory-target-management')` },
+      { label: '重点对象', sub: String(m.focusCount), onclick: `App.navigatePublic('regulatory-focus-management')` },
+      { label: '计划执行', sub: String(m.executionCount), onclick: `App.navigatePublic('regulatory-plan-execution')` },
+      { label: '战略复盘', sub: String(m.reviewCount), onclick: `App.navigatePublic('regulatory-strategic-review')` }
+    ];
+    const rows = objs.map(o => `<tr class="clickable" onclick="App.showRegulatoryObjectiveDetail('${o.objectiveId}')"><td>${o.objectiveId}</td><td>${o.objectiveName}</td><td>${o.objectiveType}</td><td>${o.targetValue}${o.unit}</td><td>${o.actualValue}${o.unit}</td><td>${Math.round(o.completionRate*100)}%</td><td>${this.renderPublicObjectiveStatusBadge(o.status)}</td></tr>`).join('');
+    const behind = objs.filter(o => o.status === 'BEHIND' || o.status === 'AT_RISK');
+    const recs = APP_DATA.regulatoryNextCycleRecommendations || [];
+    node.innerHTML = `${this.renderPublicBackButton()}
+      <div class="group-hero"><div><span>集团战略运营</span><h2>集团监管战略规划</h2><p>战略周期 ${m.strategicPeriod || '—'} · 形成战略目标→年度计划→执行→复盘闭环</p></div><div>完成率 <b>${Math.round((m.averageCompletionRate||0)*100)}%</b></div></div>
+      <div class="group-metrics">${[[m.objectiveCount,'战略目标',`App.navigatePublic('regulatory-strategy-planning')`],[m.achievedCount,'已达成',`App.navigatePublic('regulatory-strategy-planning',{status:'ACHIEVED'})`],[m.onTrackCount,'按期',`App.navigatePublic('regulatory-strategy-planning',{status:'ON_TRACK'})`],[m.atRiskCount,'预警',`App.navigatePublic('regulatory-strategy-planning',{status:'AT_RISK'})`],[m.behindCount,'未达成',`App.navigatePublic('regulatory-strategy-planning',{status:'BEHIND'})`],[Math.round((m.averageCompletionRate||0)*100)+'%','平均完成率',`App.navigatePublic('regulatory-target-management')`],[Math.round((m.maturityImprovementRate||0)*100)+'%','成熟度提升',`App.navigatePublic('regulatory-maturity')`]].map(([v,l,n])=>this.renderPublicKpiCard(l,v,n)).join('')}</div>
+      <div class="card"><div class="card-title">A. 战略周期总览</div>${this.renderPublicStrategicCycleFlow(cycleSteps)}</div>
+      <div class="card"><div class="card-title">B. 集团监管战略目标</div>${rows?`<table class="data-table"><thead><tr><th>编号</th><th>目标</th><th>类型</th><th>目标值</th><th>实际值</th><th>完成率</th><th>状态</th></tr></thead><tbody>${rows}</tbody></table>`:this.renderPublicEmptyState('暂无战略目标')}</div>
+      <div class="group-two">
+        <div class="card"><div class="card-title">E. 目标偏差分析</div>${behind.length?behind.map(o=>`<p class="insight-note"><b>${o.objectiveName}</b>：偏差 ${o.variance}${o.unit} ${this.renderPublicObjectiveStatusBadge(o.status)} ${this.renderPublicLinkButton('查看目标',`App.navigatePublic('regulatory-target-management',{objectiveId:'${o.objectiveId}'})`)}</p>`).join(''):this.renderPublicEmptyState('暂无显著偏差')}</div>
+        <div class="card"><div class="card-title">F. 下一周期战略建议</div>${recs.length?recs.slice(0,3).map(r=>`<p class="insight-note">${r.triggerReason} ${this.renderPublicLinkButton('查看',`App.showRegulatoryNextCycleRecommendationDetail('${r.recommendationId}')`)}</p>`).join(''):this.renderPublicEmptyState('暂无建议')}</div>
+      </div>
+      <div id="regulatoryObjectiveDetail"></div>`;
+    if (this.regulatoryObjectiveFocusId) setTimeout(() => this.showRegulatoryObjectiveDetail(this.regulatoryObjectiveFocusId), 0);
+  },
+
+  showRegulatoryObjectiveDetail(objectiveId) {
+    const obj = this.getRegulatoryObjective(objectiveId);
+    const node = document.getElementById('regulatoryObjectiveDetail');
+    this.regulatoryObjectiveFocusId = objectiveId;
+    this.showPublicDetailOrNotFound(node, obj, () => {
+      const plan = (APP_DATA.regulatoryAnnualPlans || []).find(p => (p.objectiveIds||[]).includes(obj.objectiveId));
+      const tgt = (APP_DATA.regulatoryTargets || []).find(t => t.relatedObjectiveId === obj.objectiveId);
+      node.innerHTML = this.buildPublicDetailPanel({ objectType: '战略目标', objectName: obj.objectiveName, objectId: obj.objectiveId, status: obj.status,
+        sections: [
+          { title: '一、目标信息', content: this.renderPublicMetaGrid([this.renderPublicIdField(obj.objectiveId,'目标 ID'),{label:'类型',value:obj.objectiveType},{label:'战略周期',value:obj.strategicPeriod},{label:'目标值',value:obj.targetValue+obj.unit},{label:'实际值',value:obj.actualValue+obj.unit},{label:'完成率',value:Math.round(obj.completionRate*100)+'%'},{label:'偏差',value:obj.variance+obj.unit},{label:'状态',html:this.renderPublicObjectiveStatusBadge(obj.status)}]) },
+          { title: '二、目标进度', content: this.renderPublicTargetProgress(obj.targetValue, obj.actualValue, obj.unit) },
+          { title: '三、关联穿透', content: `${plan?this.renderPublicLinkButton(plan.planName,`App.navigatePublic('regulatory-annual-plan',{planId:'${plan.planId}'})`):''} ${tgt?this.renderPublicLinkButton(tgt.targetName,`App.navigatePublic('regulatory-target-management',{targetId:'${tgt.targetId}'})`):''}` }
+        ],
+        footer: `${this.renderPublicLinkButton('年度计划',plan?`App.navigatePublic('regulatory-annual-plan',{planId:'${plan.planId}'})`:`App.navigatePublic('regulatory-annual-plan')`)}${this.renderPublicLinkButton('战略复盘',`App.navigatePublic('regulatory-strategic-review')`)}`
+      });
+      node.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }, '战略目标');
+  },
+
+  renderRegulatoryAnnualPlan() {
+    const node = document.getElementById('regulatoryAnnualPlan');
+    if (!node) return;
+    const f = this.regulatoryAnnualPlanFilter || {};
+    let plans = APP_DATA.regulatoryAnnualPlans || [];
+    if (f.planStatus) plans = plans.filter(p => p.planStatus === f.planStatus);
+    if (f.priority) plans = plans.filter(p => p.priority === f.priority);
+    if (f.regionId) plans = plans.filter(p => (p.focusRegionIds||[]).includes(f.regionId));
+    if (f.entityId) plans = plans.filter(p => (p.focusEntityIds||[]).includes(f.entityId));
+    const filterBar = `<div class="filter-bar" style="margin-bottom:12px;display:flex;gap:8px;flex-wrap:wrap"><select onchange="App.regulatoryAnnualPlanFilter={...(App.regulatoryAnnualPlanFilter||{}),planStatus:this.value||null};App.renderRegulatoryAnnualPlan()"><option value="">全部状态</option>${['DRAFT','APPROVED','IN_PROGRESS','AT_RISK','COMPLETED'].map(s=>`<option value="${s}" ${f.planStatus===s?'selected':''}>${s}</option>`).join('')}</select><select onchange="App.regulatoryAnnualPlanFilter={...(App.regulatoryAnnualPlanFilter||{}),priority:this.value||null};App.renderRegulatoryAnnualPlan()"><option value="">全部优先级</option>${['CRITICAL','HIGH','MEDIUM'].map(p=>`<option value="${p}" ${f.priority===p?'selected':''}>${p}</option>`).join('')}</select>${this.renderPublicFilterBar('regulatory-annual-plan',['regionId','entityId','domainId']).replace('public-filter-bar','')}</div>`;
+    const rows = plans.map(p => `<tr class="clickable" onclick="App.showRegulatoryPlanDetail('${p.planId}')"><td>${p.planId}</td><td>${p.planName}</td><td>${p.planYear}</td><td>${this.renderPublicPriorityBadge(p.priority)}</td><td>${this.renderPublicPlanStatusBadge(p.planStatus)}</td><td>${Math.round(p.completionRate*100)}%</td><td>${(p.focusEntityIds||[]).length}</td><td>${(p.plannedActionIds||[]).length}</td></tr>`).join('');
+    node.innerHTML = `${this.renderPublicBackButton()}<div class="group-hero"><div><span>集团战略运营</span><h2>年度监管计划中心</h2><p>年度计划关联战略目标、重点对象与监管行动。</p></div><div>计划 <b>${plans.length}</b></div></div>
+      <div class="group-metrics">${[[plans.length,'计划总数',`App.navigatePublic('regulatory-annual-plan')`],[plans.filter(p=>p.planStatus==='IN_PROGRESS').length,'执行中',`App.navigatePublic('regulatory-plan-execution')`],[plans.filter(p=>p.planStatus==='AT_RISK').length,'存在风险',`App.navigatePublic('regulatory-annual-plan',{planStatus:'AT_RISK'})`],[Math.round(plans.reduce((s,p)=>s+p.completionRate,0)/Math.max(1,plans.length)*100)+'%','平均完成率',`App.navigatePublic('regulatory-plan-execution')`]].map(([v,l,n])=>this.renderPublicKpiCard(l,v,n)).join('')}</div>
+      <div class="card"><div class="card-title">年度监管计划清单</div>${filterBar}${rows?`<table class="data-table"><thead><tr><th>编号</th><th>计划</th><th>年度</th><th>优先级</th><th>状态</th><th>完成率</th><th>重点法人</th><th>行动</th></tr></thead><tbody>${rows}</tbody></table>`:this.renderPublicNoFilterResults()}
+      <p style="margin-top:8px">${this.renderPublicLinkButton('重点对象',`App.navigatePublic('regulatory-focus-management')`)} ${this.renderPublicLinkButton('计划执行',`App.navigatePublic('regulatory-plan-execution')`)}</p></div>
+      <div id="regulatoryPlanDetail"></div>`;
+    if (this.regulatoryPlanFocusId) setTimeout(() => this.showRegulatoryPlanDetail(this.regulatoryPlanFocusId), 0);
+  },
+
+  showRegulatoryPlanDetail(planId) {
+    const plan = this.getRegulatoryPlan(planId);
+    const node = document.getElementById('regulatoryPlanDetail');
+    this.regulatoryPlanFocusId = planId;
+    this.showPublicDetailOrNotFound(node, plan, () => {
+      const objs = (plan.objectiveIds||[]).map(id=>APP_DATA.regulatoryStrategicObjectives.find(o=>o.objectiveId===id)).filter(Boolean);
+      const acts = (plan.plannedActionIds||[]).map(id=>APP_DATA.regulatoryActions.find(a=>a.actionId===id)).filter(Boolean);
+      node.innerHTML = this.buildPublicDetailPanel({ objectType: '年度计划', objectName: plan.planName, objectId: plan.planId, status: plan.planStatus,
+        sections: [
+          { title: '一、计划信息', content: this.renderPublicMetaGrid([this.renderPublicIdField(plan.planId,'计划 ID'),{label:'年度',value:plan.planYear},{label:'优先级',html:this.renderPublicPriorityBadge(plan.priority)},{label:'状态',html:this.renderPublicPlanStatusBadge(plan.planStatus)},{label:'目标值',value:plan.targetValue},{label:'实际值',value:plan.actualValue},{label:'完成率',value:Math.round(plan.completionRate*100)+'%'},{label:'偏差率',value:Math.round(plan.varianceRate*100)+'%'}]) },
+          { title: '二、关联战略目标', content: objs.length?objs.map(o=>this.renderPublicLinkButton(o.objectiveName,`App.navigatePublic('regulatory-strategy-planning',{objectiveId:'${o.objectiveId}'})`)).join(''):this.renderPublicEmptyState('暂无') },
+          { title: '三、重点与行动', content: `<p><b>重点法人：</b>${(plan.focusEntityIds||[]).map(id=>this.renderPublicLinkButton((APP_DATA.globalLegalEntities.find(e=>e.entityId===id)||{}).entityName||id,`App.navigatePublic('global-legal-entities',{entityId:'${id}'})`)).join('')}</p><p><b>监管行动：</b>${acts.length?acts.slice(0,3).map(a=>this.renderPublicLinkButton(a.actionId,`App.navigatePublic('regulatory-actions',{actionId:'${a.actionId}'})`)).join(''):this.renderPublicEmptyState('暂无')}</p>` }
+        ],
+        footer: `${this.renderPublicLinkButton('计划执行',`App.navigatePublic('regulatory-plan-execution',{planId:'${plan.planId}'})`)}${this.renderPublicLinkButton('重点管理',`App.navigatePublic('regulatory-focus-management')`)}`
+      });
+      node.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }, '年度计划');
+  },
+
+  renderRegulatoryTargetManagement() {
+    const node = document.getElementById('regulatoryTargetManagement');
+    if (!node) return;
+    const f = this.regulatoryTargetFilter || {};
+    let targets = APP_DATA.regulatoryTargets || [];
+    if (f.status) targets = targets.filter(t => t.status === f.status);
+    if (f.targetType) targets = targets.filter(t => t.targetType === f.targetType);
+    const unmet = targets.filter(t => t.status === 'BEHIND' || t.status === 'AT_RISK');
+    const rows = targets.map(t => `<tr class="clickable" onclick="App.showRegulatoryTargetDetail('${t.targetId}')"><td>${t.targetId}</td><td>${t.targetName}</td><td>${t.targetDimension}</td><td>${t.targetValue}</td><td>${t.actualValue}</td><td>${Math.round(t.completionRate*100)}%</td><td>${t.variance}</td><td>${this.renderPublicTargetStatusBadge(t.status)}</td></tr>`).join('');
+    node.innerHTML = `${this.renderPublicBackButton()}<div class="group-hero"><div><span>集团战略运营</span><h2>监管目标管理</h2><p>目标→目标值→实际值→完成率→偏差→状态</p></div><div>目标 <b>${targets.length}</b></div></div>
+      <div class="group-metrics">${[[targets.length,'目标总数',`App.navigatePublic('regulatory-target-management')`],[targets.filter(t=>t.status==='ACHIEVED').length,'已达成',`App.navigatePublic('regulatory-target-management',{status:'ACHIEVED'})`],[unmet.length,'未达成/预警',`App.navigatePublic('regulatory-target-management',{status:'BEHIND'})`],[Math.round(targets.reduce((s,t)=>s+t.completionRate,0)/Math.max(1,targets.length)*100)+'%','平均达成率',`App.navigatePublic('regulatory-target-management')`]].map(([v,l,n])=>this.renderPublicKpiCard(l,v,n)).join('')}</div>
+      <div class="card"><div class="card-title">监管目标清单</div>${rows?`<table class="data-table"><thead><tr><th>编号</th><th>目标</th><th>维度</th><th>目标值</th><th>实际值</th><th>完成率</th><th>偏差</th><th>状态</th></tr></thead><tbody>${rows}</tbody></table>`:this.renderPublicEmptyState('暂无目标')}</div>
+      <div class="card"><div class="card-title">未达成目标</div>${unmet.length?unmet.map(t=>`<p class="insight-note">${t.targetName}：${Math.round(t.completionRate*100)}% ${this.renderPublicLinkButton('查看',`App.showRegulatoryTargetDetail('${t.targetId}')`)}</p>`).join(''):this.renderPublicEmptyState('暂无未达成目标')}</div>
+      <div id="regulatoryTargetDetail"></div>`;
+    if (this.regulatoryTargetFocusId) setTimeout(() => this.showRegulatoryTargetDetail(this.regulatoryTargetFocusId), 0);
+  },
+
+  showRegulatoryTargetDetail(targetId) {
+    const tgt = this.getRegulatoryTarget(targetId);
+    const node = document.getElementById('regulatoryTargetDetail');
+    this.regulatoryTargetFocusId = targetId;
+    this.showPublicDetailOrNotFound(node, tgt, () => {
+      node.innerHTML = this.buildPublicDetailPanel({ objectType: '监管目标', objectName: tgt.targetName, objectId: tgt.targetId, status: tgt.status,
+        sections: [
+          { title: '一、目标指标', content: this.renderPublicMetaGrid([this.renderPublicIdField(tgt.targetId,'目标 ID'),{label:'类型',value:tgt.targetType},{label:'维度',value:tgt.targetDimension},{label:'目标值',value:tgt.targetValue},{label:'实际值',value:tgt.actualValue},{label:'完成率',value:Math.round(tgt.completionRate*100)+'%'},{label:'偏差',value:tgt.variance},{label:'状态',html:this.renderPublicTargetStatusBadge(tgt.status)}]) },
+          { title: '二、目标进度', content: this.renderPublicTargetProgress(tgt.targetValue, tgt.actualValue) },
+          { title: '三、关联计划与对象', content: `${tgt.relatedPlanId?this.renderPublicLinkButton(tgt.relatedPlanId,`App.navigatePublic('regulatory-annual-plan',{planId:'${tgt.relatedPlanId}'})`):''} ${(tgt.relatedEntityIds||[]).map(id=>this.renderPublicLinkButton(id,`App.navigatePublic('global-legal-entities',{entityId:'${id}'})`)).join('')}` }
+        ],
+        footer: `${tgt.relatedObjectiveId?this.renderPublicLinkButton('战略目标',`App.navigatePublic('regulatory-strategy-planning',{objectiveId:'${tgt.relatedObjectiveId}'})`):''}`
+      });
+      node.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }, '监管目标');
+  },
+
+  renderRegulatoryFocusManagement() {
+    const node = document.getElementById('regulatoryFocusManagement');
+    if (!node) return;
+    const f = this.regulatoryFocusFilter || {};
+    let items = APP_DATA.regulatoryStrategicFocus || [];
+    if (f.focusType) items = items.filter(i => i.focusType === f.focusType);
+    if (f.priority) items = items.filter(i => i.priority === f.priority);
+    const byType = (type) => items.filter(i => i.focusType === type);
+    const rows = items.map(i => `<tr class="clickable" onclick="App.showRegulatoryFocusDetail('${i.focusId}')"><td>${i.focusId}</td><td>${this.renderPublicFocusTypeBadge(i.focusType)}</td><td>${this._focusObjectName(i)}</td><td>${this.renderPublicPriorityBadge(i.priority)}</td><td>${this.renderPublicHealthBadge(i.healthLevel)}</td><td>${i.eventCount}</td><td>${i.overdueCount}</td><td>${i.focusReason}</td></tr>`).join('');
+    node.innerHTML = `${this.renderPublicBackButton()}<div class="group-hero"><div><span>集团战略运营</span><h2>年度监管重点管理</h2><p>基于优先级、风险集中度、健康度与成熟度动态识别年度重点。</p></div><div>重点 <b>${items.length}</b></div></div>
+      <div class="group-metrics">${[['REGION','重点区域'],['ENTITY','重点法人'],['DOMAIN','重点领域'],['RISK','重点风险'],['PROJECT','重点项目'],['DATA_OBJECT','数据治理']].map(([t,l])=>[byType(t).length,l,`App.navigatePublic('regulatory-focus-management',{focusType:'${t}'})`]).map(([v,l,n])=>this.renderPublicKpiCard(l,v,n)).join('')}</div>
+      <div class="card"><div class="card-title">年度监管重点清单</div>${rows?`<table class="data-table"><thead><tr><th>编号</th><th>类型</th><th>对象</th><th>优先级</th><th>健康度</th><th>事件</th><th>超期</th><th>原因</th></tr></thead><tbody>${rows}</tbody></table>`:this.renderPublicEmptyState('暂无重点对象')}</div>
+      <div id="regulatoryFocusDetail"></div>`;
+    if (this.regulatoryFocusFocusId) setTimeout(() => this.showRegulatoryFocusDetail(this.regulatoryFocusFocusId), 0);
+  },
+
+  showRegulatoryFocusDetail(focusId) {
+    const focus = this.getRegulatoryFocus(focusId);
+    const node = document.getElementById('regulatoryFocusDetail');
+    this.regulatoryFocusFocusId = focusId;
+    this.showPublicDetailOrNotFound(node, focus, () => {
+      const ent = focus.focusType === 'ENTITY' ? APP_DATA.globalLegalEntities.find(e => e.entityId === focus.focusObjectId) : null;
+      const acts = (focus.recommendedActionIds||[]).map(id=>APP_DATA.regulatoryActions.find(a=>a.actionId===id)).filter(Boolean);
+      const pri = ent ? (APP_DATA.regulatoryPrioritiesRecalculated||APP_DATA.regulatoryPriorities||{})[ent.entityId] : null;
+      node.innerHTML = this.buildPublicDetailPanel({ objectType: '监管重点', objectName: this._focusObjectName(focus), objectId: focus.focusId, status: focus.priority,
+        sections: [
+          { title: '一、重点信息', content: this.renderPublicMetaGrid([this.renderPublicIdField(focus.focusId,'重点 ID'),{label:'类型',html:this.renderPublicFocusTypeBadge(focus.focusType)},{label:'原因',value:focus.focusReason},{label:'风险分',value:focus.riskScore},{label:'健康度',html:this.renderPublicHealthBadge(focus.healthLevel)},{label:'成熟度',value:focus.maturityLevel},{label:'事件数',value:focus.eventCount},{label:'超期数',value:focus.overdueCount}]) },
+          { title: '二、穿透链路', content: `${ent?this.renderPublicLinkButton('监管优先级',`App.navigatePublic('regulatory-command-center')`):''} ${ent?this.renderPublicLinkButton('法人',`App.navigatePublic('global-legal-entities',{entityId:'${ent.entityId}'})`):''} ${acts.length?acts.map(a=>this.renderPublicLinkButton('行动 '+a.actionId,`App.navigatePublic('regulatory-actions',{actionId:'${a.actionId}'})`)).join(''):''} ${this.renderPublicLinkButton('监管任务',`App.navigatePublic('regulatory-supervision-tasks')`)} ${this.renderPublicLinkButton('整改',`App.navigatePublic('rectification')`)}` }
+        ],
+        footer: `${focus.relatedPlanIds?.[0]?this.renderPublicLinkButton('年度计划',`App.navigatePublic('regulatory-annual-plan',{planId:'${focus.relatedPlanIds[0]}'})`):''}`
+      });
+      node.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }, '监管重点');
+  },
+
+  renderRegulatoryPlanExecution() {
+    const node = document.getElementById('regulatoryPlanExecution');
+    if (!node) return;
+    const f = this.regulatoryPlanExecutionFilter || {};
+    let execs = APP_DATA.regulatoryPlanExecution || [];
+    if (f.planId) execs = execs.filter(e => e.planId === f.planId);
+    if (f.planStatus) { const pids = (APP_DATA.regulatoryAnnualPlans||[]).filter(p=>p.planStatus===f.planStatus).map(p=>p.planId); execs = execs.filter(e => pids.includes(e.planId)); }
+    if (f.overdue === 'true') execs = execs.filter(e => e.plannedDate && e.plannedDate < '2026-07-22' && e.executionStatus !== 'COMPLETED');
+    const completed = execs.filter(e => e.executionStatus === 'COMPLETED').length;
+    const rows = execs.map(e => { const plan = APP_DATA.regulatoryAnnualPlans.find(p=>p.planId===e.planId); const ent = APP_DATA.globalLegalEntities.find(x=>x.entityId===e.entityId); return `<tr class="clickable" onclick="App.showRegulatoryPlanExecutionDetail('${e.executionId}')"><td>${e.executionId}</td><td>${plan?plan.planName:e.planId}</td><td>${e.actionId}</td><td>${ent?ent.entityName:e.entityId||'—'}</td><td>${e.executionStatus}</td><td>${Math.round(e.completionRate*100)}%</td><td>${e.plannedDate}</td></tr>`; }).join('');
+    const cycleSteps = [{label:'计划',sub:'年度',onclick:`App.navigatePublic('regulatory-annual-plan')`},{label:'行动',sub:'监管',onclick:`App.navigatePublic('regulatory-actions')`},{label:'资源',sub:'配置',onclick:`App.navigatePublic('regulatory-resource-allocation')`},{label:'任务',sub:'协同',onclick:`App.navigatePublic('regulatory-supervision-tasks')`},{label:'执行',sub:'反馈',onclick:`App.navigatePublic('regulatory-plan-execution')`},{label:'绩效',sub:'评价',onclick:`App.navigatePublic('regulatory-performance')`}];
+    node.innerHTML = `${this.renderPublicBackButton()}<div class="group-hero"><div><span>集团战略运营</span><h2>年度监管计划执行中心</h2><p>计划→行动→资源→监管任务→执行→绩效闭环（区别于规则执行）。</p></div><div>完成 <b>${completed}/${execs.length}</b></div></div>
+      <div class="group-metrics">${[[execs.length,'执行项',`App.navigatePublic('regulatory-plan-execution')`],[completed,'已完成',`App.navigatePublic('regulatory-plan-execution')`],[execs.filter(e=>e.executionStatus==='IN_PROGRESS').length,'执行中',`App.navigatePublic('regulatory-plan-execution')`],[execs.filter(e=>e.plannedDate&&e.plannedDate<'2026-07-22'&&e.executionStatus!=='COMPLETED').length,'超期',`App.navigatePublic('regulatory-plan-execution',{overdue:'true'})`],[Math.round(execs.reduce((s,e)=>s+e.completionRate,0)/Math.max(1,execs.length)*100)+'%','计划完成率',`App.navigatePublic('regulatory-annual-plan')`]].map(([v,l,n])=>this.renderPublicKpiCard(l,v,n)).join('')}</div>
+      <div class="card"><div class="card-title">计划执行闭环</div>${this.renderPublicStrategicCycleFlow(cycleSteps)}</div>
+      <div class="card"><div class="card-title">计划执行清单</div>${rows?`<table class="data-table"><thead><tr><th>编号</th><th>计划</th><th>行动</th><th>法人</th><th>状态</th><th>完成率</th><th>计划日期</th></tr></thead><tbody>${rows}</tbody></table>`:this.renderPublicEmptyState('暂无执行记录')}</div>
+      <div id="regulatoryPlanExecutionDetail"></div>`;
+    if (this.regulatoryPlanExecutionFocusId) setTimeout(() => this.showRegulatoryPlanExecutionDetail(this.regulatoryPlanExecutionFocusId), 0);
+  },
+
+  showRegulatoryPlanExecutionDetail(executionId) {
+    const ex = this.getRegulatoryPlanExecutionRecord(executionId);
+    const node = document.getElementById('regulatoryPlanExecutionDetail');
+    this.regulatoryPlanExecutionFocusId = executionId;
+    this.showPublicDetailOrNotFound(node, ex, () => {
+      const act = APP_DATA.regulatoryActions.find(a => a.actionId === ex.actionId);
+      const task = ex.supervisionTaskId ? APP_DATA.regulatorySupervisionTasks.find(t => t.supervisionTaskId === ex.supervisionTaskId) : null;
+      node.innerHTML = this.buildPublicDetailPanel({ objectType: '计划执行', objectName: ex.executionId, objectId: ex.executionId, status: ex.executionStatus,
+        sections: [
+          { title: '一、执行信息', content: this.renderPublicMetaGrid([this.renderPublicIdField(ex.executionId,'执行 ID'),{label:'计划',value:ex.planId},{label:'行动',value:ex.actionId},{label:'状态',value:ex.executionStatus},{label:'计划值',value:ex.plannedValue},{label:'实际值',value:ex.actualValue},{label:'完成率',value:Math.round(ex.completionRate*100)+'%'},{label:'偏差率',value:Math.round(ex.varianceRate*100)+'%'}]) },
+          { title: '二、穿透', content: `${act?this.renderPublicLinkButton(act.actionId,`App.navigatePublic('regulatory-actions',{actionId:'${act.actionId}'})`):''} ${task?this.renderPublicLinkButton(task.supervisionTaskId,`App.navigatePublic('regulatory-supervision-tasks',{supervisionTaskId:'${task.supervisionTaskId}'})`):''} ${this.renderPublicLinkButton('监管绩效',`App.navigatePublic('regulatory-performance')`)}` }
+        ]
+      });
+      node.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }, '计划执行');
+  },
+
+  renderRegulatoryStrategicReview() {
+    const node = document.getElementById('regulatoryStrategicReview');
+    if (!node) return;
+    const reviews = APP_DATA.regulatoryStrategicReview || [];
+    const recs = APP_DATA.regulatoryNextCycleRecommendations || [];
+    const groupRev = reviews.find(r => r.reviewDimension === 'GROUP');
+    const rows = reviews.slice(0, 12).map(r => `<tr class="clickable" onclick="App.showRegulatoryReviewDetail('${r.reviewId}')"><td>${r.reviewId}</td><td>${r.reviewDimension}</td><td>${r.scopeName}</td><td>${Math.round(r.targetCompletionRate*100)}%</td><td>${Math.round(r.regulatoryEffectiveness*100)}%</td><td>${Math.round(r.rectificationClosureRate*100)}%</td><td>${r.reviewStatus}</td></tr>`).join('');
+    const cycleSteps = [{label:'战略目标',onclick:`App.navigatePublic('regulatory-strategy-planning')`},{label:'年度计划',onclick:`App.navigatePublic('regulatory-annual-plan')`},{label:'监管执行',onclick:`App.navigatePublic('regulatory-plan-execution')`},{label:'绩效评价',onclick:`App.navigatePublic('regulatory-performance')`},{label:'战略复盘',onclick:`App.navigatePublic('regulatory-strategic-review')`},{label:'下一周期',onclick:`App.navigatePublic('regulatory-strategic-review')`}];
+    node.innerHTML = `${this.renderPublicBackButton()}<div class="group-hero"><div><span>集团战略运营</span><h2>集团监管战略复盘</h2><p>战略目标→年度计划→监管执行→绩效评价→战略复盘→下一周期规划</p></div><div>复盘 <b>${reviews.length}</b></div></div>
+      <div class="group-metrics">${groupRev?[[Math.round(groupRev.targetCompletionRate*100)+'%','年度目标达成',`App.navigatePublic('regulatory-target-management')`],[Math.round(groupRev.regulatoryEffectiveness*100)+'%','监管绩效',`App.navigatePublic('regulatory-performance')`],[Math.round(groupRev.resourceEfficiencyRate*100)+'%','资源投入效果',`App.navigatePublic('regulatory-resource-allocation')`],[groupRev.maturityScore,'成熟度',`App.navigatePublic('regulatory-maturity')`],[recs.length,'下一周期建议',`App.navigatePublic('regulatory-strategic-review')`]].map(([v,l,n])=>this.renderPublicKpiCard(l,v,n)).join(''):''}</div>
+      <div class="card"><div class="card-title">核心战略闭环</div>${this.renderPublicStrategicCycleFlow(cycleSteps)}</div>
+      <div class="card"><div class="card-title">战略复盘清单</div>${rows?`<table class="data-table"><thead><tr><th>编号</th><th>维度</th><th>对象</th><th>目标完成率</th><th>监管有效性</th><th>整改闭环率</th><th>状态</th></tr></thead><tbody>${rows}</tbody></table>`:this.renderPublicEmptyState('暂无复盘')}</div>
+      <div class="card"><div class="card-title">下一周期建议</div>${recs.length?recs.map(r=>`<p class="insight-note"><b>${r.recommendationType}</b>：${r.triggerReason} ${this.renderPublicLinkButton('查看',`App.showRegulatoryNextCycleRecommendationDetail('${r.recommendationId}')`)} ${this.renderPublicLinkButton('新年度重点',`App.navigatePublic('regulatory-focus-management')`)}</p>`).join(''):this.renderPublicEmptyState('暂无建议')}</div>
+      <div id="regulatoryReviewDetail"></div>`;
+    if (this.regulatoryReviewFocusId) setTimeout(() => this.showRegulatoryReviewDetail(this.regulatoryReviewFocusId), 0);
+  },
+
+  showRegulatoryReviewDetail(reviewId) {
+    const rev = this.getRegulatoryReview(reviewId);
+    const node = document.getElementById('regulatoryReviewDetail');
+    this.regulatoryReviewFocusId = reviewId;
+    this.showPublicDetailOrNotFound(node, rev, () => {
+      node.innerHTML = this.buildPublicDetailPanel({ objectType: '战略复盘', objectName: rev.scopeName, objectId: rev.reviewId, status: rev.reviewStatus,
+        sections: [
+          { title: '一、复盘指标', content: this.renderPublicMetaGrid([this.renderPublicIdField(rev.reviewId,'复盘 ID'),{label:'维度',value:rev.reviewDimension},{label:'周期',value:rev.reviewPeriod},{label:'目标完成率',value:Math.round(rev.targetCompletionRate*100)+'%'},{label:'监管有效性',value:Math.round(rev.regulatoryEffectiveness*100)+'%'},{label:'风险解决率',value:Math.round(rev.riskResolutionRate*100)+'%'},{label:'整改闭环率',value:Math.round(rev.rectificationClosureRate*100)+'%'},{label:'资源效率',value:Math.round(rev.resourceEfficiencyRate*100)+'%'},{label:'成熟度提升',value:Math.round(rev.maturityImprovement*100)+'%'}]) },
+          { title: '二、主要偏差', content: (rev.mainDeviations||[]).length?rev.mainDeviations.map(d=>`<p class="insight-note">${d}</p>`).join(''):this.renderPublicEmptyState('暂无显著偏差') },
+          { title: '三、关联穿透', content: `${this.renderPublicLinkButton('监管绩效',`App.navigatePublic('regulatory-performance')`)} ${this.renderPublicLinkButton('成熟度',`App.navigatePublic('regulatory-maturity')`)} ${this.renderPublicLinkButton('战略复盘建议',`App.navigatePublic('regulatory-strategic-review')`)}` }
+        ]
+      });
+      node.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }, '战略复盘');
+  },
+
+  showRegulatoryNextCycleRecommendationDetail(recommendationId) {
+    const rec = this.getRegulatoryNextCycleRecommendation(recommendationId);
+    const node = document.getElementById('regulatoryReviewDetail') || document.getElementById('regulatoryObjectiveDetail');
+    this.regulatoryNextCycleRecommendationFocusId = recommendationId;
+    this.showPublicDetailOrNotFound(node, rec, () => {
+      node.innerHTML = this.buildPublicDetailPanel({ objectType: '下一周期建议', objectName: rec.recommendationType, objectId: rec.recommendationId, status: rec.status,
+        sections: [
+          { title: '一、建议内容', content: this.renderPublicMetaGrid([this.renderPublicIdField(rec.recommendationId,'建议 ID'),{label:'触发原因',value:rec.triggerReason},{label:'资源调整',value:rec.resourceAdjustment},{label:'策略调整',value:rec.strategyAdjustment},{label:'优先级',html:this.renderPublicPriorityBadge(rec.priority)}]) },
+          { title: '二、下一年度重点', content: `<p><b>重点法人：</b>${(rec.focusEntityIds||[]).map(id=>this.renderPublicLinkButton(id,`App.navigatePublic('regulatory-focus-management',{focusType:'ENTITY'})`)).join('')}</p><p><b>重点领域：</b>${(rec.focusDomainIds||[]).map(id=>this.renderPublicLinkButton(id,`App.navigatePublic('regulatory-focus-management',{focusType:'DOMAIN'})`)).join('')}</p>` },
+          { title: '三、规则优化', content: (rec.ruleOptimizationIds||[]).length?rec.ruleOptimizationIds.map(id=>this.renderPublicLinkButton(id,`App.navigatePublic('regulatory-optimization',{recommendationId:'${id}'})`)).join(''):this.renderPublicEmptyState('暂无规则优化建议') }
+        ],
+        footer: `${this.renderPublicLinkButton('年度重点',`App.navigatePublic('regulatory-focus-management')`)}${this.renderPublicLinkButton('战略规划',`App.navigatePublic('regulatory-strategy-planning')`)}`
+      });
+      node.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }, '下一周期建议');
+  },
+
   rerenderPublicPage(pageId) {
     const routeId = this.resolvePublicRouteId(pageId);
     const fn = {
@@ -2892,7 +3274,13 @@ Object.assign(App, {
       'regulatory-performance': 'renderRegulatoryPerformance',
       'regulatory-resource-allocation': 'renderRegulatoryResourceAllocation',
       'regulatory-supervision-tasks': 'renderRegulatorySupervisionTasks',
-      'regulatory-benchmarking': 'renderRegulatoryBenchmarking'
+      'regulatory-benchmarking': 'renderRegulatoryBenchmarking',
+      'regulatory-strategy-planning': 'renderRegulatoryStrategyPlanning',
+      'regulatory-annual-plan': 'renderRegulatoryAnnualPlan',
+      'regulatory-target-management': 'renderRegulatoryTargetManagement',
+      'regulatory-focus-management': 'renderRegulatoryFocusManagement',
+      'regulatory-plan-execution': 'renderRegulatoryPlanExecution',
+      'regulatory-strategic-review': 'renderRegulatoryStrategicReview'
     }[routeId];
     if (fn && this[fn]) this[fn]();
   }

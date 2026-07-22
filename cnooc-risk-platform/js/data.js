@@ -3283,3 +3283,381 @@ Object.assign(APP_DATA, {
     }
   };
 })();
+
+(function () {
+  const TODAY = '2026-07-22';
+  const PLAN_YEAR = 2026;
+  const STRATEGIC_PERIOD = '2026-2028';
+  const entities = APP_DATA.globalLegalEntities || [];
+  const regions = APP_DATA.globalRegions || [];
+  const domains = APP_DATA.regulationDomains || [];
+  const projects = APP_DATA.globalProjects || [];
+  const events = APP_DATA.regulatoryEvents || [];
+  const warnings = APP_DATA.warnings || [];
+  const cdrMatters = APP_DATA.crossDomainRiskMatters || [];
+  const rects = APP_DATA.rectificationTasks || [];
+  const actions = APP_DATA.regulatoryActions || [];
+  const allocations = APP_DATA.regulatoryResourceAllocations || [];
+  const supTasks = APP_DATA.regulatorySupervisionTasks || [];
+  const perfMetrics = APP_DATA.regulatoryPerformanceMetrics || [];
+  const perfSummary = APP_DATA.regulatoryPerformanceSummary || {};
+  const maturity = APP_DATA.regulatoryMaturity || {};
+  const priorities = APP_DATA.regulatoryPrioritiesRecalculated || APP_DATA.regulatoryPriorities || {};
+  const health = APP_DATA.regulatoryHealthScores || {};
+  const entityHealth = health.entities || [];
+  const concentration = APP_DATA.regulatoryRiskConcentration || {};
+  const quality = APP_DATA.dataQualityIssues || [];
+  const ruleEff = APP_DATA.regulatoryRuleEffectiveness || [];
+  const resourceEff = APP_DATA.regulatoryResourceEffectiveness || [];
+
+  const pct = (actual, target) => (target ? actual / target : 0);
+  const calcStatus = (rate) => rate >= 1 ? 'ACHIEVED' : rate >= 0.8 ? 'ON_TRACK' : rate >= 0.6 ? 'AT_RISK' : 'BEHIND';
+  const calcPlanStatus = (rate, base) => {
+    if (base === 'DRAFT') return 'DRAFT';
+    if (rate >= 1) return 'COMPLETED';
+    if (rate >= 0.85) return 'IN_PROGRESS';
+    if (rate >= 0.6) return 'AT_RISK';
+    return base === 'APPROVED' ? 'IN_PROGRESS' : 'CLOSED';
+  };
+
+  const groupPerf = perfMetrics.find(p => p.scopeType === 'GROUP') || {};
+  const eval_ = APP_DATA.regulatoryEvaluation || {};
+  const dataCovRate = parseFloat((APP_DATA.publicRegulatorySummary || {}).dataCoverageRate) || Math.round((APP_DATA.dataSourceRegistry || []).filter(s => s.status === '已接入').length / Math.max(1, (APP_DATA.dataSourceRegistry || []).length) * 100);
+  const closedRects = rects.filter(t => t.status === '已关闭' || t.closedAt);
+  const closureRate = rects.length ? closedRects.length / rects.length : 0;
+  const ruleEffAvg = ruleEff.length ? ruleEff.reduce((s, r) => s + (r.effectivenessScore || 0), 0) / ruleEff.length / 100 : 0.8;
+  const resourceEffAvg = resourceEff.length ? resourceEff.reduce((s, e) => s + (e.effectivenessScore || 0), 0) / resourceEff.length / 100 : 0.75;
+  const maturityScore = (maturity.overallScore || 70) / 100;
+  const maturityDelta = (maturity.scoreChange || 0) / 100;
+
+  const objectiveDefs = [
+    { code: 'OBJ-COV', name: '监管覆盖提升', type: 'COVERAGE', dimension: 'GROUP', target: 95, actual: dataCovRate, unit: '%', baseline: 85, metricIds: ['MET-COV'] },
+    { code: 'OBJ-DQ', name: '数据质量改善', type: 'DATA_QUALITY', dimension: 'GROUP', target: 90, actual: Math.round((groupPerf.dataQualityImprovementRate || 0) * 100), unit: '%', baseline: 70, metricIds: ['MET-DQ'] },
+    { code: 'OBJ-RISK', name: '风险监测有效性', type: 'RISK_MONITORING', dimension: 'GROUP', target: 85, actual: Math.round((groupPerf.highRiskResolutionRate || 0) * 100), unit: '%', baseline: 65, metricIds: ['MET-RISK'] },
+    { code: 'OBJ-CLOSE', name: '整改闭环能力', type: 'REGULATORY_CLOSURE', dimension: 'GROUP', target: 90, actual: Math.round(closureRate * 100), unit: '%', baseline: 75, metricIds: ['MET-RECT-CLOSE'] },
+    { code: 'OBJ-RULE', name: '规则运行效果', type: 'RULE_EFFECTIVENESS', dimension: 'GROUP', target: 85, actual: Math.round(ruleEffAvg * 100), unit: '%', baseline: 70, metricIds: [], relatedRuleEff: true },
+    { code: 'OBJ-RES', name: '资源投入产出', type: 'RESOURCE_EFFICIENCY', dimension: 'GROUP', target: 80, actual: Math.round(resourceEffAvg * 100), unit: '%', baseline: 60, metricIds: [] },
+    { code: 'OBJ-MAT', name: '监管成熟度提升', type: 'MATURITY_IMPROVEMENT', dimension: 'GROUP', target: 85, actual: maturity.overallScore || 70, unit: '分', baseline: (maturity.previousScore || 68), metricIds: [] }
+  ];
+
+  const objectives = [];
+  let objSeq = 1;
+  objectiveDefs.forEach(def => {
+    const rate = pct(def.actual, def.target);
+    const relatedActions = actions.filter(a => def.type === 'RISK_MONITORING' ? a.priority === 'HIGH' || a.priority === 'CRITICAL' : def.type === 'REGULATORY_CLOSURE' ? (a.sourceRectificationTaskIds || []).length : true).slice(0, 4).map(a => a.actionId);
+    const relatedPerf = perfMetrics.filter(p => p.scopeType === 'GROUP' || (def.dimension === 'GROUP' && p.scopeType === 'GROUP')).slice(0, 1).map(p => p.performanceId);
+    objectives.push({
+      objectiveId: 'OBJ-' + String(objSeq++).padStart(3, '0'),
+      objectiveCode: def.code,
+      objectiveName: def.name,
+      objectiveType: def.type,
+      description: `集团${def.name}战略目标（${STRATEGIC_PERIOD}）`,
+      strategicPeriod: STRATEGIC_PERIOD,
+      parentObjectiveId: null,
+      targetDimension: def.dimension,
+      targetValue: def.target,
+      actualValue: def.actual,
+      unit: def.unit,
+      baselineValue: def.baseline,
+      targetYear: PLAN_YEAR,
+      completionRate: +rate.toFixed(2),
+      variance: +(def.actual - def.target).toFixed(2),
+      status: calcStatus(rate),
+      relatedMetricIds: def.metricIds,
+      relatedRiskMatterIds: def.type === 'RISK_MONITORING' ? warnings.filter(w => w.level === '重大').slice(0, 3).map(w => w.id) : [],
+      relatedActionIds: relatedActions,
+      relatedPerformanceMetricIds: relatedPerf
+    });
+  });
+
+  const focusItems = [];
+  let focusSeq = 1;
+  const addFocus = (focusType, focusObjectId, opts) => {
+    const o = opts || {};
+    const ent = focusType === 'ENTITY' ? entities.find(e => e.entityId === focusObjectId) : null;
+    const reg = focusType === 'REGION' ? regions.find(r => r.regionId === focusObjectId) : null;
+    const dom = focusType === 'DOMAIN' ? domains.find(d => d.id === focusObjectId) : null;
+    const proj = focusType === 'PROJECT' ? projects.find(p => p.projectId === focusObjectId) : null;
+    const risk = focusType === 'RISK' ? warnings.find(w => w.id === focusObjectId) || cdrMatters.find(m => m.riskMatterId === focusObjectId) : null;
+    const p = ent ? priorities[ent.entityId] : null;
+    const h = ent ? entityHealth.find(x => x.objectId === ent.entityId) : (reg ? (health.regions || []).find(x => x.objectId === reg.regionId) : null);
+    const mat = ent ? (maturity.entityMaturity || []).find(m => m.objectId === ent.entityId) : null;
+    const evts = ent ? events.filter(e => e.entityId === ent.entityId) : (reg ? events.filter(e => e.regionId === reg.regionId) : []);
+    const overdue = ent ? rects.filter(t => t.entityId === ent.entityId && t.deadline && t.deadline < TODAY && t.status !== '已关闭').length : 0;
+    const recActions = ent ? actions.filter(a => a.entityId === ent.entityId).slice(0, 3).map(a => a.actionId) : [];
+    focusItems.push({
+      focusId: 'FOCUS-' + String(focusSeq++).padStart(3, '0'),
+      focusType,
+      focusObjectId,
+      priority: o.priority || (p ? p.priority : 'MEDIUM'),
+      focusReason: o.reason || (p ? p.factors.join('；') : '年度监管重点'),
+      riskScore: o.riskScore || (p ? p.score : 0),
+      healthLevel: h ? h.level : 'ATTENTION',
+      maturityLevel: mat ? mat.level : (maturity.overallLevel || 'L3'),
+      overdueCount: overdue,
+      eventCount: evts.length,
+      recommendedActionIds: recActions,
+      relatedPlanIds: []
+    });
+  };
+
+  (APP_DATA.regulatoryPriorityObjects || []).slice(0, 5).forEach(o => addFocus('ENTITY', o.objectId, { priority: o.priority, reason: '高优先级监管对象' }));
+  (concentration.regions || []).slice(0, 3).forEach(r => addFocus('REGION', r.key ? r.key.replace('R:', '') : r.objectId, { reason: '区域风险集中度较高' }));
+  (APP_DATA.regulatoryStrategyAnalysis || {}).domains?.filter(d => d.strategyLevel === 'FOCUS' || d.strategyLevel === 'SPECIAL').slice(0, 3).forEach(d => addFocus('DOMAIN', d.objectId, { reason: d.strategyLabel }));
+  warnings.filter(w => w.level === '重大').slice(0, 3).forEach(w => addFocus('RISK', w.id, { priority: 'HIGH', reason: '重大风险事项' }));
+  projects.filter(p => (p.highRiskCount || 0) > 0).slice(0, 2).forEach(p => addFocus('PROJECT', p.projectId, { reason: '项目高风险' }));
+  quality.filter(q => q.severity === '高' || q.severity === '严重').slice(0, 2).forEach(q => {
+    const obj = (APP_DATA.dataObjects || []).find(o => o.objectId === q.objectId);
+    if (obj) addFocus('DATA_OBJECT', q.objectId, { reason: '数据质量重点治理', priority: 'HIGH' });
+  });
+
+  const focusEntityIds = focusItems.filter(f => f.focusType === 'ENTITY').map(f => f.focusObjectId);
+  const focusRegionIds = focusItems.filter(f => f.focusType === 'REGION').map(f => f.focusObjectId);
+  const focusDomainIds = focusItems.filter(f => f.focusType === 'DOMAIN').map(f => f.focusObjectId);
+  const focusRiskIds = focusItems.filter(f => f.focusType === 'RISK').map(f => f.focusObjectId);
+  const planActions = actions.filter(a => focusEntityIds.includes(a.entityId) || a.priority === 'CRITICAL' || a.priority === 'HIGH').slice(0, 8);
+  const planAllocs = allocations.filter(a => focusEntityIds.includes(a.entityId)).slice(0, 6);
+  const planTasks = supTasks.filter(t => focusEntityIds.includes(t.entityId)).slice(0, 6);
+
+  const annualPlans = [];
+  let planSeq = 1;
+  const mkPlan = (name, priority, objIds, status) => {
+    const plannedVal = objIds.length ? objectives.filter(o => objIds.includes(o.objectiveId)).reduce((s, o) => s + o.targetValue, 0) : 100;
+    const actualVal = objIds.length ? objectives.filter(o => objIds.includes(o.objectiveId)).reduce((s, o) => s + o.actualValue, 0) : perfSummary.regulatoryEffectivenessScore || 0;
+    const rate = pct(actualVal, plannedVal);
+    const plan = {
+      planId: 'PLAN-' + String(planSeq++).padStart(3, '0'),
+      planYear: PLAN_YEAR,
+      planName: name,
+      planStatus: calcPlanStatus(rate, status),
+      priority,
+      objectiveIds: objIds,
+      focusEntityIds: focusEntityIds.slice(0, 4),
+      focusRegionIds: focusRegionIds.slice(0, 3),
+      focusDomainIds: focusDomainIds.slice(0, 2),
+      focusRiskMatterIds: focusRiskIds,
+      plannedActionIds: planActions.map(a => a.actionId),
+      plannedResourceAllocationIds: planAllocs.map(a => a.allocationId),
+      plannedSupervisionTaskIds: planTasks.map(t => t.supervisionTaskId),
+      targetValue: plannedVal,
+      actualValue: actualVal,
+      completionRate: +rate.toFixed(2),
+      varianceRate: +(rate - 1).toFixed(2)
+    };
+    annualPlans.push(plan);
+    focusItems.forEach(f => { if (!f.relatedPlanIds.includes(plan.planId)) f.relatedPlanIds.push(plan.planId); });
+    return plan;
+  };
+
+  mkPlan('集团监管覆盖与数据质量提升计划', 'HIGH', objectives.filter(o => ['COVERAGE', 'DATA_QUALITY'].includes(o.objectiveType)).map(o => o.objectiveId), 'IN_PROGRESS');
+  mkPlan('高风险监管与整改闭环专项计划', 'CRITICAL', objectives.filter(o => ['RISK_MONITORING', 'REGULATORY_CLOSURE'].includes(o.objectiveType)).map(o => o.objectiveId), 'IN_PROGRESS');
+  mkPlan('规则治理与资源效能提升计划', 'HIGH', objectives.filter(o => ['RULE_EFFECTIVENESS', 'RESOURCE_EFFICIENCY'].includes(o.objectiveType)).map(o => o.objectiveId), 'APPROVED');
+  mkPlan('监管成熟度持续提升计划', 'MEDIUM', objectives.filter(o => o.objectiveType === 'MATURITY_IMPROVEMENT').map(o => o.objectiveId), 'IN_PROGRESS');
+
+  const targets = [];
+  let tgtSeq = 1;
+  objectives.forEach(obj => {
+    targets.push({
+      targetId: 'TGT-' + String(tgtSeq++).padStart(3, '0'),
+      targetName: obj.objectiveName + '目标',
+      targetType: obj.objectiveType,
+      targetDimension: obj.targetDimension,
+      targetValue: obj.targetValue,
+      actualValue: obj.actualValue,
+      completionRate: obj.completionRate,
+      variance: obj.variance,
+      status: obj.status,
+      relatedObjectiveId: obj.objectiveId,
+      relatedPlanId: annualPlans.find(p => (p.objectiveIds || []).includes(obj.objectiveId))?.planId || null,
+      relatedMetricId: (obj.relatedMetricIds || [])[0] || null,
+      relatedEntityIds: focusEntityIds.slice(0, 3),
+      relatedDomainIds: focusDomainIds.slice(0, 2)
+    });
+  });
+  entityHealth.filter(h => h.level === 'WARNING' || h.level === 'CRITICAL').slice(0, 3).forEach(h => {
+    const ent = entities.find(e => e.entityId === h.objectId);
+    const closed = rects.filter(t => t.entityId === h.objectId && (t.status === '已关闭' || t.closedAt)).length;
+    const total = rects.filter(t => t.entityId === h.objectId).length;
+    const actual = total ? Math.round(closed / total * 100) : 100;
+    const target = 90;
+    const rate = pct(actual, target);
+    targets.push({
+      targetId: 'TGT-' + String(tgtSeq++).padStart(3, '0'),
+      targetName: (ent ? ent.entityName : h.objectId) + '整改闭环目标',
+      targetType: 'REGULATORY_CLOSURE',
+      targetDimension: 'ENTITY',
+      targetValue: target,
+      actualValue: actual,
+      completionRate: +rate.toFixed(2),
+      variance: +(actual - target).toFixed(2),
+      status: calcStatus(rate),
+      relatedObjectiveId: objectives.find(o => o.objectiveType === 'REGULATORY_CLOSURE')?.objectiveId,
+      relatedPlanId: annualPlans.find(p => p.priority === 'CRITICAL')?.planId,
+      relatedMetricId: 'MET-RECT-CLOSE',
+      relatedEntityIds: [h.objectId],
+      relatedDomainIds: []
+    });
+  });
+
+  const planExecutions = [];
+  let pexSeq = 1;
+  annualPlans.forEach(plan => {
+    (plan.plannedActionIds || []).forEach((actionId, idx) => {
+      const act = actions.find(a => a.actionId === actionId);
+      if (!act) return;
+      const task = supTasks.find(t => (t.relatedRegulatoryActionIds || []).includes(actionId));
+      const planned = 100;
+      const actual = ['VERIFIED', 'COMPLETED'].includes(act.status) ? 100 : act.status === 'IN_PROGRESS' ? (act.executionProgress || 50) : act.status === 'ASSIGNED' ? 25 : 10;
+      const rate = pct(actual, planned);
+      planExecutions.push({
+        executionId: 'PEX-' + String(pexSeq++).padStart(3, '0'),
+        planId: plan.planId,
+        actionId,
+        supervisionTaskId: task ? task.supervisionTaskId : null,
+        entityId: act.entityId,
+        executionStatus: rate >= 1 ? 'COMPLETED' : rate >= 0.5 ? 'IN_PROGRESS' : 'PENDING',
+        plannedDate: act.dueDate || '2026-08-30',
+        actualDate: act.completedAt || (rate >= 1 ? TODAY : null),
+        plannedValue: planned,
+        actualValue: actual,
+        completionRate: +rate.toFixed(2),
+        varianceRate: +(rate - 1).toFixed(2)
+      });
+    });
+  });
+
+  const mkReview = (dimension, scopeId, scopeName) => {
+    const perf = dimension === 'GROUP' ? groupPerf
+      : dimension === 'REGION' ? perfMetrics.find(p => p.scopeType === 'REGION' && p.scopeId === scopeId)
+      : dimension === 'ENTITY' ? perfMetrics.find(p => p.scopeType === 'ENTITY' && p.scopeId === scopeId)
+      : dimension === 'DOMAIN' ? perfMetrics.find(p => p.scopeType === 'DOMAIN' && p.scopeId === scopeId)
+      : null;
+    const plan = dimension === 'PLAN' ? annualPlans.find(p => p.planId === scopeId) : null;
+    const obj = dimension === 'OBJECTIVE' ? objectives.find(o => o.objectiveId === scopeId) : null;
+    const tgtRate = dimension === 'OBJECTIVE' && obj ? obj.completionRate
+      : dimension === 'PLAN' && plan ? plan.completionRate
+      : targets.filter(t => dimension === 'ENTITY' ? (t.relatedEntityIds || []).includes(scopeId) : dimension === 'GROUP').reduce((s, t, _, arr) => s + t.completionRate / arr.length, 0);
+    const resEff = resourceEff.filter(e => dimension === 'ENTITY' ? e.entityId === scopeId : true);
+    const resRate = resEff.length ? resEff.reduce((s, e) => s + e.effectivenessScore, 0) / resEff.length / 100 : resourceEffAvg;
+    return {
+      reviewId: 'REV-' + dimension + '-' + (scopeId || 'G001'),
+      reviewDimension: dimension,
+      scopeId: scopeId || 'G001',
+      scopeName: scopeName || '集团',
+      reviewPeriod: STRATEGIC_PERIOD,
+      planYear: PLAN_YEAR,
+      targetCompletionRate: +(tgtRate || 0).toFixed(2),
+      regulatoryEffectiveness: perf ? perf.regulatoryEffectivenessScore / 100 : (perfSummary.regulatoryEffectivenessScore || 0) / 100,
+      riskResolutionRate: perf ? perf.highRiskResolutionRate : (perfSummary.highRiskResolutionRate || 0),
+      rectificationClosureRate: perf ? perf.rectificationClosureRate : (perfSummary.rectificationClosureRate || 0),
+      resourceEfficiencyRate: +resRate.toFixed(2),
+      maturityImprovement: maturityDelta,
+      maturityScore: maturity.overallScore || 70,
+      mainDeviations: (tgtRate < 0.8 ? ['目标完成率低于预期'] : []).concat(perf && perf.overdueReductionRate < 0.2 ? ['超期整改下降不足'] : []),
+      reviewStatus: tgtRate >= 0.8 ? 'ON_TRACK' : 'NEEDS_ATTENTION'
+    };
+  };
+
+  const strategicReviews = [
+    mkReview('GROUP', 'G001', '集团'),
+    ...regions.slice(0, 3).map(r => mkReview('REGION', r.regionId, r.regionName)),
+    ...entities.filter(e => e.entityId !== 'G001').slice(0, 4).map(e => mkReview('ENTITY', e.entityId, e.entityName)),
+    ...domains.slice(0, 2).map(d => mkReview('DOMAIN', d.id, d.name)),
+    ...annualPlans.map(p => mkReview('PLAN', p.planId, p.planName)),
+    ...objectives.slice(0, 4).map(o => mkReview('OBJECTIVE', o.objectiveId, o.objectiveName))
+  ];
+
+  const recommendations = [];
+  let recSeq = 1;
+  objectives.filter(o => o.status === 'BEHIND' || o.status === 'AT_RISK').forEach(obj => {
+    recommendations.push({
+      recommendationId: 'NCR-' + String(recSeq++).padStart(3, '0'),
+      recommendationType: 'OBJECTIVE_ADJUSTMENT',
+      triggerReason: `战略目标 ${obj.objectiveName} 完成率 ${Math.round(obj.completionRate * 100)}%`,
+      focusEntityIds: focusEntityIds.slice(0, 3),
+      focusRiskMatterIds: obj.relatedRiskMatterIds || [],
+      focusDomainIds: focusDomainIds.slice(0, 2),
+      resourceAdjustment: obj.objectiveType === 'RESOURCE_EFFICIENCY' ? '增加高优先级对象监管资源投入' : '优化资源配置结构',
+      strategyAdjustment: '加强专项监管与协同',
+      ruleOptimizationIds: (APP_DATA.regulatoryOptimizationRecommendations || []).filter(r => r.status === 'OPEN').slice(0, 2).map(r => r.recommendationId),
+      targetAdjustments: [{ targetId: targets.find(t => t.relatedObjectiveId === obj.objectiveId)?.targetId, suggestedValue: obj.targetValue }],
+      priority: obj.status === 'BEHIND' ? 'HIGH' : 'MEDIUM',
+      status: 'OPEN'
+    });
+  });
+  focusItems.filter(f => f.priority === 'CRITICAL' || f.healthLevel === 'CRITICAL').slice(0, 3).forEach(f => {
+    recommendations.push({
+      recommendationId: 'NCR-' + String(recSeq++).padStart(3, '0'),
+      recommendationType: 'FOCUS_OBJECT',
+      triggerReason: `重点对象持续高风险：${f.focusReason}`,
+      focusEntityIds: f.focusType === 'ENTITY' ? [f.focusObjectId] : focusEntityIds.slice(0, 2),
+      focusRiskMatterIds: f.focusType === 'RISK' ? [f.focusObjectId] : [],
+      focusDomainIds: f.focusType === 'DOMAIN' ? [f.focusObjectId] : focusDomainIds.slice(0, 1),
+      resourceAdjustment: '加大专项复核与整改支持资源',
+      strategyAdjustment: '列入下一年度重点监管清单',
+      ruleOptimizationIds: [],
+      targetAdjustments: [],
+      priority: 'HIGH',
+      status: 'OPEN'
+    });
+  });
+  if (!recommendations.length) {
+    recommendations.push({
+      recommendationId: 'NCR-001',
+      recommendationType: 'CONTINUOUS_IMPROVEMENT',
+      triggerReason: '保持当前监管战略执行节奏',
+      focusEntityIds: focusEntityIds.slice(0, 2),
+      focusRiskMatterIds: [],
+      focusDomainIds: focusDomainIds.slice(0, 1),
+      resourceAdjustment: '维持现有资源配置并动态调整',
+      strategyAdjustment: '持续优化监管策略',
+      ruleOptimizationIds: (APP_DATA.regulatoryOptimizationRecommendations || []).filter(r => r.status === 'OPEN').slice(0, 1).map(r => r.recommendationId),
+      targetAdjustments: [],
+      priority: 'MEDIUM',
+      status: 'OPEN'
+    });
+  }
+
+  const objAchieved = objectives.filter(o => o.status === 'ACHIEVED').length;
+  const objOnTrack = objectives.filter(o => o.status === 'ON_TRACK').length;
+  const objAtRisk = objectives.filter(o => o.status === 'AT_RISK').length;
+  const objBehind = objectives.filter(o => o.status === 'BEHIND').length;
+  const avgObjRate = objectives.length ? objectives.reduce((s, o) => s + o.completionRate, 0) / objectives.length : 0;
+
+  APP_DATA.regulatoryStrategicObjectives = objectives;
+  APP_DATA.regulatoryAnnualPlans = annualPlans;
+  APP_DATA.regulatoryTargets = targets;
+  APP_DATA.regulatoryStrategicFocus = focusItems;
+  APP_DATA.regulatoryPlanExecution = planExecutions;
+  APP_DATA.regulatoryStrategicReview = strategicReviews;
+  APP_DATA.regulatoryNextCycleRecommendations = recommendations;
+  APP_DATA.regulatoryStrategicPlanningMetrics = {
+    strategicPeriod: STRATEGIC_PERIOD,
+    planYear: PLAN_YEAR,
+    objectiveCount: objectives.length,
+    achievedCount: objAchieved,
+    onTrackCount: objOnTrack,
+    atRiskCount: objAtRisk,
+    behindCount: objBehind,
+    averageCompletionRate: +avgObjRate.toFixed(2),
+    maturityImprovementRate: maturityDelta,
+    planCount: annualPlans.length,
+    planInProgress: annualPlans.filter(p => p.planStatus === 'IN_PROGRESS').length,
+    planAtRisk: annualPlans.filter(p => p.planStatus === 'AT_RISK').length,
+    planCompleted: annualPlans.filter(p => p.planStatus === 'COMPLETED').length,
+    averagePlanCompletionRate: annualPlans.length ? +(annualPlans.reduce((s, p) => s + p.completionRate, 0) / annualPlans.length).toFixed(2) : 0,
+    targetCount: targets.length,
+    targetAchieved: targets.filter(t => t.status === 'ACHIEVED').length,
+    focusCount: focusItems.length,
+    focusRegions: focusRegionIds.length,
+    focusEntities: focusEntityIds.length,
+    focusDomains: focusDomainIds.length,
+    focusRisks: focusRiskIds.length,
+    focusProjects: focusItems.filter(f => f.focusType === 'PROJECT').length,
+    executionCount: planExecutions.length,
+    executionCompleted: planExecutions.filter(e => e.executionStatus === 'COMPLETED').length,
+    executionOverdue: planExecutions.filter(e => e.plannedDate && e.plannedDate < TODAY && e.executionStatus !== 'COMPLETED').length,
+    reviewCount: strategicReviews.length,
+    recommendationCount: recommendations.length
+  };
+})();
