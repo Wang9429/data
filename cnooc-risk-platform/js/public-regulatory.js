@@ -4722,6 +4722,249 @@ Object.assign(App, {
     </div>`;
   },
 
+  _demoTraceStepHas(step, demoCode) {
+    const hasData = (arr, pred) => (arr || []).some(pred || Boolean);
+    if (step === 'overview') return true;
+    if (step === 'analysis') return (APP_DATA.regulatoryAnalysisMetrics || {}).compositeHealthScore != null || !!(APP_DATA.regulatoryHealthScores || {}).entities?.length;
+    if (step === 'concentration') return !!(APP_DATA.regulatoryRiskConcentration || APP_DATA.regulatoryAnalysisMetrics);
+    if (step === 'entity') return !!(APP_DATA.globalLegalEntities || []).length;
+    if (step === 'kri') return !!(APP_DATA.regulatoryKriRuntime || APP_DATA.groupKris || []).length;
+    if (step === 'warning') return !!(APP_DATA.regulatoryWarnings || APP_DATA.warnings || []).length;
+    if (step === 'decision') return hasData(APP_DATA.regulatoryDecisionRecommendations) || hasData(APP_DATA.regulatoryOperatingRecommendations, r => r.requiresHumanDecision);
+    if (step === 'action') return hasData(APP_DATA.regulatoryActions);
+    if (step === 'rectification') return hasData(APP_DATA.rectificationTasks);
+    if (step === 'verification') return hasData(APP_DATA.regulatoryJointVerificationIndex) || hasData(APP_DATA.rectificationTasks, t => t.verificationStatus === '已验证') || hasData(APP_DATA.regulatoryImprovementEffectiveness);
+    if (step === 'dataSource') return hasData(APP_DATA.regulatoryDataSources);
+    if (step === 'integration') return hasData(APP_DATA.regulatoryDataIntegrationJobs);
+    if (step === 'quality') return hasData(APP_DATA.regulatoryDataQualityIssues) || !!(APP_DATA.regulatoryDataGovernanceMetrics || {}).overallQualityScore;
+    if (step === 'lineage') return hasData(APP_DATA.regulatoryDataLineage);
+    if (step === 'governance') return hasData(APP_DATA.regulatoryDataGovernanceTasks);
+    if (step === 'qualityRecovery') return hasData(APP_DATA.regulatoryDataQualityIssues, i => i.status === 'CLOSED' || i.status === 'RESOLVED');
+    if (step === 'ruleChange') return hasData(APP_DATA.regulatoryRules) || hasData(APP_DATA.regulatoryRuleChangeRequests);
+    if (step === 'simulation') return hasData(APP_DATA.regulatorySimulations, s => s.simulationOnly === true) || hasData(APP_DATA.regulatoryScenarioAnalysis, s => s.simulationOnly === true);
+    if (step === 'impact') return hasData(APP_DATA.regulatoryRuleImpactAnalysis) || hasData(APP_DATA.regulatoryRuleImpact);
+    if (step === 'approval') return hasData(APP_DATA.regulatoryRuleApprovals) || (APP_DATA.regulatoryRuleGovernanceMetrics || {}).pendingApprovalChanges > 0;
+    if (step === 'publish') return hasData(APP_DATA.regulatoryRuleVersions);
+    if (step === 'deploy') return hasData(APP_DATA.regulatoryRuleDeployments);
+    if (step === 'runtime') return hasData(APP_DATA.regulatoryRuleRuntime) || !!(APP_DATA.regulatoryRuleExecutionMetrics || {}).productionRules;
+    if (step === 'effectiveness') return hasData(APP_DATA.regulatoryRuleEffectiveness);
+    if (step === 'crossRisk') return hasData(APP_DATA.crossDomainRiskMatters) || hasData(APP_DATA.crossDomainRisks);
+    if (step === 'coordination') return hasData(APP_DATA.regulatoryCoordinationCases) || hasData(APP_DATA.regulatoryQueue, q => (q.queueType || '').includes('COORDINATION'));
+    if (step === 'responsibility') return hasData(APP_DATA.regulatoryCoordinationResponsibilityIndex) || hasData(APP_DATA.regulatoryCoordinationTasks, t => t.role);
+    if (step === 'task') return hasData(APP_DATA.regulatoryCoordinationTasks) || hasData(APP_DATA.regulatorySupervisionTasks);
+    if (step === 'escalation') return hasData(APP_DATA.regulatoryEscalationRecords);
+    if (step === 'jointRect') return hasData(APP_DATA.rectificationTasks, t => t.coordinationCaseId || t.isJoint);
+    if (step === 'jointVerify') return hasData(APP_DATA.regulatoryJointVerificationIndex);
+    if (step === 'result') return !!(APP_DATA.regulatoryPerformanceMetrics || APP_DATA.regulatoryEvaluation);
+    if (step === 'problem') return hasData(APP_DATA.regulatoryImprovementOpportunities) || hasData(APP_DATA.regulatoryFinalAcceptanceIssues);
+    if (step === 'rootCause') return hasData(APP_DATA.regulatoryRootCauseAnalysis);
+    if (step === 'opportunity') return hasData(APP_DATA.regulatoryImprovementOpportunities);
+    if (step === 'plan') return hasData(APP_DATA.regulatoryOptimizationPlans, p => p.requiresHumanDecision === true);
+    if (step === 'humanDecision') return hasData(APP_DATA.regulatoryOperatingRecommendations, r => r.requiresHumanDecision && r.status === 'OPEN') || hasData(APP_DATA.regulatoryAuthorizationRequests);
+    if (step === 'implementation') return hasData(APP_DATA.regulatoryImprovementExecutions);
+    if (step === 'verify') return hasData(APP_DATA.regulatoryImprovementEffectiveness);
+    if (step === 'daily') return hasData(APP_DATA.regulatoryDailyOperations) || hasData(APP_DATA.regulatoryOperatingCycleInstances, i => i.cycleType === 'DAILY');
+    if (step === 'weekly') return hasData(APP_DATA.regulatoryPeriodicReviews, r => r.reviewType === 'WEEKLY_REVIEW');
+    if (step === 'monthly') return hasData(APP_DATA.regulatoryDomainOperationReviews) || hasData(APP_DATA.regulatoryOperatingCycleInstances, i => i.cycleType === 'MONTHLY');
+    if (step === 'quarterly') return hasData(APP_DATA.regulatoryQuarterlyPerformanceReviews);
+    if (step === 'annual') return hasData(APP_DATA.regulatoryAnnualOperationResults) || hasData(APP_DATA.regulatoryStrategicReviews);
+    return false;
+  },
+
+  validateDemoScenarioReachability(demoCode) {
+    const def = (APP_DATA.regulatoryDemoScenarioDefinitions || []).find(d => d.demoCode === demoCode);
+    if (!def) return { demoCode, reachable: false, reason: 'NOT_FOUND' };
+    const pageIds = (this.publicRegulatoryPages || []).map(p => p.pageId);
+    const invalidPages = (def.pagePath || []).filter(pid => !pageIds.includes(pid));
+    return {
+      demoCode,
+      reachable: invalidPages.length === 0,
+      stepCount: (def.pagePath || []).length,
+      invalidPages,
+      pagePath: def.pagePath
+    };
+  },
+
+  validateDemoScenarioTraceability(demoCode) {
+    const def = (APP_DATA.regulatoryDemoScenarioDefinitions || []).find(d => d.demoCode === demoCode);
+    if (!def) return null;
+    const chain = {};
+    (def.expectedTraceChain || []).forEach(step => { chain[step] = this._demoTraceStepHas(step, demoCode); });
+    const hit = Object.values(chain).filter(Boolean).length;
+    const total = Object.keys(chain).length;
+    let traceabilityStatus = 'NOT_TRACEABLE';
+    if (hit === total && total > 0) traceabilityStatus = 'FULL_TRACEABLE';
+    else if (hit > 0) traceabilityStatus = 'PARTIAL_TRACEABLE';
+    const result = {
+      demoCode,
+      traceabilityStatus,
+      chain,
+      hitCount: hit,
+      totalCount: total,
+      dataStatus: hit < total ? 'INSUFFICIENT_REAL_DATA' : 'REAL',
+      evaluatedAt: this._coordNow()
+    };
+    const idx = (APP_DATA.regulatoryDemoScenarioResultIndexes || []).findIndex(r => r.demoCode === demoCode);
+    if (idx >= 0) APP_DATA.regulatoryDemoScenarioResultIndexes[idx] = result;
+    else {
+      APP_DATA.regulatoryDemoScenarioResultIndexes = APP_DATA.regulatoryDemoScenarioResultIndexes || [];
+      APP_DATA.regulatoryDemoScenarioResultIndexes.push(result);
+    }
+    return result;
+  },
+
+  buildRegulatoryDemoScenarios() {
+    const defs = APP_DATA.regulatoryDemoScenarioDefinitions || [];
+    const pageIds = (this.publicRegulatoryPages || []).map(p => p.pageId);
+    const scenarios = defs.map((def, idx) => {
+      const reach = this.validateDemoScenarioReachability(def.demoCode);
+      const trace = this.validateDemoScenarioTraceability(def.demoCode) || {};
+      const missingSteps = (def.expectedTraceChain || []).filter(s => !trace.chain?.[s]);
+      let demoStatus = 'READY_WITH_GAPS';
+      if (!reach.reachable) demoStatus = 'BLOCKED';
+      else if (trace.traceabilityStatus === 'FULL_TRACEABLE') demoStatus = 'FULL_CLOSED_LOOP';
+      else if (trace.traceabilityStatus === 'PARTIAL_TRACEABLE') demoStatus = 'PARTIAL_CLOSED_LOOP';
+      else if (trace.hitCount === 0) demoStatus = 'DATA_REQUIRED';
+      if (def.trendStatus === 'INSUFFICIENT_HISTORY') demoStatus = trace.traceabilityStatus === 'FULL_TRACEABLE' ? 'PARTIAL_CLOSED_LOOP' : demoStatus;
+      return {
+        demoId: 'RDEMO-' + String(idx + 1).padStart(2, '0'),
+        demoCode: def.demoCode,
+        name: def.name,
+        description: def.description,
+        roleType: def.roleType,
+        stepLabels: def.stepLabels || [],
+        pagePath: def.pagePath || [],
+        expectedTraceChain: def.expectedTraceChain || [],
+        actualTraceChain: Object.keys(trace.chain || {}).filter(k => trace.chain[k]),
+        missingTraceSteps: missingSteps,
+        traceabilityStatus: trace.traceabilityStatus || 'NOT_TRACEABLE',
+        demoStatus,
+        reachable: reach.reachable,
+        invalidPages: reach.invalidPages || [],
+        simulationOnly: def.simulationOnly === true,
+        requiresHumanDecision: def.requiresHumanDecision === true,
+        trendStatus: def.trendStatus || null,
+        capabilityLabel: trace.traceabilityStatus === 'FULL_TRACEABLE' ? 'FULL_CLOSED_LOOP' : (trace.traceabilityStatus === 'PARTIAL_TRACEABLE' ? 'PARTIAL_TRACEABLE' : 'READY_WITH_GAPS'),
+        dataStatus: trace.dataStatus || 'DERIVED',
+        sourceTraceability: { sourceType: 'regulatoryDemoScenarioDefinitions', sourceId: def.demoCode }
+      };
+    });
+    APP_DATA.regulatoryDemoScenarioIndexes = scenarios;
+    return scenarios;
+  },
+
+  calculateDemoScenarioHealth() {
+    const scenarios = APP_DATA.regulatoryDemoScenarioIndexes || [];
+    const results = APP_DATA.regulatoryDemoScenarioResultIndexes || [];
+    const full = results.filter(r => r.traceabilityStatus === 'FULL_TRACEABLE').length;
+    const partial = results.filter(r => r.traceabilityStatus === 'PARTIAL_TRACEABLE').length;
+    const not = results.filter(r => r.traceabilityStatus === 'NOT_TRACEABLE').length;
+    const reachable = scenarios.filter(s => s.reachable).length;
+    const humanPending = scenarios.filter(s => s.requiresHumanDecision).length;
+    const simulationOk = scenarios.filter(s => !s.simulationOnly || s.demoCode !== 'DEMO-03' || (APP_DATA.regulatorySimulations || []).some(x => x.simulationOnly === true)).length;
+    const metrics = {
+      scenarioCount: scenarios.length,
+      reachableCount: reachable,
+      fullTraceableCount: full,
+      partialTraceableCount: partial,
+      notTraceableCount: not,
+      humanDecisionCount: humanPending,
+      simulationIsolationOk: (APP_DATA.regulatorySimulations || []).every(s => s.simulationOnly !== false) && scenarios.find(s => s.demoCode === 'DEMO-03')?.simulationOnly === true,
+      trendStatus: 'INSUFFICIENT_HISTORY',
+      overallStatus: reachable === scenarios.length && scenarios.length === 6 ? (full === scenarios.length ? 'FULL_CLOSED_LOOP' : partial > 0 ? 'READY_WITH_GAPS' : 'DATA_REQUIRED') : 'BLOCKED',
+      noFakeHistory: true,
+      noFakeClosedLoop: !scenarios.some(s => s.demoStatus === 'FULL_CLOSED_LOOP' && s.traceabilityStatus !== 'FULL_TRACEABLE'),
+      dataStatus: 'DERIVED'
+    };
+    APP_DATA.regulatoryDemoScenarioMetrics = metrics;
+    return metrics;
+  },
+
+  initializeRegulatoryDemoScenarios() {
+    this.buildRegulatoryDemoScenarios();
+    this.calculateDemoScenarioHealth();
+    return APP_DATA.regulatoryDemoScenarioMetrics;
+  },
+
+  startDemoScenario(demoCode) {
+    const s = (APP_DATA.regulatoryDemoScenarioIndexes || []).find(x => x.demoCode === demoCode);
+    if (!s || !s.pagePath?.length) return { success: false, message: '演示路径不存在' };
+    const first = s.pagePath[0];
+    this.navigatePublic(first);
+    this.createRegulatoryAuditLog({ actionType: 'VIEW', objectType: 'regulatoryDemoScenarioIndexes', objectId: demoCode, reason: '启动 Demo 演示路径', afterState: { step: 0, pageId: first } });
+    return { success: true, demoCode, startedAt: first, stepCount: s.pagePath.length, demoStatus: s.demoStatus };
+  },
+
+  renderDemoScenarioPathSteps(scenario) {
+    if (!scenario) return '';
+    const steps = (scenario.stepLabels || []).map((label, i) => {
+      const pid = scenario.pagePath[i];
+      const page = (this.publicRegulatoryPages || []).find(p => p.pageId === pid);
+      const ok = scenario.actualTraceChain?.length ? (scenario.expectedTraceChain[i] ? scenario.actualTraceChain.includes(scenario.expectedTraceChain[i]) : true) : true;
+      return `${i ? '<i>→</i>' : ''}<button onclick="App.navigatePublic('${pid}')" title="${pid}"><b>${label}</b><small>${ok ? '' : ' ' + this.renderPublicUnifiedStatusBadge('DATA_REQUIRED')}</small></button>`;
+    }).join('');
+    return `<div class="kri-lineage" style="flex-wrap:wrap;margin:8px 0">${steps}</div>`;
+  },
+
+  renderDemoScenarioDashboardPanel() {
+    const m = APP_DATA.regulatoryDemoScenarioMetrics || {};
+    const scenarios = APP_DATA.regulatoryDemoScenarioIndexes || [];
+    const humanItems = (APP_DATA.regulatoryOperatingRecommendations || []).filter(r => r.requiresHumanDecision && r.status === 'OPEN').length;
+    const rows = scenarios.map(s => `<tr class="clickable" onclick="App.startDemoScenario('${s.demoCode}')"><td>${s.demoCode}</td><td>${s.name}</td><td>${this.renderPublicUnifiedStatusBadge(s.demoStatus)}</td><td>${this.renderPublicUnifiedStatusBadge(s.traceabilityStatus)}</td><td>${s.requiresHumanDecision ? '是' : '否'}</td><td>${s.simulationOnly ? 'simulationOnly' : '—'}</td></tr>`).join('');
+    return `<div class="card" style="border:2px solid var(--accent,#2563eb)"><div class="card-title">集团监管平台 Demo 演示路径 ${this.renderPublicUnifiedStatusBadge(m.overallStatus || 'READY_WITH_GAPS')}</div>
+      <p class="insight-note"><b>Demo 定位：</b>以集团整体视角，展示从数据、指标、KRI、预警、风险、协同、监管行动、整改验证到持续改进的完整穿透式监管能力。不新增页面，仅提供导航入口。</p>
+      <p class="insight-note">能力状态：已验证 <b>${m.fullTraceableCount || 0}</b> · 部分可追溯 <b>${m.partialTraceableCount || 0}</b> · 数据缺口 <b>${(scenarios.filter(s => s.demoStatus === 'READY_WITH_GAPS' || s.demoStatus === 'DATA_REQUIRED').length)}</b> · 待人工决策 <b>${humanItems}</b> · ${this.renderPublicUnifiedStatusBadge('INSUFFICIENT_HISTORY')} <code>INSUFFICIENT_HISTORY</code> — 不伪造历史趋势</p>
+      <div class="group-metrics">${[
+        [scenarios.length, '核心演示路径', `App.navigatePublic('regulatory-workbench')`],
+        [m.reachableCount || scenarios.filter(s => s.reachable).length, '路径可达', `App.navigatePublic('global-group-overview')`],
+        [m.fullTraceableCount || 0, 'FULL_TRACEABLE', `App.navigatePublic('regulatory-analysis-center')`],
+        [m.partialTraceableCount || 0, 'PARTIAL_TRACEABLE', `App.navigatePublic('regulatory-data-lineage')`],
+        [humanItems, '待人工决策', `App.navigatePublic('regulatory-queue',{queueType:'DECISION'})`],
+        [scenarios.filter(s => s.simulationOnly).length, 'simulationOnly', `App.navigatePublic('regulatory-simulation')`]
+      ].map(([v, l, n]) => this.renderPublicKpiCard(l, v, n)).join('')}</div>
+      ${rows ? `<table class="data-table"><thead><tr><th>编号</th><th>场景</th><th>Demo状态</th><th>追溯</th><th>人审</th><th>仿真</th></tr></thead><tbody>${rows}</tbody></table>` : ''}
+      ${scenarios.map(s => `<div style="margin-top:12px;padding:8px;border-top:1px solid #eee"><b>${s.demoCode}</b> ${s.name} ${this.renderPublicUnifiedStatusBadge(s.demoStatus)} ${s.trendStatus ? this.renderPublicUnifiedStatusBadge(s.trendStatus) : ''}
+        ${this.renderDemoScenarioPathSteps(s)}
+        ${this.renderPublicLinkButton('开始演示', `App.startDemoScenario('${s.demoCode}')`)}
+      </div>`).join('')}
+    </div>`;
+  },
+
+  renderDemoScenarioWorkbenchPanel() {
+    const user = this.getCurrentRegulatoryUser?.() || {};
+    const roleType = (APP_DATA.regulatoryRoleProfiles || []).find(r => r.roleId === this.currentRegulatoryRoleId)?.roleType || 'GROUP_REGULATORY';
+    const scenarios = (APP_DATA.regulatoryDemoScenarioIndexes || []).filter(s => s.roleType === roleType || roleType === 'GROUP_REGULATORY');
+    const queue = APP_DATA.regulatoryQueue || [];
+    return `<div class="card"><div class="card-title">我的 Demo 工作台视图 · ${roleType}</div>
+      <div class="group-metrics">${[
+        [queue.filter(q => q.queueType === 'DECISION').length, '我的决策事项', `App.navigatePublic('regulatory-queue',{queueType:'DECISION'})`],
+        [(APP_DATA.warnings || []).length, '我的风险', `App.navigatePublic('warnings')`],
+        [(APP_DATA.regulatoryWarnings || []).filter(w => w.status === 'PENDING_REVIEW').length, '我的预警', `App.navigatePublic('regulatory-warning-center')`],
+        [(APP_DATA.regulatoryCoordinationCases || []).filter(c => c.status === 'PROPOSED').length, '我的协同事项', `App.navigatePublic('regulatory-queue',{queueType:'COORDINATION_CONFIRMATION'})`],
+        [(APP_DATA.rectificationTasks || []).filter(t => t.status !== '已关闭').length, '我的整改', `App.navigatePublic('rectification')`],
+        [queue.filter(q => q.queueType === 'VERIFICATION').length, '我的验证', `App.navigatePublic('regulatory-queue',{queueType:'VERIFICATION'})`],
+        [queue.filter(q => q.queueType === 'DECISION').length, '我的待办', `App.navigatePublic('regulatory-queue')`]
+      ].map(([v, l, n]) => this.renderPublicKpiCard(l, v, n)).join('')}</div>
+      <p class="insight-note"><b>推荐演示路径（${roleType}）：</b>${scenarios.map(s => s.demoCode).join('、') || '—'}</p>
+      ${scenarios.slice(0, 3).map(s => `<p class="insight-note">${s.demoCode} ${s.name} ${this.renderPublicLinkButton('演示', `App.startDemoScenario('${s.demoCode}')`)}</p>`).join('')}
+    </div>`;
+  },
+
+  renderDemoScenarioRolePanel(roleType) {
+    const scenarios = (APP_DATA.regulatoryDemoScenarioIndexes || []).filter(s => s.roleType === roleType);
+    if (!scenarios.length) return '';
+    const pathMap = {
+      GROUP_LEADER: 'DEMO-01→DEMO-05→DEMO-06',
+      GROUP_REGULATORY: 'DEMO-02→DEMO-03→DEMO-04→DEMO-06',
+      DOMAIN_REGULATOR: '领域指标→KRI→预警→整改',
+      ENTITY_REGULATOR: '本法人数据→风险→整改→验证'
+    };
+    return `<div style="margin-top:8px"><div class="card-title" style="font-size:13px">Demo 角色演示路径 · ${roleType}</div>
+      <p class="insight-note">${pathMap[roleType] || ''}</p>
+      ${scenarios.map(s => `<p class="insight-note">${s.demoCode} ${s.name} ${this.renderPublicUnifiedStatusBadge(s.demoStatus)} ${this.renderPublicLinkButton('演示', `App.startDemoScenario('${s.demoCode}')`)}</p>`).join('')}
+    </div>`;
+  },
+
   renderOperatingCycleDashboardPanel() {
     const cycles = APP_DATA.regulatoryOperatingCycles || [];
     const m = APP_DATA.regulatoryOperatingMetrics || {};
@@ -7358,6 +7601,7 @@ Object.assign(App, {
       ${this.renderGroupOverviewRiskSummary(m)}
       ${this.renderGroupOverviewRectificationSummary(m)}
       ${this.renderGroupOverviewHealthSummary()}
+      ${this.renderDemoScenarioDashboardPanel()}
       ${this.renderOperatingCycleDashboardPanel()}
       ${this.renderOperationalScenarioDashboardPanel()}
       ${this.renderCoordinationDashboardPanel()}
@@ -9766,6 +10010,7 @@ Object.assign(App, {
       ${this.renderFinalAcceptanceWorkbenchPanel()}
       ${this.renderFinalAcceptanceRemediationWorkbenchPanel()}
       ${this.renderDeliveryReadinessWorkbenchPanel()}
+      ${this.renderDemoScenarioWorkbenchPanel()}
       ${this.renderPeriodicFocusPanel()}
       ${this.renderClosureVerificationWorkbenchPanel()}
       ${this.renderDomainClosureDashboardPanel()}
@@ -9947,6 +10192,7 @@ Object.assign(App, {
       ${this.renderOperationalScenarioRolePanel(role.roleType)}
       ${this.renderFinalAcceptanceRolePanel(role.roleType)}
       ${this.renderDeliveryHandoverRolePanel(role.roleType)}
+      ${this.renderDemoScenarioRolePanel(role.roleType)}
       <div class="group-two">
         <div class="card"><div class="card-title">当前最重要的问题</div>${urgentHtml}</div>
         <div class="card"><div class="card-title">我的待办</div>${pendingHtml ? `<table class="data-table"><thead><tr><th>类型</th><th>标题</th><th>优先级</th><th>截止</th><th>超期</th></tr></thead><tbody>${pendingHtml}</tbody></table>` : this.renderPublicEmptyState('暂无')}<p>${this.renderPublicLinkButton('我的监管工作', `App.navigatePublic('regulatory-my-work')`)}</p></div>
