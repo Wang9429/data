@@ -267,6 +267,132 @@ Object.assign(App, {
     return { capabilityMap: APP_DATA.regulatoryCapabilityMap, platformHealth: APP_DATA.platformHealth };
   },
 
+  renderPublicPermissionDenied(message, opts) {
+    const o = opts || {};
+    return `<div class="card public-permission-denied" style="padding:12px;margin:12px 0;border-left:3px solid var(--danger,#c0392b);background:#fff5f5">
+      <b>权限不足</b><p class="insight-note">${this.escHtml(message || '超出授权范围或缺少操作权限')}</p>
+      ${o.auditNote ? `<p class="insight-note" style="font-size:11px">该操作已记录审计日志（如适用）</p>` : ''}
+      ${o.suggestAuth ? `<p>${this.renderPublicLinkButton('前往授权审批', `App.navigatePublic('regulatory-authorization')`)}</p>` : ''}
+    </div>`;
+  },
+
+  renderPublicAuditNotice(actionLabel) {
+    return `<p class="insight-note" style="font-size:11px;color:#5a6a7e">操作「${this.escHtml(actionLabel || '状态变更')}」将记录审计日志，高风险操作需先完成授权审批。</p>`;
+  },
+
+  traceRegulatoryActionSources(actionId) {
+    const act = (APP_DATA.regulatoryActions || []).find(a => a.actionId === actionId);
+    if (!act) return { found: false, chain: [] };
+    const chain = [];
+    (act.sourceRiskMatterIds || []).forEach(id => {
+      const w = (APP_DATA.warnings || []).find(x => x.id === id);
+      chain.push({ type: 'warnings', id, label: w?.title || id, pageId: 'warnings', params: { riskMatterId: id } });
+    });
+    (act.sourceKriIds || []).forEach(id => {
+      const k = (APP_DATA.regulatoryKriRuntime || []).find(x => x.kriId === id) || (APP_DATA.groupKris || []).find(x => x.id === id);
+      chain.push({ type: 'regulatoryKriRuntime', id, label: k?.kriName || id, pageId: 'regulatory-kri-monitoring', params: { kriId: id } });
+    });
+    (act.sourceWarningIds || []).forEach(id => {
+      const w = (APP_DATA.regulatoryWarnings || []).find(x => x.regulatoryWarningId === id);
+      chain.push({ type: 'regulatoryWarnings', id, label: id, pageId: 'regulatory-warning-center', params: { regulatoryWarningId: id } });
+    });
+    if (act.entityId) chain.push({ type: 'globalLegalEntities', id: act.entityId, label: act.entityId, pageId: 'global-legal-entities', params: { entityId: act.entityId } });
+    return { found: true, actionId, chain };
+  },
+
+  traceRectificationTaskSources(taskId) {
+    const task = (APP_DATA.rectificationTasks || []).find(t => t.taskId === taskId);
+    if (!task) return { found: false, chain: [] };
+    const chain = [];
+    if (task.sourceActionId) {
+      const act = (APP_DATA.regulatoryActions || []).find(a => a.actionId === task.sourceActionId);
+      chain.push({ type: 'regulatoryActions', id: task.sourceActionId, label: act?.actionId || task.sourceActionId, pageId: 'regulatory-actions', params: { actionId: task.sourceActionId } });
+      const src = this.traceRegulatoryActionSources(task.sourceActionId);
+      chain.push(...src.chain.map(c => ({ ...c, via: 'regulatoryActions' })));
+    }
+    if (task.sourceWarningId) chain.push({ type: 'warnings', id: task.sourceWarningId, pageId: 'warnings', params: { riskMatterId: task.sourceWarningId } });
+    if (task.entityId) chain.push({ type: 'globalLegalEntities', id: task.entityId, pageId: 'global-legal-entities', params: { entityId: task.entityId } });
+    return { found: true, taskId, chain };
+  },
+
+  traceObjectToDataSource(objectType, objectId) {
+    const chain = [];
+    if (objectType === 'regulatoryWarnings' || objectType === 'regulatoryKriRuntime') {
+      const obj = objectType === 'regulatoryWarnings'
+        ? (APP_DATA.regulatoryWarnings || []).find(w => w.regulatoryWarningId === objectId)
+        : (APP_DATA.regulatoryKriRuntime || []).find(k => k.kriRuntimeId === objectId || k.kriId === objectId);
+      if (obj?.kriId) chain.push({ type: 'regulatoryKriRuntime', id: obj.kriId, pageId: 'regulatory-kri-monitoring' });
+      const issue = (APP_DATA.regulatoryDataQualityIssues || []).find(i => i.kriId === obj?.kriId);
+      if (issue) chain.push({ type: 'regulatoryDataQualityIssues', id: issue.qualityIssueId, pageId: 'regulatory-data-quality', params: { qualityIssueId: issue.qualityIssueId } });
+      const ds = issue ? (APP_DATA.regulatoryDataSets || []).find(d => d.dataSetId === issue.dataSetId) : null;
+      if (ds) chain.push({ type: 'regulatoryDataSets', id: ds.dataSetId, pageId: 'regulatory-data-sources' });
+    }
+    if (objectType === 'regulatoryDataQualityIssues') {
+      const issue = (APP_DATA.regulatoryDataQualityIssues || []).find(i => i.qualityIssueId === objectId);
+      if (issue?.dataSetId) {
+        const src = (APP_DATA.regulatoryDataSources || []).find(s => (APP_DATA.regulatoryDataSets || []).some(d => d.dataSetId === issue.dataSetId && d.sourceId === s.sourceId));
+        if (src) chain.push({ type: 'regulatoryDataSources', id: src.sourceId, pageId: 'regulatory-data-sources', params: { sourceId: src.sourceId } });
+      }
+    }
+    return { objectType, objectId, chain };
+  },
+
+  getReachablePageIds() {
+    const reachable = new Set(['global-group-overview', 'group', 'regulatory-workbench', 'regulatory-search', 'regulatory-command-center', 'regulatory-role-workbench']);
+    (APP_DATA.regulatoryCapabilityMap || []).forEach(m => {
+      reachable.add(m.pageId);
+      (m.relatedPages || []).forEach(p => reachable.add(p));
+      reachable.add(m.primaryEntry);
+      reachable.add(m.parentEntry);
+    });
+    (APP_DATA.regulatorySearchIndex || []).forEach(s => { if (s.targetPageId) reachable.add(s.targetPageId); });
+    (APP_DATA.regulatoryBusinessScenarios || []).forEach(s => (s.pagePath || []).forEach(p => reachable.add(p)));
+    (APP_DATA.regulatoryRolePaths || []).forEach(r => (r.path || []).forEach(p => reachable.add(p)));
+    (APP_DATA.regulatoryClosureChains || []).forEach(c => (c.steps || []).forEach(p => reachable.add(p)));
+    return reachable;
+  },
+
+  getOrphanPages() {
+    const pages = (this.publicRegulatoryPages || []).filter(p => p.supportsPublicNavigation !== false && p.pageId !== 'major');
+    const reachable = this.getReachablePageIds();
+    return pages.filter(p => !reachable.has(p.pageId)).map(p => p.pageId);
+  },
+
+  validateBusinessScenario(scenarioId) {
+    const scenario = (APP_DATA.regulatoryBusinessScenarios || []).find(s => s.scenarioId === scenarioId);
+    if (!scenario) return { valid: false, reason: 'scenario not found' };
+    const pageIds = (this.publicRegulatoryPages || []).map(p => p.pageId);
+    const invalid = (scenario.pagePath || []).filter(pid => !pageIds.includes(pid) && pid !== 'group');
+    return { valid: invalid.length === 0, scenarioId, invalidPages: invalid, stepCount: (scenario.pagePath || []).length };
+  },
+
+  validateRoleJourney(roleId) {
+    const path = (APP_DATA.regulatoryRolePaths || []).find(r => r.roleId === roleId);
+    if (!path) return { valid: false };
+    const pageIds = (this.publicRegulatoryPages || []).map(p => p.pageId);
+    const invalid = (path.path || []).filter(pid => !pageIds.includes(pid) && pid !== 'group');
+    return { valid: invalid.length === 0, roleId, invalidPages: invalid, stepCount: (path.path || []).length };
+  },
+
+  renderRoleJourneyPanel(roleId) {
+    const path = (APP_DATA.regulatoryRolePaths || []).find(r => r.roleId === roleId) || (APP_DATA.regulatoryRolePaths || [])[0];
+    if (!path) return '';
+    const steps = (path.path || []).map((pid, i) => {
+      const page = (this.publicRegulatoryPages || []).find(p => p.pageId === pid);
+      return `${i ? '<i>→</i>' : ''}<button onclick="App.navigatePublic('${pid}')"><b>${page?.label || pid}</b></button>`;
+    }).join('');
+    return `<div class="card"><div class="card-title">角色默认路径 · ${path.roleName}</div><div class="kri-lineage" style="flex-wrap:wrap">${steps}</div></div>`;
+  },
+
+  renderBusinessScenarioPanel() {
+    const scenarios = APP_DATA.regulatoryBusinessScenarios || [];
+    return `<div class="card"><div class="card-title">核心业务场景验证路径</div>
+      ${scenarios.map(s => `<p class="insight-note"><b>${s.scenarioId}</b> ${s.name}（${(s.pagePath || []).length} 步）
+        ${this.renderPublicLinkButton('开始验证', `App.navigatePublic('${(s.pagePath || [])[0]}')`)}
+      </p>`).join('')}
+    </div>`;
+  },
+
   renderPlatformHealthPanel() {
     const ph = this.computePlatformHealth();
     const dims = ph.dimensions || {};
@@ -4988,7 +5114,8 @@ Object.assign(App, {
         </div>
       </div>
       ${this.renderPlatformHealthPanel()}
-      ${this.renderCapabilityMapOverview()}`;
+      ${this.renderCapabilityMapOverview()}
+      ${this.renderBusinessScenarioPanel()}`;
   },
 
   renderRegulatoryQueue() {
@@ -5158,6 +5285,7 @@ Object.assign(App, {
         用户 <select onchange="App.setCurrentRegulatoryUser(this.value);App.renderRegulatoryRoleWorkbench()">${(APP_DATA.regulatoryUsers||[]).map(u=>`<option value="${u.userId}" ${this.getCurrentRegulatoryUser()?.userId===u.userId?'selected':''}>${u.userName}</option>`).join('')}</select><br>范围 <b>${scopeType}:${scopeId}</b><br><small>更新 ${wb?.updatedAt || '—'}</small></div>
       </div>
       <div class="group-metrics">${kpiHtml}</div>
+      ${this.renderRoleJourneyPanel(role.roleId)}
       <div class="group-two">
         <div class="card"><div class="card-title">当前最重要的问题</div>${urgentHtml}</div>
         <div class="card"><div class="card-title">我的待办</div>${pendingHtml ? `<table class="data-table"><thead><tr><th>类型</th><th>标题</th><th>优先级</th><th>截止</th><th>超期</th></tr></thead><tbody>${pendingHtml}</tbody></table>` : this.renderPublicEmptyState('暂无')}<p>${this.renderPublicLinkButton('我的监管工作', `App.navigatePublic('regulatory-my-work')`)}</p></div>
