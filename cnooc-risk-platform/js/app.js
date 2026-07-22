@@ -19,6 +19,8 @@ function ensureOfflineStyles() {
 const App = {
   currentPage: 'dashboard',
   selectedRiskId: null,
+  penetrationReturnPage: 'warnings',
+  penetrationReturnContext: null,
   currentDomain: 'investment',
   domainPageTemplates: {},
 
@@ -46,12 +48,18 @@ const App = {
     group: '集团监管总览',
     major: '重大事项监管',
     foundation: '监管基础能力'
-    ,matter: '投资重大事项详情'
+    ,matter: '投资重大事项详情',
+    'global-legal-entities': '全球法人监管',
+    'global-regions': '全球区域/国别监管'
+    ,'coverage-gaps': '监管对象覆盖与盲区'
   },
 
   init() {
     this.renderNav();
     this.renderGroupOverview();
+    this.renderGlobalLegalEntities();
+    this.renderGlobalRegions();
+    this.renderCoverageGaps();
     this.renderMajorMatters();
     this.renderFoundationWorkbench();
     this.renderDashboardMetrics();
@@ -78,6 +86,7 @@ const App = {
   },
 
   navigate(pageId, params = {}) {
+    const previousPage = this.currentPage;
     this.currentPage = pageId;
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
     const page = document.getElementById('page-' + pageId);
@@ -94,6 +103,8 @@ const App = {
     });
 
     if (pageId === 'penetration') {
+      this.penetrationReturnPage = params.from || previousPage || 'warnings';
+      this.penetrationReturnContext = params.returnContext || { page: this.penetrationReturnPage, riskId: params.riskId };
       this.selectedRiskId = params.riskId || this.selectedRiskId || 'risk-2';
       this.renderPenetration(this.selectedRiskId);
       document.getElementById('penetrationBack').style.display = 'block';
@@ -113,6 +124,21 @@ const App = {
     }
   },
 
+  returnFromPenetration() {
+    const context = this.penetrationReturnContext || { page: this.penetrationReturnPage || 'warnings', riskId: this.selectedRiskId };
+    if (context.page === 'kri') {
+      this.navigate('kri', { kriId: context.kriId, scenarioId: context.scenarioId });
+      return;
+    }
+    if (context.page === 'process') {
+      this.navigate('process');
+      this.showStageItemDetail(context.itemName, context.stageName);
+      return;
+    }
+    this.navigate('warnings');
+    this.showWarningDetail(context.riskId || this.selectedRiskId);
+  },
+
   renderNav() {
     const nav = document.getElementById('navMenu');
     nav.innerHTML = this.getDomainMenu().map(item => `
@@ -126,6 +152,9 @@ const App = {
   getDomainMenu() {
     const base = [
       { id:'group', icon:'◉', label:'集团监管总览' },
+      { id:'global-legal-entities', icon:'◎', label:'全球法人监管' },
+      { id:'global-regions', icon:'◉', label:'全球区域/国别监管' },
+      { id:'coverage-gaps', icon:'◌', label:'监管对象覆盖与盲区' },
       { id:'dashboard', icon:'▦', label:'分领域监管' },
       { id:'major', icon:'◆', label:'重大事项监管' },
       { id:'warnings', icon:'🔔', label:'集团风险预警' },
@@ -133,7 +162,7 @@ const App = {
       { id:'foundation', icon:'◈', label:'监管基础能力' }
     ];
     const menus = {
-      investment:[['dashboard','投资管理驾驶舱'],['portfolio','投资结构与组合'],['process','投资价值链监测'],['warnings','投资风险监测'],['penetration','投资穿透分析'],['rectification','投资整改闭环']],
+      investment:[['dashboard','投资管理驾驶舱'],['portfolio','投资结构与组合'],['process','投资价值链监测'],['warnings','投资风险监测'],['rectification','投资整改闭环']],
       finance:[['dashboard','财务管理驾驶舱'],['process','财务运行监测'],['controls','资金风险监测'],['warnings','债务风险监测'],['penetration','财务风险穿透'],['rectification','整改闭环']],
       equity:[['dashboard','产权管理驾驶舱'],['process','产权结构监测'],['controls','产权变动监测'],['warnings','资产运营监测'],['penetration','产权风险穿透'],['rectification','整改闭环']],
       contract:[['dashboard','合同管理驾驶舱'],['process','合同结构分析'],['controls','合同履约监测'],['warnings','重大合同监测'],['penetration','合同风险穿透'],['rectification','整改闭环']],
@@ -152,7 +181,6 @@ const App = {
         {id:'warnings',icon:'🔔',label:'投资风险监测'},
         {id:'controls',icon:'🛡️',label:'投资场景规则执行'},
         {id:'major',icon:'◆',label:'投资重大事项监管'},
-        {id:'penetration',icon:'↳',label:'　风险监测 · 投资穿透分析'},
         {id:'rectification',icon:'✅',label:'投资整改闭环'}
       ];
     }
@@ -195,10 +223,45 @@ const App = {
     const fields=APP_DATA.regulationDomains.slice(0,8);
     node.innerHTML=`<div class="group-hero"><div><span>集团总部监管视角</span><h2>集团监管总览</h2><p>聚焦重点领域、重点法人、重大事项、重大风险和集团督办事项。</p></div><div>数据覆盖率 <b>92.6%</b></div></div>
     <div class="group-metrics">${[['126','纳入监管法人'],['8','纳入监管领域'],['3,286','重点监管事项'],['28','当前重大风险'],['126','当前重点预警'],['43','整改未闭环'],['18','集团重点督办'],['92.6%','数据覆盖率']].map(x=>`<button class="metric-card" onclick="App.navigate('dashboard')"><div class="value">${x[0]}</div><div class="label">${x[1]}</div></button>`).join('')}</div>
+    <div class="card"><div class="card-title">公共监管底座入口</div><div class="field-status-grid"><button onclick="App.navigate('global-legal-entities')"><b>全球法人监管</b><span>全级次法人、项目公司、海外法人</span><em>高风险法人12家</em></button><button onclick="App.navigate('global-regions')"><b>全球区域/国别监管</b><span>区域、国家/地区、项目和风险</span><em>覆盖24个国家/地区</em></button><button onclick="App.navigate('coverage-gaps')"><b>监管对象覆盖与盲区</b><span>法人、系统、数据、KRI、规则覆盖</span><em>覆盖盲区18项</em></button></div></div>
     <div class="card"><div class="card-title">分领域监管态势</div><div class="field-status-grid">${fields.map((f,i)=>`<button onclick="App.selectRegulationDomain('${f.id}')"><b>${f.name}</b><span>重点事项：${[1286,486,238,426,512,186,328,412][i]}项</span><em>重大风险：${[12,3,2,4,5,2,6,4][i]}项</em><small>整改中：${[18,6,4,8,9,3,11,7][i]}项</small></button>`).join('')}</div></div>
     <div class="group-three"><div class="card"><div class="card-title">重点法人监管画像</div><table class="data-table"><thead><tr><th>法人</th><th>高风险领域</th><th>综合关注度</th></tr></thead><tbody><tr><td>A公司</td><td>投资、境外、合同</td><td><span class="badge badge-danger">高</span></td></tr><tr><td>B公司</td><td>投资、财务</td><td><span class="badge badge-warning">较高</span></td></tr><tr><td>D公司</td><td>境外、供应链</td><td><span class="badge badge-warning">较高</span></td></tr></tbody></table></div><div class="card"><div class="card-title">集团重点督办事项</div><div class="supervision-list"><p><b>01</b> 某境外投资项目收益持续偏离 <span class="badge badge-danger">L4</span></p><p><b>02</b> 固定资产项目追加投资接近审批边界 <span class="badge badge-warning">L3</span></p><p><b>03</b> 重大合同履约延期事项 <span class="badge badge-warning">L3</span></p></div></div></div>
     <div class="card"><div class="card-title">全级次法人监管态势</div><table class="data-table"><thead><tr><th>法人层级</th><th>法人数量</th><th>重大风险</th><th>重点预警</th><th>重大事项</th><th>控制规则异常</th><th>整改未闭环</th></tr></thead><tbody><tr><td>集团总部</td><td>1</td><td>0</td><td>0</td><td>18</td><td>0</td><td>6</td></tr><tr><td>一级子企业</td><td>12</td><td>8</td><td>32</td><td>86</td><td>4</td><td>15</td></tr><tr><td>二级子企业</td><td>38</td><td>12</td><td>58</td><td>164</td><td>7</td><td>18</td></tr><tr><td>三级子企业</td><td>52</td><td>6</td><td>29</td><td>73</td><td>3</td><td>4</td></tr><tr><td>四级及以下企业</td><td>23</td><td>2</td><td>7</td><td>21</td><td>1</td><td>0</td></tr></tbody></table></div>
     <div class="group-three"><div class="card"><div class="card-title">跨领域风险与重点区域</div><table class="data-table"><thead><tr><th>风险</th><th>涉及领域</th><th>区域 / 法人</th><th>趋势</th></tr></thead><tbody><tr><td>境外投资收益偏离</td><td>投资、财务、境外</td><td>中东 / B公司</td><td><span class="badge badge-danger">上升</span></td></tr><tr><td>重大合同履约延期</td><td>合同、供应链、工程</td><td>境内 / A公司</td><td><span class="badge badge-warning">关注</span></td></tr></tbody></table></div><div class="card"><div class="card-title">监管覆盖与盲区</div><div class="supervision-list"><p><b>92.6%</b> 重点事项已形成有效监测</p><p><b>8</b> 家法人存在数据更新滞后</p><p><b>14</b> 项重点事项待补充 KRI 或控制证据</p><p><b>6</b> 项整改待集团验证</p></div></div></div>`;
+  },
+
+  renderGlobalLegalEntities() {
+    const node=document.getElementById('globalLegalEntities'); if(!node)return;
+    const entities=APP_DATA.globalLegalEntities;
+    const overseas=entities.filter(e=>e.regionId!=='CN');
+    node.innerHTML=`<div class="group-hero"><div><span>集团级公共监管对象层</span><h2>全球法人监管</h2><p>全球 → 区域 → 国家/地区 → 法人 → 项目公司的全级次监管对象视图。</p></div><div>全球法人 <b>${entities.length + 122}家</b></div></div><div class="group-metrics">${[[entities.length+122,'集团法人总数'],[overseas.length+37,'境外法人'],[APP_DATA.globalCountries.length+21,'国家/地区'],[APP_DATA.globalRegions.length,'覆盖区域'],[entities.filter(e=>e.entityType==='项目公司').length+61,'项目公司'],[entities.reduce((s,e)=>s+(e.siteCount||e.projectSiteCount||0),0)+112,'项目现场'],[entities.filter(e=>e.highRiskCount>0).length+9,'高风险法人'],[entities.filter(e=>e.dataAccessStatus!=='已接入').length+6,'接入不完整法人'],[entities.reduce((s,e)=>s+(e.majorMatterCount||0),0),'重大事项'],[entities.reduce((s,e)=>s+(e.openRectificationCount||e.rectificationCount||0),0),'整改未闭环']].map(x=>`<div class="metric-card"><div class="value">${x[0]}</div><div class="label">${x[1]}</div></div>`).join('')}</div><div class="group-three"><div class="card"><div class="card-title">全级次法人关系</div><div class="kri-lineage">${entities.map(e=>`<button onclick="App.showGlobalEntityDetail('${e.entityId}')"><b>${e.entityName}</b><br>${e.entityLevel} · ${e.regionName||e.regionId} · 项目${e.projectCount}项</button><i>→</i>`).join('')}</div></div><div class="card"><div class="card-title">全球区域分布</div>${APP_DATA.globalRegions.map(r=>`<button class="enterprise-line" onclick="App.showGlobalRegionDetail('${r.regionId}')"><span>${r.regionName}</span><b>法人 ${r.legalEntityCount}</b><b>项目 ${r.projectCount}</b><b class="${r.highRiskCount?'badge-danger':'badge-success'}">高风险 ${r.highRiskCount}</b></button>`).join('')}</div></div><div class="card"><div class="card-title">法人监管画像</div><table class="data-table"><thead><tr><th>法人</th><th>层级/上级</th><th>区域/国家</th><th>业务</th><th>项目</th><th>风险/KRI</th><th>事项/整改</th><th>数据/合规</th></tr></thead><tbody>${entities.map(e=>`<tr class="clickable" onclick="App.showGlobalEntityDetail('${e.entityId}')"><td>${e.entityName}</td><td>${e.entityLevel} / ${e.parentEntityName||e.parentEntityId||'—'}</td><td>${e.regionName||e.regionId} / ${e.countryName||e.countryId}</td><td>${e.businessDomains}</td><td>${e.projectCount}</td><td>${e.riskCount} / ${e.kriExceptionCount}</td><td>${e.majorMatterCount||0} / ${e.openRectificationCount||e.rectificationCount}</td><td>${e.dataAccessStatus} / ${e.dataQualityStatus} / ${e.crossBorderComplianceStatus}</td></tr>`).join('')}</tbody></table></div><div id="globalEntityDetail"></div>`;
+  },
+
+  renderGlobalRegions() {
+    const node=document.getElementById('globalRegions'); if(!node)return;
+    node.innerHTML=`<div class="group-hero"><div><span>集团级公共监管对象层</span><h2>全球区域/国别监管</h2><p>区域 → 国家/地区 → 法人 → 项目 → 业务领域 → 风险事项。</p></div><div>覆盖国家 <b>${APP_DATA.globalCountries.length+21}个</b></div></div><div class="field-status-grid">${APP_DATA.globalRegions.map(r=>`<button onclick="App.showGlobalRegionDetail('${r.regionId}')"><b>${r.regionName}</b><span>法人 ${r.legalEntityCount} · 国家 ${r.countryCount} · 项目 ${r.projectCount}</span><em>风险 ${r.riskCount} · 高风险 ${r.highRiskCount}</em><small>接入率 ${r.dataCoverageRate} · 合规 ${r.complianceStatus}</small></button>`).join('')}</div><div class="card"><div class="card-title">国家/地区监管画像</div><table class="data-table"><thead><tr><th>国家/地区</th><th>法人/项目</th><th>业务领域</th><th>投资金额</th><th>风险/KRI</th><th>重大事项</th><th>整改</th><th>数据质量</th><th>跨境合规</th></tr></thead><tbody>${APP_DATA.globalCountries.map(c=>`<tr class="clickable" onclick="App.showGlobalRegionDetail('${c.regionId}','${c.countryId}')"><td>${c.countryName} · ${c.countryRiskLevel}风险</td><td>${c.legalEntityCount} / ${c.projectCount}</td><td>${c.businessDomains}</td><td>${c.investmentAmount}</td><td>${c.riskCount} / ${c.kriExceptionCount}</td><td>${c.majorMatterCount}</td><td>${c.rectificationCount}</td><td>${c.dataQualityStatus} (${c.dataCoverageRate})</td><td>${c.crossBorderComplianceStatus}</td></tr>`).join('')}</tbody></table></div><div id="globalRegionDetail"></div>`;
+  },
+
+  showGlobalEntityDetail(entityId) {
+    const entity=APP_DATA.globalLegalEntities.find(e=>e.entityId===entityId); const node=document.getElementById('globalEntityDetail');
+    if(!entity||!node)return;
+    const country=APP_DATA.globalCountries.find(c=>c.countryId===entity.countryId);
+    const projects=APP_DATA.globalProjects.filter(p=>p.entityId===entity.entityId || p.projectCompanyId===entity.entityId);
+    node.innerHTML=`<div class="card"><div class="card-title">${entity.entityName} · 公共监管对象画像</div><div class="info-grid"><div class="info-item"><div class="info-label">组织关系</div><div class="info-value">${entity.entityLevel} · 上级${entity.parentEntityName||entity.parentEntityId||'—'}</div></div><div class="info-item"><div class="info-label">地理位置</div><div class="info-value">${entity.regionName||entity.regionId} / ${country?country.countryName:entity.countryId} / ${entity.city}</div></div><div class="info-item"><div class="info-label">业务与项目</div><div class="info-value">${entity.businessDomains} · 项目${entity.projectCount}项 / 现场${entity.siteCount||entity.projectSiteCount||0}个</div></div><div class="info-item"><div class="info-label">监管状态</div><div class="info-value">风险${entity.riskCount} · KRI异常${entity.kriExceptionCount} · 整改${entity.openRectificationCount||entity.rectificationCount}</div></div><div class="info-item full"><div class="info-label">数据与合规</div><div class="info-value">数据接入：${entity.dataAccessStatus}；质量：${entity.dataQualityStatus}；最近更新：${entity.lastDataUpdateTime||'待补充'}；跨境合规：${entity.crossBorderComplianceStatus}；责任部门：${entity.responsibleDepartment||'待明确'}</div></div></div><p class="insight-note">关联项目：${projects.map(p=>p.projectName).join('、')||'暂无项目明细'}。后续可继续穿透至业务领域和公共风险事项。</p></div>`;
+  },
+
+  showGlobalRegionDetail(regionId, countryId) {
+    const region=APP_DATA.globalRegions.find(r=>r.regionId===regionId); const node=document.getElementById('globalRegionDetail')||document.getElementById('globalEntityDetail');
+    if(!region||!node)return;
+    const countries=APP_DATA.globalCountries.filter(c=>c.regionId===regionId);
+    const entities=APP_DATA.globalLegalEntities.filter(e=>e.regionId===regionId && (!countryId||e.countryId===countryId));
+    node.innerHTML=`<div class="card"><div class="card-title">${countryId?(countries.find(c=>c.countryId===countryId)||{}).countryName:region.regionName} · 区域/国别监管详情</div><div class="info-grid"><div class="info-item"><div class="info-label">区域监管</div><div class="info-value">国家${region.countryCount}个 · 法人${region.legalEntityCount}家 · 项目${region.projectCount}项</div></div><div class="info-item"><div class="info-label">风险与整改</div><div class="info-value">风险${region.riskCount} · 高风险${region.highRiskCount} · 未闭环整改${region.rectificationCount}</div></div><div class="info-item full"><div class="info-label">数据与跨境合规</div><div class="info-value">数据接入率${region.dataCoverageRate}；跨境合规状态：${region.complianceStatus}；国家、法人、项目均使用统一 regionId/countryId/entityId 关联。</div></div></div><p class="insight-note">法人：${entities.map(e=>e.entityName).join('、')||'待补充'}；国家：${countries.map(c=>c.countryName).join('、')}。后续可继续穿透业务系统、数据源、项目和公共风险事项。</p></div>`;
+  },
+
+  renderCoverageGaps() {
+    const node=document.getElementById('coverageGaps'); if(!node)return;
+    const matrix=[['法人','系统接入','已覆盖','数据接入','部分覆盖','KRI覆盖','已覆盖','规则覆盖','部分覆盖','整改闭环','部分覆盖'],['项目','系统接入','已覆盖','数据接入','已覆盖','KRI覆盖','部分覆盖','规则覆盖','已覆盖','整改闭环','已覆盖'],['业务领域','系统接入','部分覆盖','数据接入','已覆盖','KRI覆盖','已覆盖','规则覆盖','部分覆盖','整改闭环','已覆盖'],['区域/国家','系统接入','部分覆盖','数据接入','数据异常','KRI覆盖','已覆盖','规则覆盖','部分覆盖','整改闭环','部分覆盖']];
+    node.innerHTML=`<div class="group-hero"><div><span>集团级公共监管底座</span><h2>监管对象覆盖与盲区</h2><p>判断集团是否真正看得到、监得到、管得到、追得上监管对象。</p></div><div>覆盖盲区 <b>18项</b></div></div><div class="group-metrics">${APP_DATA.coverageMetrics.map(m=>`<div class="metric-card"><div class="value">${m[1]}</div><div class="label">${m[0]}</div><div class="sub-items">目标${m[2]} · 较上期${m[3]}<br>异常对象：${m[4]}</div></div>`).join('')}</div><div class="card"><div class="card-title">监管覆盖矩阵</div><table class="data-table"><thead><tr><th>监管对象</th><th>系统接入</th><th>数据接入</th><th>KRI覆盖</th><th>规则覆盖</th><th>整改闭环</th></tr></thead><tbody>${matrix.map(r=>`<tr><td>${r[0]}</td><td>${r[2]}</td><td>${r[4]}</td><td>${r[6]}</td><td>${r[8]}</td><td>${r[10]}</td></tr>`).join('')}</tbody></table></div><div class="card"><div class="card-title">监管盲区清单</div><table class="data-table"><thead><tr><th>对象</th><th>类型</th><th>区域/国家</th><th>上级法人</th><th>领域</th><th>覆盖状态</th><th>缺失环节</th><th>风险影响</th><th>责任部门</th><th>整改状态</th></tr></thead><tbody>${APP_DATA.coverageGaps.map(g=>`<tr><td>${g.name}</td><td>${g.type}</td><td>${g.region}/${g.country}</td><td>${g.parent}</td><td>${g.domain}</td><td><span class="badge ${g.status==='已覆盖'?'badge-success':'badge-warning'}">${g.status}</span></td><td>${g.gaps}</td><td>${g.impact}</td><td>${g.owner}</td><td>${g.rectification}</td></tr>`).join('')}</tbody></table></div><div class="card"><div class="card-title">统一监管覆盖链路</div><div class="kri-lineage"><span>法人</span><i>→</i><span>系统</span><i>→</i><span>数据</span><i>→</i><span>指标</span><i>→</i><span>KRI</span><i>→</i><span>规则</span><i>→</i><span>风险监测</span><i>→</i><span>责任与整改</span></div></div>`;
   },
 
   renderMajorMatters() {
@@ -326,7 +389,7 @@ const App = {
         <div class="card"><div class="card-title">KRI定义与阈值</div><div class="detail-list"><p><b>计算口径：</b>${kri.formula}</p><p><b>触发阈值：</b><span class="badge badge-danger">${kri.threshold}</span></p><p><b>监测频率：</b>关键节点实时校验 + 月度集团汇总</p><p><b>适用范围：</b>集团纳入监管的法人主体及重大投资事项</p></div></div>
         <div class="card"><div class="card-title">控制规则与处置</div><div class="detail-list"><p><b>控制规则：</b>在立项、审批、合同、付款、变更或投后监测节点自动校验。</p><p><b>处置动作：</b>${kri.control}</p><p><b>升级路径：</b>责任主体复核 → 所属企业管理部门 → 集团投资管理部督办。</p><p><b>规则依据：</b>国资监管投资管理要求、集团授权与投资管理制度。</p></div></div>
         <div class="card"><div class="card-title">数据来源与法人主体穿透</div><div class="detail-list"><p><b>汇聚数据：</b>${kri.source}</p><p><b>主体维度：</b>${kri.entities}</p><p><b>事项维度：</b>项目编号、投资类型、审批层级、合同/付款/变更动作。</p><p><b>数据留痕：</b>规则命中记录、校验结果、例外审批、处置与关闭证据。</p></div></div>
-        <div class="card"><div class="card-title">规则执行与触发记录</div><div class="detail-list"><p><b>风险场景：</b>${scenario ? scenario.desc : kri.scenario}</p><p><b>控制目标：</b>及时识别并处置 ${kri.scenario}。</p><p><b>控制规则：</b>${kri.control}</p><p><b>最近执行：</b>2026-07-20 08:30；执行结果：${hasRisk ? '触发异常，已派单' : '正常放行'}。</p><p><b>控制证据：</b>规则执行记录、业务单据、审批记录、数据快照。</p>${hasRisk ? `<button class="btn btn-primary" onclick="App.navigate('penetration',{riskId:'risk-2',detail:true})">进入投资穿透分析</button>` : ''}</div></div>
+        <div class="card"><div class="card-title">规则执行与触发记录</div><div class="detail-list"><p><b>风险场景：</b>${scenario ? scenario.desc : kri.scenario}</p><p><b>控制目标：</b>及时识别并处置 ${kri.scenario}。</p><p><b>控制规则：</b>${kri.control}</p><p><b>最近执行：</b>2026-07-20 08:30；执行结果：${hasRisk ? '触发异常，已派单' : '正常放行'}。</p><p><b>控制证据：</b>规则执行记录、业务单据、审批记录、数据快照。</p>${hasRisk ? `<button class="btn btn-primary" onclick="App.navigate('penetration',{riskId:'risk-2',detail:true,from:'kri',returnContext:{page:'kri',kriId:'${kriId}',scenarioId:'${scenarioId || ''}'}})">进入投资穿透分析</button>` : ''}</div></div>
       </div>
       <div class="card"><div class="card-title">集团穿透链路</div><div class="kri-lineage"><span>监管领域<br><b>投资管理</b></span><i>→</i><span>风险场景<br><b>${scenario ? scenario.name : kri.scenario}</b></span><i>→</i><span>集团KRI<br><b>${kri.name}</b></span><i>→</i><span>法人主体<br><b>${kri.entities}</b></span><i>→</i><span>控制处置<br><b>提示 / 阻断 / 升级 / 整改</b></span></div></div>`;
   },
@@ -572,7 +635,7 @@ const App = {
   showWarningDetail(riskId) {
     const w=APP_DATA.warnings.find(x=>x.id===riskId)||APP_DATA.warnings[0];
     const node=document.getElementById('warningCharts'); if(!node)return;
-    node.innerHTML=`<div class="card"><div class="card-title">${w.name} · 风险事项详情</div><div class="info-grid"><div class="info-item"><div class="info-label">风险场景 / 等级</div><div class="info-value">${w.name} / ${w.level}</div></div><div class="info-item"><div class="info-label">风险趋势 / 状态</div><div class="info-value">风险上升 / ${w.status}预警</div></div><div class="info-item"><div class="info-label">投资法人 / 层级</div><div class="info-value">${w.unit} / 二级子企业</div></div><div class="info-item"><div class="info-label">投资项目 / 阶段</div><div class="info-value">${w.project} / 投后运营</div></div><div class="info-item full"><div class="info-label">KRI 与控制规则</div><div class="info-value">异常KRI：${w.indicator}；预警阈值：6%；控制规则：收益偏离触发专项经营分析；执行结果：已触发。</div></div><div class="info-item full"><div class="info-label">责任与整改</div><div class="info-value">责任主体：${w.unit}投资管理部 → 项目公司；整改状态：整改中。</div></div></div><button class="btn btn-primary" onclick="App.navigate('penetration',{riskId:'${w.id}',detail:true})">进入投资穿透分析</button><button class="btn btn-outline" style="margin-left:8px" onclick="App.renderWarningCharts()">返回风险监测概览</button></div>`;
+    node.innerHTML=`<div class="card"><div class="card-title">${w.name} · 风险事项详情</div><div class="info-grid"><div class="info-item"><div class="info-label">风险场景 / 等级</div><div class="info-value">${w.name} / ${w.level}</div></div><div class="info-item"><div class="info-label">风险趋势 / 状态</div><div class="info-value">风险上升 / ${w.status}预警</div></div><div class="info-item"><div class="info-label">投资法人 / 层级</div><div class="info-value">${w.unit} / 二级子企业</div></div><div class="info-item"><div class="info-label">投资项目 / 阶段</div><div class="info-value">${w.project} / 投后运营</div></div><div class="info-item full"><div class="info-label">KRI 与控制规则</div><div class="info-value">异常KRI：${w.indicator}；预警阈值：6%；控制规则：收益偏离触发专项经营分析；执行结果：已触发。</div></div><div class="info-item full"><div class="info-label">责任与整改</div><div class="info-value">责任主体：${w.unit}投资管理部 → 项目公司；整改状态：整改中。</div></div></div><button class="btn btn-primary" onclick="App.navigate('penetration',{riskId:'${w.id}',detail:true,from:'warnings',returnContext:{page:'warnings',riskId:'${w.id}'}})">进入投资穿透分析</button><button class="btn btn-outline" style="margin-left:8px" onclick="App.renderWarningCharts()">返回风险监测概览</button></div>`;
   },
 
   renderPenetration(riskId) {
@@ -585,8 +648,8 @@ const App = {
 
     container.innerHTML = `
       <div class="breadcrumb">
-        <a onclick="App.navigate('dashboard')">首页</a> <span>›</span>
-        <a onclick="App.navigate('warnings')">风险预警监测</a> <span>›</span>
+        <a onclick="App.returnFromPenetration()">← 返回上一级</a> <span>›</span>
+        <span>投资风险穿透分析</span> <span>›</span>
         <span>${data.name}</span>
       </div>
 
@@ -884,7 +947,7 @@ const App = {
 
   showStageItemDetail(itemName, stageName) {
     const panel=document.getElementById('processDetail'); if(!panel)return;
-    panel.innerHTML=`<div class="card"><div class="card-title">${itemName} · 阶段事项风险详情</div><div class="info-grid"><div class="info-item"><div class="info-label">投资阶段</div><div class="info-value">${stageName}</div></div><div class="info-item"><div class="info-label">投资法人 / 层级</div><div class="info-value">B公司 / 二级子企业</div></div><div class="info-item"><div class="info-label">风险场景</div><div class="info-value">投资收益未达预期风险</div></div><div class="info-item"><div class="info-label">风险等级</div><div class="info-value"><span class="badge badge-danger">重大</span></div></div><div class="info-item full"><div class="info-label">KRI 与控制规则</div><div class="info-value">投资收益率 3.2%，预警阈值 6%，风险阈值 4%；控制规则已触发专项经营分析。</div></div><div class="info-item full"><div class="info-label">责任与整改</div><div class="info-value">责任主体：B公司境外事业部 → 项目公司；整改状态：集团督办，整改中。</div></div></div><button class="btn btn-primary" onclick="App.navigate('penetration',{riskId:'risk-2',detail:true})">进入投资穿透分析</button><button class="btn btn-outline" style="margin-left:8px" onclick="App.openStageDrawer('post-invest','投后运营')">返回阶段事项详情</button></div>`;
+    panel.innerHTML=`<div class="card"><div class="card-title">${itemName} · 阶段事项风险详情</div><div class="info-grid"><div class="info-item"><div class="info-label">投资阶段</div><div class="info-value">${stageName}</div></div><div class="info-item"><div class="info-label">投资法人 / 层级</div><div class="info-value">B公司 / 二级子企业</div></div><div class="info-item"><div class="info-label">风险场景</div><div class="info-value">投资收益未达预期风险</div></div><div class="info-item"><div class="info-label">风险等级</div><div class="info-value"><span class="badge badge-danger">重大</span></div></div><div class="info-item full"><div class="info-label">KRI 与控制规则</div><div class="info-value">投资收益率 3.2%，预警阈值 6%，风险阈值 4%；控制规则已触发专项经营分析。</div></div><div class="info-item full"><div class="info-label">责任与整改</div><div class="info-value">责任主体：B公司境外事业部 → 项目公司；整改状态：集团督办，整改中。</div></div></div><button class="btn btn-primary" onclick="App.navigate('penetration',{riskId:'risk-2',detail:true,from:'process',returnContext:{page:'process',riskId:'risk-2',itemName:'${itemName}',stageName:'${stageName}'}})">进入投资穿透分析</button><button class="btn btn-outline" style="margin-left:8px" onclick="App.openStageDrawer('post-invest','投后运营')">返回阶段事项详情</button></div>`;
   },
 
   renderRiskMatrix() {
