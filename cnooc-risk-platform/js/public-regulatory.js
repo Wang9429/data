@@ -4937,16 +4937,66 @@ Object.assign(App, {
     return `<div class="kri-lineage" style="flex-wrap:wrap;margin:8px 0">${steps}</div>`;
   },
 
-  renderDashboardGroupRegulatoryEntry() {
-    const scenarios = APP_DATA.regulatoryDemoScenarioIndexes || [];
-    if (!scenarios.length) return '';
-    const chips = scenarios.map(s => `<button class="matter-card" style="text-align:left" onclick="App.startDemoScenario('${s.demoCode}')"><span class="type">${s.demoCode}</span><div class="type" style="margin-top:6px;font-size:13px">${s.name}</div></button>`).join('');
-    return `<div class="card" style="margin-bottom:20px;border:1px solid #c9daf5;background:linear-gradient(180deg,#f8fbff 0%,#fff 100%)">
-      <div class="card-title">集团监管演示入口</div>
-      <p class="insight-note">在原版投资管理 Demo 基础上叠加集团层面监管视角。6 条演示路径均跳转至平台<strong>已有页面</strong>（驾驶舱、预警、整改、集团监管总览等），不替代原有首页与业务模块。</p>
-      <div class="matter-types">${chips}</div>
-      <p style="margin-top:12px">${this.renderPublicLinkButton('进入集团监管总览', `App.navigate('group')`)} ${this.renderPublicLinkButton('查看完整演示说明', `App.navigate('group')`)}</p>
+  renderDashboardGroupRegulatoryPerspectiveCard() {
+    const metrics = [
+      ['8,562亿元', '集团投资总体态势', '1,286项 · 同比+8.6%', `App.navigate('portfolio')`],
+      ['12/38/75家', '区域/法人投资分布', '境内928项 · 境外358项', `App.navigate('portfolio')`],
+      ['128项', '重点项目监管情况', '重大投资128项 · 在管86项', `App.navigate('major')`],
+      ['72.0%', '投资风险集中度', '前十大法人68.2%', `App.navigate('warnings')`],
+      ['12项', '重大事项影响', '待决策4项 · 督办3项', `App.navigate('major')`],
+      ['76.4%', '整改闭环情况', '整改86项 · 逾期12项', `App.navigate('rectification')`]
+    ];
+    return `<div class="card" style="margin-bottom:20px;border:1px solid #dce3ec;background:linear-gradient(180deg,#f8fbff 0%,#fff 100%)">
+      <div class="card-title">集团监管视角 · 投资活动总体态势</div>
+      <p class="insight-note">集团总部从<strong>全级次、全链条、全过程</strong>观察投资活动：覆盖总体规模、区域与法人分布、重点项目、风险集中度、重大事项影响与整改闭环，均基于现有投资管理页面与数据展示。</p>
+      <div class="group-metrics">${metrics.map(([v, l, sub, nav]) => `<button class="metric-card" onclick="${nav}"><div class="value">${v}</div><div class="label">${l}</div><div class="sub-items">${sub}</div></button>`).join('')}</div>
     </div>`;
+  },
+
+  renderDashboardGroupRegulatoryDemoEntry() {
+    const steps = ['投资驾驶舱', '投资风险监测', '投资穿透分析', '整改闭环', '监管复盘'];
+    const path = steps.map((label, i) => `${i ? '<i>→</i>' : ''}<button onclick="App.startGroupRegulatoryPerspectiveWalkthrough(${i})"><b>${label}</b></button>`).join('');
+    return `<div class="card" style="margin-bottom:20px;border:1px solid #c9daf5;background:#fff">
+      <div class="card-title">集团监管视角演示入口</div>
+      <p class="insight-note">展示集团总部如何基于<strong>现有投资监管能力</strong>，实现对下属单位投资活动的穿透监管。演示路径仅使用已有页面跳转，不新增集团监管平台页面。</p>
+      <div class="kri-lineage" style="flex-wrap:wrap;margin:12px 0">${path}</div>
+      <p style="margin-top:8px">${this.renderPublicLinkButton('开始演示', 'App.startGroupRegulatoryPerspectiveWalkthrough(0)')} ${this.renderPublicLinkButton('进入投资风险监测', `App.navigate('warnings')`)} ${this.renderPublicLinkButton('查看整改闭环', `App.navigate('rectification')`)}</p>
+    </div>`;
+  },
+
+  renderWarningsGroupRegulatoryChain() {
+    const w = (APP_DATA.warnings || [])[0];
+    const steps = [
+      this.renderLineageNode('集团', '集团总部', '全级次监管', `App.navigate('dashboard')`),
+      this.renderLineageNode('区域', '中东/境内', '6大区域', `App.navigate('portfolio')`),
+      this.renderLineageNode('法人', w ? w.unit : 'A/B/C/D公司', '125家法人', `App.navigate('portfolio')`),
+      this.renderLineageNode('项目', w ? w.project : '监管项目', '1,286项', `App.navigate('portfolio')`),
+      this.renderLineageNode('风险事项', w ? w.name : '风险事项', '46项', `App.showWarningDetail('${w ? w.id : 'risk-2'}')`),
+      this.renderLineageNode('KRI', w ? w.indicator : 'KRI指标', '28项异常', `App.navigate('controls')`),
+      this.renderLineageNode('预警', '风险预警', '8项重大', `App.filterWarnings('红色')`),
+      this.renderLineageNode('整改', '整改任务', '18项未闭环', `App.navigate('rectification')`)
+    ];
+    return `<div class="card" style="margin-bottom:16px"><div class="card-title">集团监管视角 · 投资风险穿透链路</div>
+      <p class="insight-note">在原有风险监测能力上叠加集团总部穿透维度：<strong>集团 → 区域 → 法人 → 项目 → 风险事项 → KRI → 预警 → 整改</strong>。点击下方节点可跳转至对应已有页面。</p>
+      ${this.renderLineagePath(steps)}
+    </div>`;
+  },
+
+  renderPortfolioGroupPlanningPerspective() {
+    const blocks = [
+      { title: '投资布局分析', value: '6大板块', desc: '清洁能源、装备制造、工程建设等；境内72% · 境外28%', nav: `App.showPortfolioDetail('投资布局','集团总体')` },
+      { title: '区域投资结构', value: '74.6%', desc: '前十大区域投资占比；中东、亚洲、非洲为重点区域', nav: `App.showPortfolioDetail('区域投资结构','中东')` },
+      { title: '子企业投资集中度', value: '68.2%', desc: '前十大法人集中度；A公司30.8% · B公司21.3%', nav: `App.showPortfolioDetail('子企业集中度','前十大法人')` },
+      { title: '战略方向匹配分析', value: '92.4%', desc: '主业匹配率；偏离主业项目14项待复核', nav: `App.navigate('controls')` }
+    ];
+    return `<div class="card"><div class="card-title">集团监管视角 · 投资规划与布局</div>
+      <p class="insight-note">在原有投资组合分析基础上，增加集团总部规划与监管视角：关注投资布局、区域结构、子企业集中度与战略方向匹配，数据均来自现有组合分析模块。</p>
+      <div class="portfolio-analysis-row">${blocks.map(b => `<button class="analysis-card" onclick="${b.nav}"><h4>${b.title}</h4><strong>${b.value}</strong><p>${b.desc}</p></button>`).join('')}</div>
+    </div>`;
+  },
+
+  renderDashboardGroupRegulatoryEntry() {
+    return (this.renderDashboardGroupRegulatoryPerspectiveCard?.() || '') + (this.renderDashboardGroupRegulatoryDemoEntry?.() || '');
   },
 
   renderDemoScenarioDashboardPanel() {

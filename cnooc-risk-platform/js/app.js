@@ -46,6 +46,27 @@ const App = {
     this.navigate(target, { riskId, detail: true });
   },
 
+  startGroupRegulatoryPerspectiveWalkthrough(stepIndex = 0) {
+    const steps = [
+      () => this.navigate('dashboard'),
+      () => this.navigate('warnings'),
+      () => this.openInvestmentPenetrationFromWarnings('risk-2'),
+      () => this.navigate('rectification'),
+      () => this.navigate('dashboard')
+    ];
+    const i = Math.max(0, Math.min(stepIndex, steps.length - 1));
+    steps[i]();
+    return { step: i, total: steps.length, labels: ['投资驾驶舱', '投资风险监测', '投资穿透分析', '整改闭环', '监管复盘'] };
+  },
+
+  renderDashboardGroupRegulatoryOverlay() {
+    const node = document.getElementById('dashboardGroupRegulatoryOverlay');
+    if (!node) return;
+    const perspective = this.renderDashboardGroupRegulatoryPerspectiveCard ? this.renderDashboardGroupRegulatoryPerspectiveCard() : '';
+    const demoEntry = this.renderDashboardGroupRegulatoryDemoEntry ? this.renderDashboardGroupRegulatoryDemoEntry() : '';
+    node.innerHTML = `${perspective}${demoEntry}`;
+  },
+
   menuItems: [
     { id: 'dashboard', icon: '📊', label: '驾驶舱' },
     { id: 'process', icon: '🔄', label: '监管对象与价值链' },
@@ -226,6 +247,7 @@ const App = {
     this.renderMajorMatters();
     this.renderFoundationWorkbench();
     this.renderDashboardMetrics();
+    this.renderDashboardGroupRegulatoryOverlay();
     this.renderRegulationDomains();
     this.renderGroupKriBoard();
     this.renderMajorMatters();
@@ -1935,6 +1957,7 @@ const App = {
     });
     this.domainPageTemplates = {};
     this.renderDashboardMetrics();
+    this.renderDashboardGroupRegulatoryOverlay();
     this.renderGroupKriBoard();
     this.renderDashboardInsights();
     this.renderDashboardHeatmap();
@@ -2206,6 +2229,10 @@ const App = {
     const entryNode = document.getElementById('warningsPenetrationEntry');
     if (entryNode) {
       entryNode.innerHTML = `<div class="card" style="margin-bottom:16px"><div class="card-title">投资风险监测 · 穿透分析</div><p class="insight-note">从风险监测总览、风险预警与风险事项详情进入穿透分析；「风险监测投资穿透分析」为二级详情页，不在左侧菜单独立展示。</p><button class="btn btn-primary" onclick="App.openInvestmentPenetrationFromWarnings('risk-2')">进入投资穿透分析</button></div>`;
+    }
+    const chainNode = document.getElementById('warningsGroupRegulatoryChain');
+    if (chainNode && this.renderWarningsGroupRegulatoryChain) {
+      chainNode.innerHTML = this.renderWarningsGroupRegulatoryChain();
     }
     document.getElementById('warningSummary').innerHTML = `
       <button class="warning-stat total" onclick="App.filterWarnings('')"><div class="num">46</div><div class="label">风险事项</div></button>
@@ -2551,6 +2578,10 @@ const App = {
       <button class="analysis-card" onclick="App.showPortfolioDetail('前十大投资项目','项目金额排名')"><h4>前十大投资项目</h4><strong>41.5%</strong><p>前十大项目投资金额占比41.5%；覆盖重大项目、风险状态和收益状态。</p></button>
       <button class="analysis-card" onclick="App.showPortfolioDetail('前十大投资区域','区域金额排名')"><h4>前十大投资区域</h4><strong>74.6%</strong><p>前十大区域投资金额占比74.6%；展示境内外、国家地区和风险项目。</p></button>
       <button class="analysis-card" onclick="App.showPortfolioDetail('集中度趋势','2024-2026')"><h4>集中度变化趋势</h4><strong>72.0%</strong><p>法人：2024年64.1% → 2025年68.2% → 2026年72.0%，呈上升趋势。</p></button>`;
+    const planningNode = document.getElementById('portfolioGroupPlanning');
+    if (planningNode && this.renderPortfolioGroupPlanningPerspective) {
+      planningNode.innerHTML = this.renderPortfolioGroupPlanningPerspective();
+    }
     document.getElementById('portfolioAi').innerHTML = `<div class="card-title">投资组合分析详情</div><div id="portfolioDetail"><p><strong>钻取路径：</strong>投资组合分析 → 投资维度 → 法人主体/业务板块/区域/投资类型 → 法人层级 → 具体投资项目。</p><p>点击本页任意核心指标、法人、业务板块、区域、投资类型或集中度结果，在此区域查看组合分析明细。</p></div>`;
   },
 
@@ -2566,8 +2597,7 @@ const App = {
 
   renderDashboardInsights() {
     const insights = document.getElementById('dashboardInsights');
-    const groupEntry = this.renderDashboardGroupRegulatoryEntry ? this.renderDashboardGroupRegulatoryEntry() : '';
-    if (insights) insights.innerHTML = `${groupEntry}
+    if (insights) insights.innerHTML = `
       <div class="insight-card dense-card"><div class="insight-head"><span>国资监管主题落实情况</span><button onclick="App.navigate('controls')">查看规则执行 ›</button></div><table class="mini-table"><thead><tr><th>监管主题</th><th>正常</th><th>异常</th><th>未闭环</th></tr></thead><tbody><tr><td>投资方向与主业匹配</td><td>272</td><td class="danger-text">14</td><td>4</td></tr><tr><td>投资决策程序履行</td><td>122</td><td class="danger-text">6</td><td>2</td></tr><tr><td>投资计划执行</td><td>118</td><td class="danger-text">8</td><td>3</td></tr><tr><td>投资后评价</td><td>95</td><td class="danger-text">17</td><td>9</td></tr></tbody></table></div>
       <div class="insight-card dense-card"><div class="insight-head"><span>投资管理领域运行</span><button onclick="App.navigate('portfolio')">查看结构与组合 ›</button></div><div class="board-bars"><p><span>股权投资</span><i><b style="width:76%"></b></i><em>356项</em></p><p><span>固定资产投资</span><i><b style="width:62%"></b></i><em>412项</em></p><p><span>境外投资</span><i><b style="width:48%"></b></i><em>86项</em></p><p><span>投资后评价</span><i><b style="width:32%"></b></i><em>112项</em></p></div><small class="insight-note">展示投资规模变化、计划偏差、业务板块分布、境内外结构和项目退出情况。</small></div>
       <div class="insight-card dense-card"><div class="insight-head"><span>集团投资重点关注</span><button onclick="App.navigate('major')">查看重大事项 ›</button></div><div class="top-scenarios"><button onclick="App.navigate('major')"><b>1</b> 重大投资事项 <span class="badge badge-danger">12项</span></button><button onclick="App.navigate('warnings')"><b>2</b> 重大投资风险 <span class="badge badge-danger">8项</span></button><button onclick="App.navigate('portfolio')"><b>3</b> 收益偏离项目 <span class="badge badge-warning">31项</span></button><button onclick="App.navigate('process',{stageId:'post-invest'})"><b>4</b> 重大投后异常 <span class="badge badge-warning">18项</span></button></div></div>`;

@@ -99,9 +99,11 @@ const originalBusinessScenesPreserved = html.includes('国资监管主题落实�
 const originalDataDisplayPreserved = html.includes('dashboardMetrics')
   && html.includes('groupKriBoard')
   && html.includes('dashboardHeatmap');
-const groupRegulatoryPerspectiveAdded = html.includes('集团监管总览')
-  && html.includes('renderDashboardGroupRegulatoryEntry')
-  && html.includes('集团监管演示');
+const groupRegulatoryPerspectiveAdded = html.includes('集团监管视角')
+  && html.includes('renderDashboardGroupRegulatoryPerspectiveCard')
+  && html.includes('renderWarningsGroupRegulatoryChain')
+  && html.includes('renderPortfolioGroupPlanningPerspective')
+  && html.includes('集团监管视角演示入口');
 const penetrationNotInMenu = !html.includes("{id:'penetration',icon:'↳',label:'　风险监测 · 投资穿透分析'}")
   && !html.includes('风险监测 · 投资穿透分析');
 const penetrationParentEntry = (() => {
