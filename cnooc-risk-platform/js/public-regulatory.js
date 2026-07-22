@@ -569,6 +569,455 @@ Object.assign(App, {
     </div>`;
   },
 
+  initializeBatchAdaptation() {
+    this.refreshDomainAdaptationResults();
+    this.computeBatchAdaptationCoverage();
+    if (!(APP_DATA.regulatoryBatchAdaptationRuns || []).length) {
+      this._seedInitialBatchRun();
+    }
+    return APP_DATA.regulatoryBatchAdaptationMetrics;
+  },
+
+  _batchNow() { return '2026-07-22 10:30:00'; },
+
+  _domainMappings(domainId) {
+    return (APP_DATA.regulatoryBusinessObjectMappings || []).filter(m => m.domainId === domainId && m.mappingStatus === 'ACTIVE');
+  },
+
+  _domainQualityStatus(dataSetIds) {
+    const issues = (APP_DATA.regulatoryDataQualityIssues || []).filter(i => dataSetIds.includes(i.dataSetId));
+    const open = issues.filter(i => i.status !== 'CLOSED');
+    if (open.some(i => i.severity === 'HIGH')) return { qualityStatus: 'QUALITY_FAILED', issues, open };
+    if (open.length) return { qualityStatus: 'QUALITY_WARNING', issues, open };
+    return { qualityStatus: issues.length ? 'QUALITY_PASSED' : 'QUALITY_PASSED', issues, open };
+  },
+
+  buildDomainAdaptationResult(domainId) {
+    const config = this.getDomainConfiguration(domainId);
+    if (!config) return null;
+    const sourceIds = config.linkedSourceIds || [];
+    const dataSetIds = config.linkedDataSetIds || [];
+    const mappings = this._domainMappings(domainId);
+    const mappingIds = mappings.map(m => m.mappingId);
+    const kriFromIssues = (APP_DATA.regulatoryDataQualityIssues || []).filter(i => dataSetIds.includes(i.dataSetId) && i.kriId).map(i => i.kriId);
+    const kriFromImpact = sourceIds.flatMap(sid => (this.getDataSourceImpactAnalysis(sid).affectedKris || []));
+    const kriFromIndicators = mappings.filter(m => m.sourceObjectType === 'dataIndicators').map(m => (APP_DATA.dataIndicators || []).find(i => i.indicatorId === m.sourceObjectId)?.kriId).filter(Boolean);
+    const metricIds = mappings.filter(m => m.targetObjectType === 'regulatoryMetrics').map(m => m.targetObjectId);
+    const kriIds = [...new Set([...(config.linkedKriIds || []), ...kriFromIndicators, ...kriFromIssues, ...kriFromImpact])];
+    const q = this._domainQualityStatus(dataSetIds);
+    const jobs = (APP_DATA.regulatoryDataIntegrationJobs || []).filter(j => sourceIds.includes(j.sourceId));
+    const ingestionOk = sourceIds.length && jobs.some(j => j.status === 'SUCCESS');
+    const sourceRecordCount = jobs.reduce((s, j) => s + (j.recordCount || 0), 0);
+    const adaptedRecordCount = jobs.reduce((s, j) => s + (j.successCount || 0), 0);
+    let metricCalculationStatus = 'PENDING';
+    let kriCalculationStatus = 'PENDING';
+    let warningIdentificationStatus = 'PENDING';
+    if (q.qualityStatus === 'QUALITY_FAILED') {
+      metricCalculationStatus = 'BLOCKED';
+      kriCalculationStatus = 'DATA_QUALITY_REVIEW_REQUIRED';
+      warningIdentificationStatus = 'DATA_QUALITY_REVIEW_REQUIRED';
+    } else if (ingestionOk && (metricIds.length || kriIds.length || mappings.length)) {
+      metricCalculationStatus = metricIds.length ? 'COMPLETED' : mappings.length ? 'PARTIAL' : 'INSUFFICIENT_DATA';
+      kriCalculationStatus = kriIds.length ? (q.qualityStatus === 'QUALITY_WARNING' ? 'PARTIAL' : 'COMPLETED') : 'INSUFFICIENT_DATA';
+      warningIdentificationStatus = kriIds.length && kriCalculationStatus !== 'INSUFFICIENT_DATA' ? 'COMPLETED' : kriIds.length ? 'INSUFFICIENT_DATA' : 'PENDING';
+    } else if (!sourceIds.length) {
+      metricCalculationStatus = 'INSUFFICIENT_REAL_DATA';
+      kriCalculationStatus = 'INSUFFICIENT_REAL_DATA';
+      warningIdentificationStatus = 'INSUFFICIENT_REAL_DATA';
+    }
+    const warnings = (APP_DATA.regulatoryWarnings || []).filter(w => kriIds.includes(w.kriId));
+    const actions = (APP_DATA.regulatoryActions || []).filter(a => (a.sourceKriIds || []).some(id => kriIds.includes(id)) || sourceIds.some(sid => (a.sourceDataSetIds || []).some(ds => dataSetIds.includes(ds))));
+    const tasks = (APP_DATA.regulatorySupervisionTasks || []).filter(t => (t.relatedRegulatoryActionIds || []).some(id => actions.some(a => a.actionId === id)));
+    const rects = (APP_DATA.rectificationTasks || []).filter(t => q.issues.some(i => i.relatedRectificationTaskId === t.taskId) || actions.some(a => (a.relatedRectificationTaskIds || []).includes(t.taskId)) || (t.riskMatterId && warnings.some(w => w.riskMatterId === t.riskMatterId)));
+    const verified = rects.filter(t => t.status === '已关闭' || t.verificationStatus === '已验证');
+    const linkedActionCount = actions.length;
+    const linkedTaskCount = tasks.length;
+    const linkedRectificationCount = rects.length;
+    const verifiedCount = verified.length;
+    let closedLoopStatus = 'NOT_STARTED';
+    if (!sourceIds.length) closedLoopStatus = 'INSUFFICIENT_REAL_DATA';
+    else if (linkedActionCount && linkedRectificationCount && verifiedCount) closedLoopStatus = 'FULL_CLOSED_LOOP';
+    else if (linkedActionCount && linkedRectificationCount) closedLoopStatus = 'PARTIAL_CLOSED_LOOP';
+    else if (linkedActionCount || linkedRectificationCount || warnings.length) closedLoopStatus = 'PARTIAL_CLOSED_LOOP';
+    else if (!kriIds.length && !mappings.length) closedLoopStatus = 'INSUFFICIENT_REAL_DATA';
+    else if (jobs.some(j => j.status === 'FAILED') || sourceIds.some(sid => (APP_DATA.regulatoryDataSources || []).find(s => s.sourceId === sid)?.connectionStatus === 'OFFLINE')) closedLoopStatus = 'PARTIAL_CLOSED_LOOP';
+    let adaptationStatus = 'PENDING';
+    if (!sourceIds.length) adaptationStatus = 'INSUFFICIENT_REAL_DATA';
+    else if (jobs.some(j => j.status === 'FAILED')) adaptationStatus = 'FAILED';
+    else if (closedLoopStatus === 'FULL_CLOSED_LOOP') adaptationStatus = 'COMPLETED';
+    else if (ingestionOk && mappings.length) adaptationStatus = 'PARTIAL_SUCCESS';
+    else if (ingestionOk) adaptationStatus = 'IN_PROGRESS';
+    const mappingStatus = mappings.length ? 'COMPLETED' : sourceIds.length ? 'PENDING' : 'NOT_CONFIGURED';
+    return {
+      adaptationId: 'DAR-' + domainId,
+      domainId,
+      domainName: config.domainName,
+      sourceIds,
+      businessObjectMappingIds: mappingIds,
+      dataSetIds,
+      metricIds,
+      kriIds,
+      adaptationStatus,
+      qualityStatus: q.qualityStatus,
+      mappingStatus,
+      metricCalculationStatus,
+      kriCalculationStatus,
+      warningIdentificationStatus,
+      closedLoopStatus,
+      sourceRecordCount,
+      adaptedRecordCount,
+      mappedObjectCount: mappings.length,
+      calculatedMetricCount: metricCalculationStatus === 'COMPLETED' ? metricIds.length : 0,
+      calculatedKriCount: ['COMPLETED', 'PARTIAL'].includes(kriCalculationStatus) ? kriIds.length : 0,
+      generatedWarningCount: q.qualityStatus === 'QUALITY_FAILED' ? 0 : warnings.length,
+      linkedActionCount,
+      linkedTaskCount,
+      linkedRectificationCount,
+      verifiedCount,
+      startedAt: this._batchNow(),
+      completedAt: adaptationStatus === 'COMPLETED' || adaptationStatus === 'PARTIAL_SUCCESS' ? this._batchNow() : null,
+      failureStep: adaptationStatus === 'FAILED' ? 'DATA_INGESTION' : null,
+      failureReason: adaptationStatus === 'FAILED' ? '部分接入任务失败' : null,
+      lastRunId: (APP_DATA.regulatoryBatchAdaptationRuns || []).slice(-1)[0]?.runId || null,
+      maturityLevel: null
+    };
+  },
+
+  calculateDomainAdaptationMaturity(domainId, result) {
+    const r = result || this.getDomainAdaptationResult(domainId) || this.buildDomainAdaptationResult(domainId);
+    if (!r) return 'LEVEL_0';
+    if (r.closedLoopStatus === 'FULL_CLOSED_LOOP') return 'LEVEL_7';
+    if (r.linkedActionCount > 0) return 'LEVEL_6';
+    if (r.generatedWarningCount > 0) return 'LEVEL_5';
+    if (r.calculatedKriCount > 0 || r.calculatedMetricCount > 0) return 'LEVEL_4';
+    if (r.mappedObjectCount > 0) return 'LEVEL_3';
+    if ((r.sourceIds || []).length && r.adaptedRecordCount > 0) return 'LEVEL_2';
+    if ((r.sourceIds || []).length) return 'LEVEL_1';
+    return 'LEVEL_0';
+  },
+
+  refreshDomainAdaptationResults() {
+    const domains = APP_DATA.regulatoryDomainConfigurations || [];
+    APP_DATA.regulatoryDomainAdaptationResults = domains.map(d => {
+      const r = this.buildDomainAdaptationResult(d.domainId);
+      if (r) r.maturityLevel = this.calculateDomainAdaptationMaturity(d.domainId, r);
+      return r;
+    }).filter(Boolean);
+    return APP_DATA.regulatoryDomainAdaptationResults;
+  },
+
+  getDomainAdaptationResult(domainId) {
+    return (APP_DATA.regulatoryDomainAdaptationResults || []).find(r => r.domainId === domainId);
+  },
+
+  getBatchAdaptationRun(runId) {
+    return (APP_DATA.regulatoryBatchAdaptationRuns || []).find(r => r.runId === runId);
+  },
+
+  computeBatchAdaptationCoverage() {
+    const domains = APP_DATA.regulatoryDomainConfigurations || [];
+    const results = APP_DATA.regulatoryDomainAdaptationResults || [];
+    const sources = APP_DATA.regulatoryDataSources || [];
+    const mappings = APP_DATA.regulatoryBusinessObjectMappings || [];
+    const allKris = APP_DATA.groupKris || [];
+    const adaptedDomains = results.filter(r => ['COMPLETED', 'PARTIAL_SUCCESS'].includes(r.adaptationStatus));
+    const fullLoops = results.filter(r => r.closedLoopStatus === 'FULL_CLOSED_LOOP');
+    const adaptedSources = new Set(results.flatMap(r => r.sourceIds));
+    const successfulSources = results.filter(r => r.adaptationStatus !== 'FAILED').flatMap(r => r.sourceIds);
+    const mappedCount = mappings.filter(m => m.mappingStatus === 'ACTIVE').length;
+    const configuredObjects = (APP_DATA.dataObjects || []).length;
+    const calculatedKris = new Set(results.flatMap(r => r.kriIds));
+    const warnings = results.reduce((s, r) => s + r.generatedWarningCount, 0);
+    const totalWarnings = (APP_DATA.regulatoryWarnings || []).length;
+    APP_DATA.regulatoryBatchAdaptationMetrics = {
+      totalDomainCount: domains.length,
+      domainAdaptationCoverage: domains.length ? Math.round(adaptedDomains.length / domains.length * 1000) / 10 : null,
+      sourceAdaptationCoverage: sources.length ? Math.round(new Set(successfulSources).size / sources.length * 1000) / 10 : null,
+      mappingCoverage: configuredObjects ? Math.round(mappedCount / configuredObjects * 1000) / 10 : null,
+      metricCalculationCoverage: mappings.filter(m => m.targetObjectType === 'regulatoryMetrics').length ? Math.round(results.filter(r => r.calculatedMetricCount > 0).length / domains.length * 1000) / 10 : null,
+      kriCalculationCoverage: allKris.length ? Math.round(calculatedKris.size / allKris.length * 1000) / 10 : null,
+      warningIdentificationCoverage: totalWarnings ? Math.round(warnings / totalWarnings * 1000) / 10 : null,
+      closedLoopDriveRate: adaptedDomains.length ? Math.round(fullLoops.length / adaptedDomains.length * 1000) / 10 : null,
+      fullClosedLoopDomainCount: fullLoops.length,
+      partialClosedLoopDomainCount: results.filter(r => r.closedLoopStatus === 'PARTIAL_CLOSED_LOOP').length,
+      insufficientRealDataDomainCount: results.filter(r => r.closedLoopStatus === 'INSUFFICIENT_REAL_DATA').length,
+      adaptedDomainCount: adaptedDomains.length,
+      adaptedSourceCount: adaptedSources.size,
+      trendStatus: 'INSUFFICIENT_HISTORY'
+    };
+    return APP_DATA.regulatoryBatchAdaptationMetrics;
+  },
+
+  _adaptSourceForBatch(sourceId, domainId, mode) {
+    const steps = [];
+    const fail = (step, reason) => { steps.push({ sourceId, domainId, step, status: 'FAILED', reason, timestamp: this._batchNow() }); return { success: false, steps, failureStep: step, failureReason: reason }; };
+    const ok = (step) => { steps.push({ sourceId, domainId, step, status: 'COMPLETED', reason: null, timestamp: this._batchNow() }); };
+    const src = (APP_DATA.regulatoryDataSources || []).find(s => s.sourceId === sourceId);
+    if (!src) return fail('SOURCE_CONNECTION', '数据源不存在');
+    if (src.connectionStatus === 'OFFLINE') return fail('SOURCE_CONNECTION', '数据源连接中断');
+    ok('SOURCE_CONNECTION');
+    const jobs = (APP_DATA.regulatoryDataIntegrationJobs || []).filter(j => j.sourceId === sourceId);
+    if (!jobs.length) return fail('DATA_INGESTION', '无接入任务');
+    if (jobs.every(j => j.status === 'FAILED')) return fail('DATA_INGESTION', '接入任务全部失败');
+    ok('DATA_INGESTION');
+    const quality = this.runDataQualityValidationOnAdaptation(sourceId);
+    if (quality.severeCount > 0 && mode !== 'VALIDATE_ONLY') {
+      steps.push({ sourceId, domainId, step: 'QUALITY_VALIDATION', status: 'FAILED', reason: '严重质量问题', timestamp: this._batchNow() });
+      return { success: false, partial: true, steps, failureStep: 'QUALITY_VALIDATION', failureReason: '严重质量问题', qualityStatus: 'QUALITY_FAILED' };
+    }
+    ok('QUALITY_VALIDATION');
+    const std = jobs[0] ? this.standardizeIncomingData(jobs[0].integrationJobId) : { success: false };
+    if (!std.success) return fail('STANDARDIZATION', std.message || '标准化失败');
+    ok('STANDARDIZATION');
+    const mapped = this.mapBusinessObjects(sourceId);
+    if (!mapped.valid) return fail('BUSINESS_OBJECT_MAPPING', '无有效映射');
+    ok('BUSINESS_OBJECT_MAPPING');
+    const metrics = mapped.linked.metrics || [];
+    if (!metrics.length && !(APP_DATA.regulatoryMetrics || []).some(m => mapped.linked.dataSets?.length)) {
+      steps.push({ sourceId, domainId, step: 'METRIC_CALCULATION', status: 'INSUFFICIENT_DATA', reason: '无指标可计算', timestamp: this._batchNow() });
+    } else ok('METRIC_CALCULATION');
+    const kri = this.computeKriFromAdaptedData(sourceId);
+    if (quality.severeCount > 0) {
+      steps.push({ sourceId, domainId, step: 'KRI_CALCULATION', status: 'DATA_QUALITY_REVIEW_REQUIRED', reason: '质量未达标', timestamp: this._batchNow() });
+    } else if (kri.dataStatus === 'INSUFFICIENT_DATA') {
+      steps.push({ sourceId, domainId, step: 'KRI_CALCULATION', status: 'INSUFFICIENT_DATA', reason: 'KRI数据不足', timestamp: this._batchNow() });
+    } else ok('KRI_CALCULATION');
+    const warns = this.identifyWarningsFromAdaptedData(sourceId);
+    if (quality.severeCount > 0) {
+      steps.push({ sourceId, domainId, step: 'WARNING_IDENTIFICATION', status: 'DATA_QUALITY_REVIEW_REQUIRED', reason: '质量阻断预警', timestamp: this._batchNow() });
+    } else if (warns.warningCount) ok('WARNING_IDENTIFICATION');
+    else steps.push({ sourceId, domainId, step: 'WARNING_IDENTIFICATION', status: 'INSUFFICIENT_DATA', reason: '无预警', timestamp: this._batchNow() });
+    const loop = this.evaluateAdaptationClosedLoop(sourceId);
+    if (loop.drivesClosedLoop) ok('CLOSED_LOOP_EVALUATION');
+    else steps.push({ sourceId, domainId, step: 'CLOSED_LOOP_EVALUATION', status: loop.closureRate > 50 ? 'PARTIAL' : 'PENDING', reason: '闭环未完成', timestamp: this._batchNow() });
+    const failed = steps.filter(s => s.status === 'FAILED');
+    return { success: !failed.length, partial: steps.some(s => s.status === 'PARTIAL' || s.status === 'INSUFFICIENT_DATA'), steps, failureStep: failed[0]?.step, failureReason: failed[0]?.reason };
+  },
+
+  runBatchRegulatoryDataAdaptation(opts) {
+    const o = opts || {};
+    const mode = o.mode || 'FULL';
+    const allDomains = APP_DATA.regulatoryDomainConfigurations || [];
+    let domainIds = o.domainIds || allDomains.map(d => d.domainId);
+    let sourceIds = o.sourceIds || null;
+    if (mode === 'RETRY_FAILED') {
+      const fails = (APP_DATA.regulatoryBatchAdaptationFailures || []).filter(f => f.status === 'FAILED');
+      domainIds = [...new Set(fails.map(f => f.domainId).filter(Boolean))];
+      sourceIds = [...new Set(fails.map(f => f.sourceId).filter(Boolean))];
+    }
+    const runId = 'BATCH-' + String((APP_DATA.regulatoryBatchAdaptationRuns || []).length + 1).padStart(4, '0');
+    const run = {
+      runId, mode, domainIds, sourceIds: sourceIds || [],
+      totalDomains: domainIds.length, completedDomains: 0, failedDomains: 0, partialDomains: 0,
+      totalSources: 0, completedSources: 0, failedSources: 0,
+      totalMappings: 0, successfulMappings: 0, failedMappings: 0,
+      totalKris: 0, calculatedKris: 0, totalWarnings: 0, generatedWarnings: 0,
+      totalClosedLoops: 0, completedClosedLoops: 0,
+      runStatus: 'RUNNING', startedAt: this._batchNow(), completedAt: null
+    };
+    APP_DATA.regulatoryBatchAdaptationRuns = APP_DATA.regulatoryBatchAdaptationRuns || [];
+    APP_DATA.regulatoryBatchAdaptationRuns.push(run);
+    const failures = [];
+    const processedSources = new Set();
+    domainIds.forEach(domainId => {
+      const config = this.getDomainConfiguration(domainId);
+      const srcList = sourceIds || config?.linkedSourceIds || [];
+      run.totalSources += srcList.length;
+      let domainFailed = false;
+      let domainPartial = false;
+      srcList.forEach(sourceId => {
+        if (mode === 'VALIDATE_ONLY') {
+          const v = this.validateDataSourceAdaptation(sourceId);
+          if (v.valid) { run.completedSources++; processedSources.add(sourceId); }
+          else { run.failedSources++; domainFailed = true; failures.push({ sourceId, domainId, step: 'VALIDATION', status: 'FAILED', reason: '适配校验未通过', timestamp: this._batchNow() }); }
+          return;
+        }
+        if (mode === 'INCREMENTAL' || mode === 'FULL' || mode === 'RETRY_FAILED') {
+          const existing = this.getAdaptationRun(sourceId);
+          if (mode === 'INCREMENTAL' && existing?.drivesClosedLoop) { run.completedSources++; return; }
+          const result = this._adaptSourceForBatch(sourceId, domainId, mode);
+          (result.steps || []).forEach(s => { if (s.status === 'FAILED') failures.push(s); });
+          if (result.success) { run.completedSources++; run.successfulMappings += (this.mapBusinessObjects(sourceId).mappingCount || 0); }
+          else if (result.partial) { run.failedSources++; domainPartial = true; }
+          else { run.failedSources++; domainFailed = true; }
+          processedSources.add(sourceId);
+          if (mode !== 'VALIDATE_ONLY') this.adaptRealBusinessData(sourceId);
+        }
+      });
+      if (domainFailed) run.failedDomains++;
+      else if (domainPartial) run.partialDomains++;
+      else run.completedDomains++;
+    });
+    this.refreshDomainAdaptationResults();
+    domainIds.forEach(id => {
+      const r = this.getDomainAdaptationResult(id);
+      if (r) {
+        r.lastRunId = runId;
+        run.totalMappings += r.mappedObjectCount;
+        run.totalKris += r.kriIds.length;
+        run.calculatedKris += r.calculatedKriCount;
+        run.totalWarnings += r.generatedWarningCount;
+        run.generatedWarnings += r.generatedWarningCount;
+        if (r.closedLoopStatus === 'FULL_CLOSED_LOOP') { run.totalClosedLoops++; run.completedClosedLoops++; }
+      }
+    });
+    run.failedMappings = run.totalMappings - run.successfulMappings;
+    run.runStatus = run.failedDomains === run.totalDomains ? 'FAILED' : run.failedDomains || run.failedSources ? 'PARTIAL_SUCCESS' : 'SUCCESS';
+    if (run.runStatus === 'RUNNING') run.runStatus = 'SUCCESS';
+    run.completedAt = this._batchNow();
+    APP_DATA.regulatoryBatchAdaptationFailures = [...(APP_DATA.regulatoryBatchAdaptationFailures || []), ...failures];
+    this.computeBatchAdaptationCoverage();
+    if (mode !== 'VALIDATE_ONLY') {
+      this.createRegulatoryAuditLog({ actionType: 'BATCH_ADAPT', objectType: 'regulatoryBatchAdaptationRuns', objectId: runId, reason: '批量监管数据适配 ' + mode, afterState: { runStatus: run.runStatus } });
+    }
+    return { success: run.runStatus !== 'FAILED', runId, run, failures };
+  },
+
+  retryBatchAdaptationSource(sourceId) {
+    const config = (APP_DATA.regulatoryDomainConfigurations || []).find(c => (c.linkedSourceIds || []).includes(sourceId));
+    return this.runBatchRegulatoryDataAdaptation({ domainIds: config ? [config.domainId] : [], sourceIds: [sourceId], mode: 'RETRY_FAILED' });
+  },
+
+  retryBatchAdaptationDomain(domainId) {
+    return this.runBatchRegulatoryDataAdaptation({ domainIds: [domainId], mode: 'RETRY_FAILED' });
+  },
+
+  _seedInitialBatchRun() {
+    const results = APP_DATA.regulatoryDomainAdaptationResults || [];
+    const run = {
+      runId: 'BATCH-0001', mode: 'FULL',
+      domainIds: (APP_DATA.regulatoryDomainConfigurations || []).map(d => d.domainId),
+      sourceIds: [...new Set(results.flatMap(r => r.sourceIds))],
+      totalDomains: results.length,
+      completedDomains: results.filter(r => r.adaptationStatus === 'COMPLETED').length,
+      failedDomains: results.filter(r => r.adaptationStatus === 'FAILED').length,
+      partialDomains: results.filter(r => r.adaptationStatus === 'PARTIAL_SUCCESS').length,
+      totalSources: [...new Set(results.flatMap(r => r.sourceIds))].length,
+      completedSources: results.filter(r => r.adaptationStatus !== 'FAILED').reduce((s, r) => s + r.sourceIds.length, 0),
+      failedSources: results.filter(r => r.adaptationStatus === 'FAILED').reduce((s, r) => s + r.sourceIds.length, 0),
+      totalMappings: results.reduce((s, r) => s + r.mappedObjectCount, 0),
+      successfulMappings: results.reduce((s, r) => s + r.mappedObjectCount, 0),
+      failedMappings: 0,
+      totalKris: results.reduce((s, r) => s + r.kriIds.length, 0),
+      calculatedKris: results.reduce((s, r) => s + r.calculatedKriCount, 0),
+      totalWarnings: results.reduce((s, r) => s + r.generatedWarningCount, 0),
+      generatedWarnings: results.reduce((s, r) => s + r.generatedWarningCount, 0),
+      totalClosedLoops: results.filter(r => r.closedLoopStatus === 'FULL_CLOSED_LOOP').length,
+      completedClosedLoops: results.filter(r => r.closedLoopStatus === 'FULL_CLOSED_LOOP').length,
+      runStatus: 'SUCCESS', startedAt: '2026-07-22 09:00:00', completedAt: '2026-07-22 09:15:00'
+    };
+    APP_DATA.regulatoryBatchAdaptationRuns = [run];
+  },
+
+  renderBatchAdaptationCoveragePanel() {
+    const m = APP_DATA.regulatoryBatchAdaptationMetrics || {};
+    const trend = m.trendStatus === 'INSUFFICIENT_HISTORY' ? this.renderPublicUnifiedStatusBadge('INSUFFICIENT_HISTORY') : '';
+    const items = [
+      ['领域适配覆盖率', m.domainAdaptationCoverage, '%'],
+      ['数据源适配覆盖率', m.sourceAdaptationCoverage, '%'],
+      ['业务对象映射覆盖率', m.mappingCoverage, '%'],
+      ['指标计算覆盖率', m.metricCalculationCoverage, '%'],
+      ['KRI计算覆盖率', m.kriCalculationCoverage, '%'],
+      ['预警识别覆盖率', m.warningIdentificationCoverage, '%'],
+      ['闭环驱动率', m.closedLoopDriveRate, '%']
+    ];
+    return `<div class="card"><div class="card-title">9大监管领域适配覆盖率 ${trend}</div>
+      <div class="group-metrics">${items.map(([l, v, u]) => this.renderPublicKpiCard(l, v != null ? v + u : '—', `App.navigatePublic('regulatory-data-governance')`)).join('')}</div>
+      <p class="insight-note">完整闭环领域 <b>${m.fullClosedLoopDomainCount ?? '—'}</b> · 部分闭环 <b>${m.partialClosedLoopDomainCount ?? '—'}</b> · 真实数据不足 <b>${m.insufficientRealDataDomainCount ?? '—'}</b></p>
+    </div>`;
+  },
+
+  renderDomainAdaptationMaturityPanel() {
+    const results = APP_DATA.regulatoryDomainAdaptationResults || [];
+    const rows = results.map(r => `<tr class="clickable" onclick="App.navigatePublic('regulatory-data-sources')"><td>${r.domainName}</td><td>${r.maturityLevel || this.calculateDomainAdaptationMaturity(r.domainId)}</td><td>${this.renderPublicUnifiedStatusBadge(r.adaptationStatus)}</td><td>${this.renderPublicUnifiedStatusBadge(r.qualityStatus)}</td><td>${this.renderPublicUnifiedStatusBadge(r.closedLoopStatus)}</td><td>${r.sourceIds.length}</td><td>${r.calculatedKriCount}</td><td>${r.generatedWarningCount}</td></tr>`).join('');
+    return `<div class="card"><div class="card-title">监管领域适配成熟度</div>
+      <table class="data-table"><thead><tr><th>领域</th><th>成熟度</th><th>适配状态</th><th>质量状态</th><th>闭环状态</th><th>数据源</th><th>KRI</th><th>预警</th></tr></thead><tbody>${rows}</tbody></table>
+    </div>`;
+  },
+
+  renderBatchAdaptationRunsPanel() {
+    const f = this.regulatoryBatchAdaptationFilter || {};
+    let runs = APP_DATA.regulatoryBatchAdaptationRuns || [];
+    if (f.runStatus) runs = runs.filter(r => r.runStatus === f.runStatus);
+    if (f.mode) runs = runs.filter(r => r.mode === f.mode);
+    const rows = runs.slice().reverse().map(r => `<tr class="clickable" onclick="App.showBatchAdaptationRunDetail('${r.runId}')"><td>${r.runId}</td><td>${r.mode}</td><td>${this.renderPublicUnifiedStatusBadge(r.runStatus)}</td><td>${r.completedDomains}/${r.totalDomains}</td><td>${r.completedSources}/${r.totalSources}</td><td>${r.completedClosedLoops}/${r.totalClosedLoops}</td><td>${r.startedAt}</td></tr>`).join('');
+    const failRows = (APP_DATA.regulatoryBatchAdaptationFailures || []).slice(-8).reverse().map(f => `<tr><td>${f.sourceId || '—'}</td><td>${f.domainId || '—'}</td><td>${f.step}</td><td>${this.renderPublicUnifiedStatusBadge(f.status)}</td><td>${this.escHtml(f.reason || '')}</td><td>${f.timestamp}</td></tr>`).join('');
+    return `<div class="card"><div class="card-title">批量适配运行</div>
+      <p>${this.renderPublicLinkButton('执行全量适配', `App.runBatchRegulatoryDataAdaptation({mode:'FULL'});App.renderRegulatoryDataIntegration()`)} ${this.renderPublicLinkButton('重试失败', `App.runBatchRegulatoryDataAdaptation({mode:'RETRY_FAILED'});App.renderRegulatoryDataIntegration()`)} ${this.renderPublicLinkButton('仅验证', `App.runBatchRegulatoryDataAdaptation({mode:'VALIDATE_ONLY'});App.renderRegulatoryDataIntegration()`)}</p>
+      ${rows ? `<table class="data-table"><thead><tr><th>运行ID</th><th>模式</th><th>状态</th><th>领域</th><th>数据源</th><th>闭环</th><th>开始</th></tr></thead><tbody>${rows}</tbody></table>` : this.renderPublicEmptyState('暂无运行记录')}
+      <div class="card-title" style="margin-top:12px">失败步骤追溯</div>
+      ${failRows ? `<table class="data-table"><thead><tr><th>数据源</th><th>领域</th><th>步骤</th><th>状态</th><th>原因</th><th>时间</th></tr></thead><tbody>${failRows}</tbody></table>` : this.renderPublicEmptyState('暂无失败记录')}
+    </div>`;
+  },
+
+  showBatchAdaptationRunDetail(runId) {
+    const run = this.getBatchAdaptationRun(runId);
+    const node = document.getElementById('regulatoryDataIntegrationDetail');
+    if (!node || !run) return;
+    node.innerHTML = this.buildPublicDetailPanel({ objectType: '批量适配运行', objectName: run.runId, objectId: run.runId, status: run.runStatus,
+      sections: [{ title: '运行摘要', content: this.renderPublicMetaGrid([{ label: '模式', value: run.mode }, { label: '领域', value: run.completedDomains + '/' + run.totalDomains }, { label: '数据源', value: run.completedSources + '/' + run.totalSources }, { label: '闭环', value: run.completedClosedLoops + '/' + run.totalClosedLoops }, { label: '开始', value: run.startedAt }, { label: '完成', value: run.completedAt }]) }],
+      footer: this.renderPublicLinkButton('审计日志', `App.navigatePublic('regulatory-audit-trail')`)
+    });
+  },
+
+  renderBatchAdaptationWorkbenchPanel() {
+    const m = APP_DATA.regulatoryBatchAdaptationMetrics || {};
+    const pending = (APP_DATA.regulatoryDomainAdaptationResults || []).filter(r => r.adaptationStatus === 'PENDING' || r.adaptationStatus === 'IN_PROGRESS');
+    const blocked = (APP_DATA.regulatoryDomainAdaptationResults || []).filter(r => r.qualityStatus === 'QUALITY_FAILED');
+    const failed = (APP_DATA.regulatoryDomainAdaptationResults || []).filter(r => r.adaptationStatus === 'FAILED');
+    const noKri = (APP_DATA.regulatoryDomainAdaptationResults || []).filter(r => r.kriCalculationStatus === 'INSUFFICIENT_DATA' || r.kriCalculationStatus === 'DATA_QUALITY_REVIEW_REQUIRED');
+    const noLoop = (APP_DATA.regulatoryDomainAdaptationResults || []).filter(r => r.closedLoopStatus === 'PARTIAL_CLOSED_LOOP');
+    return `<div class="card"><div class="card-title">领域批量适配待办</div>
+      <div class="group-metrics">${[
+        [pending.length, '待完成领域适配', `App.navigatePublic('regulatory-data-governance')`],
+        [blocked.length, '数据质量阻断', `App.navigatePublic('regulatory-data-quality')`],
+        [failed.length, '适配失败', `App.navigatePublic('regulatory-data-integration')`],
+        [noKri.length, 'KRI不可计算', `App.navigatePublic('regulatory-kri-monitoring')`],
+        [noLoop.length, '闭环未形成', `App.navigatePublic('regulatory-data-governance')`],
+        [m.domainAdaptationCoverage != null ? m.domainAdaptationCoverage + '%' : '—', '领域覆盖率', `App.navigatePublic('regulatory-data-governance')`]
+      ].map(([v, l, n]) => this.renderPublicKpiCard(l, v, n)).join('')}</div>
+    </div>`;
+  },
+
+  renderBatchAdaptationRolePanel(roleType) {
+    const m = APP_DATA.regulatoryBatchAdaptationMetrics || {};
+    const results = APP_DATA.regulatoryDomainAdaptationResults || [];
+    if (roleType === 'GROUP_LEADER') {
+      return `<div class="card"><div class="card-title">集团适配覆盖</div>
+        <div class="group-metrics">${[
+          [m.domainAdaptationCoverage != null ? m.domainAdaptationCoverage + '%' : '—', '领域覆盖率', `App.navigatePublic('regulatory-data-governance')`],
+          [m.closedLoopDriveRate != null ? m.closedLoopDriveRate + '%' : '—', '闭环驱动率', `App.navigatePublic('regulatory-data-governance')`],
+          [m.fullClosedLoopDomainCount, '完整闭环领域', `App.navigatePublic('regulatory-data-governance')`],
+          [results.filter(r => (r.maturityLevel || '').startsWith('LEVEL_7')).length, 'LEVEL_7 领域', `App.navigatePublic('regulatory-data-governance')`]
+        ].map(([v, l, n]) => this.renderPublicKpiCard(l, v, n)).join('')}</div></div>`;
+    }
+    if (roleType === 'GROUP_REGULATORY') {
+      const failed = results.filter(r => r.adaptationStatus === 'FAILED');
+      return `<div class="card"><div class="card-title">领域适配监管视图</div>
+        <p>失败领域 <b>${failed.length}</b> · KRI计算失败 <b>${results.filter(r => r.kriCalculationStatus === 'DATA_QUALITY_REVIEW_REQUIRED' || r.kriCalculationStatus === 'INSUFFICIENT_DATA').length}</b></p>
+        ${this.renderPublicLinkButton('批量适配', `App.navigatePublic('regulatory-data-integration')`)} ${this.renderPublicLinkButton('领域配置', `App.navigatePublic('regulatory-data-governance')`)}</div>`;
+    }
+    if (roleType === 'DOMAIN_REGULATOR') {
+      const domainResults = this.filterDataByUserScope(results, r => (APP_DATA.regulatoryDomainConfigurations.find(c => c.domainId === r.domainId) || {}).responsibleOrganizationId, r => r.domainId);
+      return `<div class="card"><div class="card-title">本领域适配</div>
+        ${domainResults.map(r => `<p class="insight-note">${r.domainName}: ${r.maturityLevel} · ${r.closedLoopStatus} · KRI ${r.calculatedKriCount}</p>`).join('') || this.renderPublicEmptyState('暂无')}
+        ${this.renderPublicLinkButton('KRI监测', `App.navigatePublic('regulatory-kri-monitoring')`)} ${this.renderPublicLinkButton('预警中心', `App.navigatePublic('regulatory-warning-center')`)}</div>`;
+    }
+    const entityId = this.regulatoryRoleScopeId || this.getCurrentRegulatoryUser()?.organizationId;
+    const entityIssues = (APP_DATA.regulatoryDataQualityIssues || []).filter(i => { const ds = (APP_DATA.regulatoryDataSets || []).find(d => d.dataSetId === i.dataSetId); return ds?.ownerOrganizationId === entityId && i.status !== 'CLOSED'; });
+    return `<div class="card"><div class="card-title">本法人数据适配</div>
+      <p>数据质量问题 <b>${entityIssues.length}</b> · 严重 <b>${entityIssues.filter(i => i.severity === 'HIGH').length}</b></p>
+      ${this.renderPublicLinkButton('数据质量', `App.navigatePublic('regulatory-data-quality')`)} ${this.renderPublicLinkButton('整改', `App.navigatePublic('rectification')`)}</div>`;
+  },
+
+  _kriAdaptationContext(kriId) {
+    const run = (APP_DATA.regulatoryDataAdaptationRuns || []).find(r => (r.pipelineSteps || []).some(s => s.objectRef === kriId));
+    const src = run?.sourceId;
+    const domain = (APP_DATA.regulatoryDomainAdaptationResults || []).find(r => (r.kriIds || []).includes(kriId));
+    const cred = this.getKriDataCredibility(kriId);
+    return { sourceId: src, domainId: domain?.domainId, domainName: domain?.domainName, adaptationStatus: domain?.adaptationStatus, credibility: cred };
+  },
+
   renderPlatformHealthPanel() {
     const ph = this.computePlatformHealth();
     const dims = ph.dimensions || {};
@@ -5289,6 +5738,7 @@ Object.assign(App, {
           <p>${this.renderPublicLinkButton('持续改进中心', `App.navigatePublic('regulatory-improvement-center')`)}</p>
         </div>
       </div>
+      ${this.renderBatchAdaptationWorkbenchPanel()}
       ${this.renderPlatformHealthPanel()}
       ${this.renderCapabilityMapOverview()}
       ${this.renderBusinessScenarioPanel()}`;
@@ -5471,8 +5921,9 @@ Object.assign(App, {
       </div>
       <div class="card"><div class="card-title">数据运行视图</div>
         ${(() => {
-          const dm = APP_DATA.regulatoryDataGovernanceMetrics || {};
           const roleType = role.roleType;
+          return this.renderBatchAdaptationRolePanel(roleType) + (() => {
+          const dm = APP_DATA.regulatoryDataGovernanceMetrics || {};
           if (roleType === 'GROUP_LEADER') return [
             [dm.overallQualityScore ?? '—', '集团数据质量', `App.navigatePublic('regulatory-data-quality')`],
             [dm.severeIssueCount, '重大数据异常', `App.navigatePublic('regulatory-data-quality')`],
@@ -5490,7 +5941,7 @@ Object.assign(App, {
           const entityIssues = (APP_DATA.regulatoryDataQualityIssues || []).filter(i => { const ds = APP_DATA.regulatoryDataSets.find(d => d.dataSetId === i.dataSetId); return ds?.ownerOrganizationId === scopeId; });
           const entityGov = (APP_DATA.regulatoryDataGovernanceTasks || []).filter(t => t.responsibleOrganizationId === scopeId && t.status !== 'CLOSED');
           return `<p>本法人数据异常 <b>${entityIssues.filter(i => i.status !== 'CLOSED').length}</b> · 治理任务 <b>${entityGov.length}</b></p>${this.renderPublicLinkButton('数据质量', `App.navigatePublic('regulatory-data-quality')`)} ${this.renderPublicLinkButton('数据治理', `App.navigatePublic('regulatory-data-governance')`)}`;
-        })()}
+        })()})()}
       </div>
       <div class="card"><div class="card-title">指标与预警视图</div>
         ${(() => {
@@ -5797,7 +6248,8 @@ Object.assign(App, {
     if (f.connectionStatus) sources = sources.filter(s => s.connectionStatus === f.connectionStatus);
     const dm = APP_DATA.regulatoryDataGovernanceMetrics || {};
     const am = APP_DATA.regulatoryDataAdaptationMetrics || {};
-    const kpi = [[dm.sourceCount, '数据源总数'], [dm.onlineSourceCount, '在线数据源'], [am.closedLoopSourceCount ?? '—', '闭环驱动源'], [am.avgClosureRate != null ? am.avgClosureRate + '%' : '—', '平均闭环率'], [am.activeMappingCount ?? '—', '活跃映射'], [am.insufficientHistoryCount ?? '—', '历史不足源']];
+    const bm = APP_DATA.regulatoryBatchAdaptationMetrics || {};
+    const kpi = [[dm.sourceCount, '数据源总数'], [bm.adaptedDomainCount ?? am.configuredDomainCount ?? '—', '已适配领域'], [bm.domainAdaptationCoverage != null ? bm.domainAdaptationCoverage + '%' : '—', '领域覆盖率'], [bm.fullClosedLoopDomainCount ?? '—', '闭环驱动领域'], [bm.insufficientRealDataDomainCount ?? '—', '数据不足领域'], [am.activeMappingCount ?? '—', '活跃映射']];
     const typeOpts = [...new Set((APP_DATA.regulatoryDataSources || []).map(s => s.sourceType))];
     const rows = sources.map(s => {
       const canView = this.canRegulatoryAccess(this.getCurrentRegulatoryUser()?.userId, 'regulatoryDataSources', s.sourceId, 'VIEW').allowed;
@@ -5810,6 +6262,7 @@ Object.assign(App, {
         <select onchange="App.regulatoryDataSourcesFilter={...(App.regulatoryDataSourcesFilter||{}),sourceType:this.value||null};App.renderRegulatoryDataSources()"><option value="">全部类型</option>${typeOpts.map(t => `<option value="${t}" ${f.sourceType===t?'selected':''}>${t}</option>`).join('')}</select>
         <select onchange="App.regulatoryDataSourcesFilter={...(App.regulatoryDataSourcesFilter||{}),connectionStatus:this.value||null};App.renderRegulatoryDataSources()"><option value="">全部连接</option>${['ONLINE','DEGRADED','OFFLINE'].map(t => `<option value="${t}" ${f.connectionStatus===t?'selected':''}>${t}</option>`).join('')}</select>
       </div>
+      ${this.renderBatchAdaptationCoveragePanel()}
       <div class="card"><div class="card-title">数据源清单</div>${rows ? `<table class="data-table"><thead><tr><th>ID</th><th>名称</th><th>类型</th><th>责任组织</th><th>连接</th><th>最后同步</th><th>数据集</th><th>质量分</th></tr></thead><tbody>${rows}</tbody></table>` : this.renderPublicEmptyState('无可见数据源')}</div>
       <div id="regulatoryDataSourceDetail"></div>`;
     if (this.regulatoryDataSourceFocusId) setTimeout(() => this.showRegulatoryDataSourceDetail(this.regulatoryDataSourceFocusId), 0);
@@ -5829,7 +6282,8 @@ Object.assign(App, {
           { title: '一、数据源信息', content: this.renderPublicMetaGrid([this.renderPublicIdField(src.sourceId, '数据源 ID'), { label: '类型', value: src.sourceType }, { label: '责任组织', value: src.ownerOrganizationName }, { label: '连接状态', html: this.renderPublicStatusBadge(src.connectionStatus === 'ONLINE' ? '正常' : '异常') }, { label: '最后同步', value: src.lastSyncAt }]) },
           { title: '二、数据集', content: dataSets.map(d => this.renderPublicLinkButton(d.dataSetName, `App.navigatePublic('regulatory-data-integration',{dataSetId:'${d.dataSetId}'})`)).join('') || this.renderPublicEmptyState('暂无') },
           { title: '三、血缘影响', content: `<p>受影响 KRI: ${impact.affectedKris.length} · 受影响风险: ${impact.affectedRisks.length} · 受影响行动: ${impact.affectedActions.length}</p>${this.renderPublicLinkButton('查看血缘影响', `App.navigatePublic('regulatory-data-lineage',{sourceId:'${sourceId}'})`)}` },
-          { title: '四、真实业务数据适配闭环', content: this.renderDataAdaptationPipelinePanel(sourceId) }
+          { title: '四、真实业务数据适配闭环', content: this.renderDataAdaptationPipelinePanel(sourceId) },
+          { title: '五、监管领域关联', content: (() => { const dr = (APP_DATA.regulatoryDomainAdaptationResults || []).filter(r => (r.sourceIds || []).includes(sourceId)); return dr.length ? dr.map(r => `<p class="insight-note">${r.domainName} · ${r.maturityLevel} · ${this.renderPublicUnifiedStatusBadge(r.closedLoopStatus)} ${this.renderPublicLinkButton('领域', `App.navigatePublic('regulatory-data-governance')`)}</p>`).join('') : this.renderPublicEmptyState('暂无领域关联'); })() }
         ],
         footer: `${this.renderPublicLinkButton('执行适配', `App.adaptRealBusinessData('${sourceId}');App.showRegulatoryDataSourceDetail('${sourceId}')`)} ${this.renderPublicLinkButton('数据接入', `App.navigatePublic('regulatory-data-integration',{sourceId:'${sourceId}'})`)} ${this.renderPublicLinkButton('数据血缘', `App.navigatePublic('regulatory-data-lineage',{sourceId:'${sourceId}'})`)}`
       });
@@ -5856,6 +6310,7 @@ Object.assign(App, {
     node.innerHTML = `${this.renderPublicBackButton('regulatory-data-integration')}
       <div class="group-hero"><div><span>数据运行</span><h2>集团监管数据接入中心</h2><p>数据源 → 接入任务 → 数据集 → 记录 → 质量校验</p></div></div>
       <div class="group-metrics">${kpi.map(([v, l]) => this.renderPublicKpiCard(l, v, `App.navigatePublic('regulatory-data-integration')`)).join('')}</div>
+      ${this.renderBatchAdaptationRunsPanel()}
       <div class="card"><div class="card-title">接入任务</div>${rows ? `<table class="data-table"><thead><tr><th>数据源</th><th>任务</th><th>数据集</th><th>状态</th><th>记录数</th><th>成功/失败</th><th>重试</th><th>完成</th></tr></thead><tbody>${rows}</tbody></table>` : this.renderPublicEmptyState('暂无')}</div>
       ${f.sourceId ? this.renderDataAdaptationPipelinePanel(f.sourceId) : ''}
       <div id="regulatoryDataIntegrationDetail"></div>`;
@@ -5933,7 +6388,9 @@ Object.assign(App, {
     }).join('');
     node.innerHTML = `${this.renderPublicBackButton('regulatory-data-governance')}
       <div class="group-hero"><div><span>数据运行</span><h2>集团监管数据治理中心</h2><p>质量问题 → 确认 → 责任主体 → 治理任务 → 整改 → 复核 → 关闭</p></div><div>任务 <b>${tasks.length}</b></div></div>
+      ${this.renderBatchAdaptationCoveragePanel()}
       ${this.renderRegulatoryDomainConfigPanel()}
+      ${this.renderDomainAdaptationMaturityPanel()}
       <div class="card"><div class="card-title">治理任务</div>${rows ? `<table class="data-table"><thead><tr><th>任务ID</th><th>质量问题</th><th>责任主体</th><th>状态</th><th>截止</th><th>验证</th><th>关联整改</th></tr></thead><tbody>${rows}</tbody></table>` : this.renderPublicEmptyState('暂无')}</div>
       <div id="regulatoryDataGovernanceDetail"></div>`;
     if (this.regulatoryDataGovernanceFocusId) setTimeout(() => this.showRegulatoryDataGovernanceDetail(this.regulatoryDataGovernanceFocusId), 0);
@@ -6022,11 +6479,14 @@ Object.assign(App, {
     if (f.kriId) kris = kris.filter(k => k.kriId === f.kriId);
     if (f.status) kris = kris.filter(k => k.status === f.status);
     const km = APP_DATA.regulatoryMetricKriMetrics || {};
-    const rows = kris.map(k => `<tr class="clickable" onclick="App.showRegulatoryKriRuntimeDetail('${k.kriRuntimeId}')"><td>${k.kriId}</td><td>${k.kriName}</td><td>${k.metricId || '—'}</td><td>${k.threshold}</td><td>${k.currentValue}</td><td>${this.renderPublicStatusBadge(k.status)}</td><td>${k.credibilityScore ?? '—'}</td></tr>`).join('');
+    const rows = kris.map(k => {
+      const ctx = this._kriAdaptationContext(k.kriId);
+      return `<tr class="clickable" onclick="App.showRegulatoryKriRuntimeDetail('${k.kriRuntimeId}')"><td>${k.kriId}</td><td>${k.kriName}</td><td>${ctx.sourceId || '—'}</td><td>${ctx.domainName || '—'}</td><td>${ctx.adaptationStatus ? this.renderPublicUnifiedStatusBadge(ctx.adaptationStatus) : '—'}</td><td>${k.currentValue}</td><td>${this.renderPublicStatusBadge(k.status)}</td><td>${k.credibilityScore ?? ctx.credibility?.credibility ?? '—'}</td></tr>`;
+    }).join('');
     node.innerHTML = `${this.renderPublicBackButton('regulatory-kri-monitoring')}
-      <div class="group-hero"><div><span>指标运行</span><h2>集团KRI运行监测中心</h2><p>KRI监测 → 阈值判断 → 预警识别</p></div></div>
+      <div class="group-hero"><div><span>指标运行</span><h2>集团KRI运行监测中心</h2><p>KRI监测 → 阈值判断 → 预警识别 · 含数据源与领域适配状态</p></div></div>
       <div class="group-metrics">${[[km.kriCount,'KRI总数'],[km.normalKriCount,'正常'],[km.attentionKriCount,'关注'],[km.warningKriCount,'预警'],[km.criticalKriCount,'严重'],[km.insufficientDataKriCount,'数据不足']].map(([v,l])=>this.renderPublicKpiCard(l,v,`App.navigatePublic('regulatory-kri-monitoring')`)).join('')}</div>
-      <div class="card"><div class="card-title">KRI运行清单</div>${rows ? `<table class="data-table"><thead><tr><th>KRI</th><th>名称</th><th>指标</th><th>阈值</th><th>当前值</th><th>状态</th><th>可信度</th></tr></thead><tbody>${rows}</tbody></table>` : this.renderPublicEmptyState('无可见KRI')}</div>
+      <div class="card"><div class="card-title">KRI运行清单</div>${rows ? `<table class="data-table"><thead><tr><th>KRI</th><th>名称</th><th>来源数据源</th><th>监管领域</th><th>适配状态</th><th>当前值</th><th>状态</th><th>可信度</th></tr></thead><tbody>${rows}</tbody></table>` : this.renderPublicEmptyState('无可见KRI')}</div>
       <div id="regulatoryKriRuntimeDetail"></div>`;
     if (this.regulatoryKriRuntimeFocusId) setTimeout(() => this.showRegulatoryKriRuntimeDetail(this.regulatoryKriRuntimeFocusId), 0);
   },
@@ -6059,11 +6519,15 @@ Object.assign(App, {
     if (f.status) warns = warns.filter(w => w.status === f.status);
     if (f.warningLevel) warns = warns.filter(w => w.warningLevel === f.warningLevel);
     const km = APP_DATA.regulatoryMetricKriMetrics || {};
-    const rows = warns.map(w => `<tr class="clickable" onclick="App.showRegulatoryWarningDetail('${w.regulatoryWarningId}')"><td>${w.regulatoryWarningId}</td><td>${w.kriId}</td><td>${this.renderPublicPriorityBadge(w.warningLevel)}</td><td>${w.entityId}</td><td>${w.status}</td><td>${w.credibilityScore ?? '—'}</td><td>${w.riskMatterId || '—'}</td></tr>`).join('');
+    const rows = warns.map(w => {
+      const ctx = this._kriAdaptationContext(w.kriId);
+      const qStatus = (APP_DATA.regulatoryDomainAdaptationResults || []).find(r => r.domainId === ctx.domainId)?.qualityStatus || '—';
+      return `<tr class="clickable" onclick="App.showRegulatoryWarningDetail('${w.regulatoryWarningId}')"><td>${w.regulatoryWarningId}</td><td>${w.kriId}</td><td>${ctx.sourceId || '—'}</td><td>${ctx.domainName || '—'}</td><td>${qStatus}</td><td>${this.renderPublicPriorityBadge(w.warningLevel)}</td><td>${w.status}</td><td>${w.credibilityScore ?? '—'}</td></tr>`;
+    }).join('');
     node.innerHTML = `${this.renderPublicBackButton('regulatory-warning-center')}
-      <div class="group-hero"><div><span>指标运行</span><h2>集团监管预警中心</h2><p>KRI异常 → 预警 → 人工研判 → 风险事件（预警≠风险事件）</p></div></div>
+      <div class="group-hero"><div><span>指标运行</span><h2>集团监管预警中心</h2><p>KRI异常 → 预警 → 人工研判 · 含数据源、领域与质量状态</p></div></div>
       <div class="group-metrics">${[[km.warningTotalCount,'预警总数'],[km.attentionWarningCount,'ATTENTION'],[km.warningLevelCount,'WARNING'],[km.criticalWarningCount,'CRITICAL'],[km.pendingReviewCount,'待研判']].map(([v,l])=>this.renderPublicKpiCard(l,v,`App.navigatePublic('regulatory-warning-center')`)).join('')}</div>
-      <div class="card"><div class="card-title">监管预警清单</div>${rows ? `<table class="data-table"><thead><tr><th>ID</th><th>KRI</th><th>等级</th><th>法人</th><th>状态</th><th>可信度</th><th>风险事项</th></tr></thead><tbody>${rows}</tbody></table>` : this.renderPublicEmptyState('暂无')}</div>
+      <div class="card"><div class="card-title">监管预警清单</div>${rows ? `<table class="data-table"><thead><tr><th>ID</th><th>KRI</th><th>来源数据源</th><th>监管领域</th><th>数据质量</th><th>等级</th><th>状态</th><th>可信度</th></tr></thead><tbody>${rows}</tbody></table>` : this.renderPublicEmptyState('暂无')}</div>
       <div id="regulatoryWarningDetail"></div>`;
     if (this.regulatoryWarningFocusId) setTimeout(() => this.showRegulatoryWarningDetail(this.regulatoryWarningFocusId), 0);
   },

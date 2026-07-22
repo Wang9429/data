@@ -6235,3 +6235,18 @@ Object.assign(APP_DATA, {
     });
   });
 })();
+
+(function () {
+  APP_DATA.regulatoryBatchAdaptationScenarios = [
+    { scenarioId: 'BA-01', name: '集团批量适配', roleType: 'GROUP_REGULATORY', startPage: 'regulatory-data-governance', pagePath: ['regulatory-data-governance', 'regulatory-data-integration', 'regulatory-data-sources', 'regulatory-kri-monitoring', 'regulatory-warning-center', 'regulatory-actions'], steps: ['选择全部领域', '执行 FULL 批量适配', '查看运行记录', '验证领域覆盖率', '穿透闭环链路'], expectedResult: '9 大领域批量运行记录可追溯', dataChain: 'regulatoryDomainConfigurations → regulatoryBatchAdaptationRuns → regulatoryDomainAdaptationResults', permissionRequired: 'DATA_MANAGE' },
+    { scenarioId: 'BA-02', name: '单领域适配', roleType: 'DOMAIN_REGULATOR', startPage: 'regulatory-data-governance', pagePath: ['regulatory-data-governance', 'regulatory-data-sources', 'regulatory-kri-monitoring'], steps: ['选择单领域', '执行 INCREMENTAL', '查看领域适配结果'], expectedResult: '单领域适配状态与成熟度更新', dataChain: 'domainId → sourceIds → mappings → KRIs', permissionRequired: 'DATA_VIEW' },
+    { scenarioId: 'BA-03', name: '单数据源重试', roleType: 'GROUP_REGULATORY', startPage: 'regulatory-data-integration', pagePath: ['regulatory-data-integration', 'regulatory-data-sources', 'regulatory-data-quality'], steps: ['定位失败数据源', 'RETRY_FAILED', '验证重试结果'], expectedResult: '失败步骤可重试且状态更新', dataChain: 'sourceId → failureStep → retry → audit', permissionRequired: 'DATA_MANAGE' },
+    { scenarioId: 'BA-04', name: '数据质量阻断', roleType: 'GROUP_REGULATORY', startPage: 'regulatory-data-quality', pagePath: ['regulatory-data-quality', 'regulatory-kri-monitoring', 'regulatory-warning-center'], steps: ['识别 QUALITY_FAILED', '验证 KRI 可信度下降', '确认 DATA_QUALITY_REVIEW_REQUIRED'], expectedResult: '质量失败不生成可信预警', dataChain: 'qualityIssue → KRI credibility → warning block', permissionRequired: 'DATA_VIEW' },
+    { scenarioId: 'BA-05', name: '多领域闭环验证', roleType: 'GROUP_LEADER', startPage: 'regulatory-data-governance', pagePath: ['regulatory-data-governance', 'regulatory-kri-monitoring', 'regulatory-warning-center', 'regulatory-actions', 'rectification', 'regulatory-performance', 'regulatory-improvement-center'], steps: ['筛选 FULL_CLOSED_LOOP 领域', '穿透 KRI→预警→行动→整改', '验证至少 3 领域'], expectedResult: '多领域真实数据闭环可验证', dataChain: 'domain → KRI → warning → action → rectification → performance', permissionRequired: 'DATA_VIEW' },
+    { scenarioId: 'BA-06', name: '适配失败追溯', roleType: 'GROUP_REGULATORY', startPage: 'regulatory-data-integration', pagePath: ['regulatory-data-integration', 'regulatory-audit-trail'], steps: ['查看失败记录', '定位 failureStep', '审计日志穿透'], expectedResult: '失败步骤、原因、时间可追溯', dataChain: 'regulatoryBatchAdaptationFailures → audit', permissionRequired: 'DATA_VIEW' }
+  ];
+  APP_DATA.regulatoryDomainAdaptationResults = APP_DATA.regulatoryDomainAdaptationResults || [];
+  APP_DATA.regulatoryBatchAdaptationRuns = APP_DATA.regulatoryBatchAdaptationRuns || [];
+  APP_DATA.regulatoryBatchAdaptationFailures = APP_DATA.regulatoryBatchAdaptationFailures || [];
+  APP_DATA.regulatoryBatchAdaptationMetrics = APP_DATA.regulatoryBatchAdaptationMetrics || {};
+})();
