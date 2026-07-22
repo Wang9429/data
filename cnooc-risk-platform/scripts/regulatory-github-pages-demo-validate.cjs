@@ -92,8 +92,15 @@ const originalNavigationPreserved = html.includes('投资结构与组合')
   && !html.includes('getDemoFinalMenu');
 const originalVisualStructurePreserved = html.includes('sidebar-title')
   && html.includes('集团穿透式监管平台')
-  && html.includes('投资管理领域')
   && html.includes('domain-tabs-bar');
+const noDomainLabelBesideSystemName = html.includes('<title>集团穿透式监管平台</title>')
+  && !html.includes('<div class="sidebar-subtitle">投资管理领域</div>')
+  && !/sidebar-title[^<]*集团穿透式监管平台[\s\S]{0,120}投资管理领域/.test(html);
+const strategicDirectionAnalysisNoNavigation = (() => {
+  const pub = byFile['js/public-regulatory.js'] || '';
+  const block = pub.match(/\{ title: '战略方向匹配分析'[\s\S]*?\}/);
+  return block && !block[0].includes('App.navigate(') && block[0].includes('showPortfolioDetail');
+})();
 const originalBusinessScenesPreserved = html.includes('国资监管主题落实情况')
   && html.includes('投资管理领域运行')
   && html.includes('重大投资事项');
@@ -166,6 +173,8 @@ const hasDisallowedLink = (() => {
 check(originalDemoContentPreserved, 'originalDemoContentPreserved');
 check(originalNavigationPreserved, 'originalNavigationPreserved');
 check(originalVisualStructurePreserved, 'originalVisualStructurePreserved');
+check(noDomainLabelBesideSystemName, 'noDomainLabelBesideSystemName');
+check(strategicDirectionAnalysisNoNavigation, 'strategicDirectionAnalysisNoNavigation');
 check(originalBusinessScenesPreserved, 'originalBusinessScenesPreserved');
 check(originalDataDisplayPreserved, 'originalDataDisplayPreserved');
 check(groupRegulatoryPerspectiveAdded, 'groupRegulatoryPerspectiveAdded');
@@ -270,6 +279,8 @@ const result = {
   originalDemoContentPreserved,
   originalNavigationPreserved,
   originalVisualStructurePreserved,
+  noDomainLabelBesideSystemName,
+  strategicDirectionAnalysisNoNavigation,
   originalBusinessScenesPreserved,
   originalDataDisplayPreserved,
   groupRegulatoryPerspectiveAdded,
