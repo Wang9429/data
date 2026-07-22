@@ -2351,6 +2351,637 @@ Object.assign(App, {
     };
   },
 
+  _coordNow() { return this._opNow ? this._opNow() : '2026-07-22 12:30:00'; },
+  _coordToday() { return this._opToday ? this._opToday() : '2026-07-22'; },
+
+  initializeRegulatoryCoordination() {
+    this.identifyRegulatoryCoordinationCases();
+    (APP_DATA.regulatoryCoordinationCases || []).forEach(c => {
+      if (!APP_DATA.regulatoryCoordinationResponsibilityIndex.find(r => r.caseId === c.id)) {
+        this.identifyRegulatoryCoordinationResponsibility(c.id);
+      }
+    });
+    this.buildRegulatoryTaskDependencies();
+    this.syncRegulatoryCoordinationQueue();
+    (APP_DATA.regulatoryCoordinationCases || []).forEach(c => this.buildJointRectificationVerification(c.id));
+    this.computeRegulatoryCoordinationMetrics();
+    return APP_DATA.regulatoryCoordinationMetrics;
+  },
+
+  _deptToOrgId(dept, entityId) {
+    if (!dept) return entityId || 'G001';
+    const ent = (APP_DATA.globalLegalEntities || []).find(e => e.entityId === entityId);
+    if (ent && (dept.includes(ent.entityName) || dept === ent.primaryDepartment)) return entityId;
+    const domain = (APP_DATA.regulatoryDomainConfigurations || []).find(d => d.domainName && dept.includes(d.domainName.slice(0, 2)));
+    if (domain) return domain.responsibleOrganizationId || entityId || 'G001';
+    return entityId || 'G001';
+  },
+
+  identifyRegulatoryCoordinationCases() {
+    const cases = [];
+    let seq = 1;
+    const add = (sourceType, sourceId, caseType, extra) => {
+      const id = 'RCC-' + String(seq++).padStart(4, '0');
+      cases.push({
+        id,
+        sourceType,
+        sourceId,
+        caseType,
+        primaryOrganization: extra.primaryOrganization || 'G001',
+        supportingOrganizations: extra.supportingOrganizations || [],
+        affectedEntities: extra.affectedEntities || [],
+        affectedDomains: extra.affectedDomains || [],
+        severity: extra.severity || 'HIGH',
+        priority: extra.priority || 'HIGH',
+        status: 'PROPOSED',
+        requiresHumanDecision: true,
+        dataStatus: 'DERIVED',
+        sourceTraceability: { sourceType, sourceId, ...(extra.trace || {}) },
+        createdAt: this._coordNow()
+      });
+      return id;
+    };
+    (APP_DATA.crossDomainRiskMatters || []).forEach(m => {
+      const entities = m.entityIds || [];
+      const domains = m.domainIds || [];
+      const caseType = entities.length > 1 ? 'CROSS_ENTITY_RISK' : 'CROSS_DOMAIN_RISK';
+      add('crossDomainRiskMatters', m.riskMatterId, caseType, {
+        primaryOrganization: m.primaryResponsibleDepartment,
+        supportingOrganizations: m.collaboratingDepartments || [],
+        affectedEntities: entities,
+        affectedDomains: domains,
+        severity: m.riskLevel === '高' ? 'CRITICAL' : 'HIGH',
+        priority: m.riskLevel === '高' ? 'CRITICAL' : 'HIGH',
+        trace: { kriIds: m.kriIds, rectificationTaskIds: m.relatedRectificationTaskIds }
+      });
+    });
+    (APP_DATA.regulatoryWarnings || []).filter(w => w.warningLevel === 'CRITICAL' || w.status === 'PENDING_REVIEW').forEach(w => {
+      const domains = w.domainId ? [w.domainId] : [];
+      const domCfg = (APP_DATA.regulatoryDomainConfigurations || []).find(d => d.domainId === w.domainId);
+      add('regulatoryWarnings', w.regulatoryWarningId, 'MAJOR_WARNING', {
+        primaryOrganization: domCfg?.responsibleOrganizationId || w.entityId,
+        supportingOrganizations: ['ROLE-GROUP-REG'],
+        affectedEntities: w.entityId ? [w.entityId] : [],
+        affectedDomains: domains,
+        severity: 'CRITICAL',
+        trace: { kriId: w.kriId, riskMatterId: w.riskMatterId }
+      });
+    });
+    (APP_DATA.rectificationTasks || []).filter(t => (t.riskLevel === '高' || t.priority === 'CRITICAL') && t.status !== '已关闭').forEach(t => {
+      const cdr = (APP_DATA.crossDomainRiskMatters || []).find(m => (m.relatedRectificationTaskIds || []).includes(t.taskId));
+      if (cdr) return;
+      add('rectificationTasks', t.taskId, 'MAJOR_RECTIFICATION', {
+        primaryOrganization: t.responsibleDepartment || t.owner,
+        supportingOrganizations: [],
+        affectedEntities: t.entityId ? [t.entityId] : [],
+        affectedDomains: t.domainId ? [t.domainId] : [],
+        severity: 'HIGH',
+        trace: { riskMatterId: t.riskMatterId }
+      });
+    });
+    (APP_DATA.regulatoryActions || []).filter(a => a.overdue || (a.dueDate && a.dueDate < this._coordToday() && !['COMPLETED', 'CLOSED', 'VERIFIED'].includes(a.status))).forEach(a => {
+      add('regulatoryActions', a.actionId, 'OVERDUE_ACTION', {
+        primaryOrganization: a.responsibleOrganizationId || a.entityId,
+        supportingOrganizations: [],
+        affectedEntities: a.entityId ? [a.entityId] : [],
+        affectedDomains: a.domainId ? [a.domainId] : [],
+        severity: 'HIGH',
+        trace: {}
+      });
+    });
+    const kriImpactMap = {};
+    (APP_DATA.regulatoryDataQualityIssues || []).filter(i => i.status !== 'CLOSED' && i.kriId).forEach(i => {
+      if (!kriImpactMap[i.qualityIssueId]) kriImpactMap[i.qualityIssueId] = { issue: i, kris: new Set() };
+      kriImpactMap[i.qualityIssueId].kris.add(i.kriId);
+    });
+    Object.values(kriImpactMap).filter(x => x.kris.size >= 1).forEach(({ issue, kris }) => {
+      const kriList = [...kris];
+      const domains = [...new Set(kriList.map(kid => (APP_DATA.groupKris || []).find(k => k.id === kid)?.category).filter(Boolean))];
+      if (domains.length >= 1 || kriList.length >= 2) {
+        add('regulatoryDataQualityIssues', issue.qualityIssueId, 'DATA_QUALITY_MULTI_KRI', {
+          primaryOrganization: issue.dataOwner || issue.domainId,
+          supportingOrganizations: domains.map(d => (APP_DATA.regulatoryDomainConfigurations || []).find(c => c.domainId === d)?.domainName).filter(Boolean),
+          affectedEntities: issue.entityId ? [issue.entityId] : [],
+          affectedDomains: domains,
+          severity: issue.severity === 'HIGH' ? 'CRITICAL' : 'HIGH',
+          trace: { kriIds: kriList }
+        });
+      }
+    });
+    (APP_DATA.regulatoryRules || []).filter(r => r.lastRunStatus === 'FAILED').forEach(r => {
+      const dom = (APP_DATA.regulatoryDomainConfigurations || []).find(d => d.domainId === r.domainId);
+      add('regulatoryRules', r.ruleId, 'RULE_MULTI_OBJECT', {
+        primaryOrganization: r.ownerOrganizationId || dom?.responsibleOrganizationId || 'G001',
+        supportingOrganizations: (r.affectedObjectIds || []).slice(0, 3).map(id => String(id)),
+        affectedEntities: [],
+        affectedDomains: r.domainId ? [r.domainId] : [],
+        severity: 'MEDIUM',
+        trace: { kriId: r.kriId }
+      });
+    });
+    APP_DATA.regulatoryCoordinationCases = cases;
+    return cases;
+  },
+
+  identifyRegulatoryCoordinationResponsibility(caseId) {
+    const c = (APP_DATA.regulatoryCoordinationCases || []).find(x => x.id === caseId);
+    if (!c) return null;
+    const evidence = [];
+    const addEv = (type, sourceType, sourceId, reason) => evidence.push({ evidenceType: type, sourceType, sourceId, reason });
+    let primaryOrg = c.primaryOrganization;
+    let primaryRole = 'ROLE-ENTITY-REG';
+    if (c.sourceType === 'crossDomainRiskMatters') {
+      const m = (APP_DATA.crossDomainRiskMatters || []).find(x => x.riskMatterId === c.sourceId);
+      const resp = (APP_DATA.crossDomainResponsibilities || []).find(r => r.riskMatterId === c.sourceId);
+      if (resp) {
+        primaryOrg = resp.primaryDepartment;
+        addEv('CROSS_DOMAIN_RESPONSIBILITY', 'crossDomainResponsibilities', resp.responsibilityId, '跨领域责任配置指定主责部门');
+      }
+      if (m) addEv('RISK_MATTER', 'crossDomainRiskMatters', m.riskMatterId, '风险事项主责部门：' + m.primaryResponsibleDepartment);
+    }
+    if (c.sourceType === 'regulatoryWarnings') {
+      const w = (APP_DATA.regulatoryWarnings || []).find(x => x.regulatoryWarningId === c.sourceId);
+      const dom = (APP_DATA.regulatoryDomainConfigurations || []).find(d => d.domainId === w?.domainId);
+      if (dom) { primaryOrg = dom.responsibleOrganizationId; primaryRole = 'ROLE-DOMAIN-REG'; addEv('DOMAIN_CONFIG', 'regulatoryDomainConfigurations', dom.domainId, '领域责任组织'); }
+      if (w) addEv('WARNING', 'regulatoryWarnings', w.regulatoryWarningId, '预警责任法人 ' + w.entityId);
+    }
+    if (c.sourceType === 'regulatoryDataQualityIssues') {
+      const i = (APP_DATA.regulatoryDataQualityIssues || []).find(x => x.qualityIssueId === c.sourceId);
+      if (i?.kriId) addEv('KRI', 'groupKris', i.kriId, 'KRI关联数据质量问题');
+      const src = (APP_DATA.regulatoryDataSources || []).find(s => s.sourceId === i?.sourceId);
+      if (src) { primaryOrg = src.dataOwner || src.ownerOrganizationId; addEv('DATA_SOURCE', 'regulatoryDataSources', src.sourceId, '数据源责任组织'); }
+    }
+    if (c.sourceType === 'regulatoryActions') {
+      const a = (APP_DATA.regulatoryActions || []).find(x => x.actionId === c.sourceId);
+      if (a) { primaryOrg = a.responsibleOrganizationId; addEv('ACTION', 'regulatoryActions', a.actionId, '监管行动责任人'); }
+    }
+    const supporting = (c.supportingOrganizations || []).map((org, idx) => ({
+      organizationId: typeof org === 'string' && org.startsWith('ROLE-') ? org : this._deptToOrgId(org, c.affectedEntities?.[0]),
+      department: org,
+      role: 'SUPPORTING_OWNER',
+      responsibilityType: 'SUPPORTING_OWNER',
+      evidence: evidence.filter(e => e.evidenceType === 'CROSS_DOMAIN_RESPONSIBILITY' || idx === 0)
+    }));
+    const result = {
+      caseId: c.id,
+      primaryOwner: { organizationId: this._deptToOrgId(primaryOrg, c.affectedEntities?.[0]), department: primaryOrg, role: primaryRole, responsibilityType: 'PRIMARY_OWNER' },
+      supportingOwners: supporting,
+      escalationOwner: { organizationId: 'G001', role: 'ROLE-GROUP-LEADER', responsibilityType: 'ESCALATION_OWNER' },
+      responsibilityEvidence: evidence,
+      dataStatus: 'DERIVED',
+      sourceTraceable: true
+    };
+    const idx = (APP_DATA.regulatoryCoordinationResponsibilityIndex || []).findIndex(r => r.caseId === caseId);
+    if (idx >= 0) APP_DATA.regulatoryCoordinationResponsibilityIndex[idx] = result;
+    else {
+      APP_DATA.regulatoryCoordinationResponsibilityIndex = APP_DATA.regulatoryCoordinationResponsibilityIndex || [];
+      APP_DATA.regulatoryCoordinationResponsibilityIndex.push(result);
+    }
+    return result;
+  },
+
+  confirmRegulatoryCoordinationCase(caseId, opts) {
+    const o = opts || {};
+    const c = (APP_DATA.regulatoryCoordinationCases || []).find(x => x.id === caseId);
+    if (!c) return { success: false, message: '协同事项不存在' };
+    const access = this.canRegulatoryAccess(this.getCurrentRegulatoryUser()?.userId, 'regulatoryCoordinationCases', caseId, 'MANAGE');
+    if (!access.allowed) {
+      this.createRegulatoryAuditLog({ actionType: 'OVERRIDE_DENIED', objectType: 'regulatoryCoordinationCases', objectId: caseId, reason: access.reason });
+      return { success: false, denied: true, message: access.reason };
+    }
+    const before = { status: c.status };
+    if (o.approved === false) {
+      c.status = 'REJECTED';
+      c.rejectionReason = o.reason || '拒绝协同责任分派';
+      c.reidentificationSuggestion = { suggestedAction: '重新识别主责与协同组织', requiresHumanDecision: true, dataStatus: 'DERIVED' };
+      this.createRegulatoryAuditLog({ actionType: 'REJECT', objectType: 'regulatoryCoordinationCases', objectId: caseId, beforeState: before, afterState: { status: c.status }, reason: c.rejectionReason });
+      return { success: true, case: c, reidentificationSuggestion: c.reidentificationSuggestion, requiresHumanDecision: true };
+    }
+    c.status = 'CONFIRMED';
+    c.confirmedAt = this._coordNow();
+    c.confirmedBy = this.getCurrentRegulatoryUser()?.userId;
+    this.createRegulatoryAuditLog({ actionType: 'CONFIRM', objectType: 'regulatoryCoordinationCases', objectId: caseId, beforeState: before, afterState: { status: c.status }, reason: o.reason || '人工确认协同事项' });
+    const tasks = this.buildRegulatoryCoordinationTasks(caseId);
+    return { success: true, case: c, tasks, requiresHumanDecision: true };
+  },
+
+  buildRegulatoryCoordinationTasks(caseId) {
+    const c = (APP_DATA.regulatoryCoordinationCases || []).find(x => x.id === caseId);
+    if (!c || c.status !== 'CONFIRMED') return [];
+    const resp = (APP_DATA.regulatoryCoordinationResponsibilityIndex || []).find(r => r.caseId === caseId);
+    const existing = (APP_DATA.regulatoryCoordinationTasks || []).filter(t => t.coordinationCaseId === caseId);
+    if (existing.length) return existing;
+    const tasks = [];
+    let seq = 1;
+    const mk = (orgId, role, taskType, deps, sourceType, sourceId) => {
+      const id = 'RCT-' + caseId.replace('RCC-', '') + '-' + String(seq++).padStart(2, '0');
+      tasks.push({
+        id,
+        coordinationCaseId: caseId,
+        sourceType: sourceType || c.sourceType,
+        sourceId: sourceId || c.sourceId,
+        organizationId: orgId,
+        role,
+        taskType,
+        status: deps.length ? 'BLOCKED' : 'READY',
+        dueDate: this._coordToday(),
+        dependencyTasks: deps,
+        completionEvidence: null,
+        dataStatus: 'DERIVED',
+        sourceTraceability: { caseId, sourceType: c.sourceType, sourceId: c.sourceId }
+      });
+      return id;
+    };
+    const primaryOrg = resp?.primaryOwner?.organizationId || c.affectedEntities?.[0] || 'G001';
+    const t1 = mk(primaryOrg, 'PRIMARY', 'DATA_PROVIDE', [], c.sourceType, c.sourceId);
+    const t2 = mk(primaryOrg, 'PRIMARY', 'RISK_ASSESSMENT', [t1], c.sourceType, c.sourceId);
+    (resp?.supportingOwners || []).slice(0, 3).forEach((s, i) => {
+      const st = mk(s.organizationId, 'SUPPORTING', i === 0 ? 'KRI_REVIEW' : 'WARNING_REVIEW', [t1], c.sourceType, c.sourceId);
+      if (c.caseType.includes('RECTIFICATION') || c.sourceType === 'rectificationTasks') {
+        mk(s.organizationId, 'SUPPORTING', 'RECTIFICATION', [t2, st], 'rectificationTasks', c.sourceId);
+      }
+    });
+    mk(primaryOrg, 'PRIMARY', 'ACTION_EXECUTION', [t2], 'regulatoryActions', (APP_DATA.regulatoryActions || []).find(a => a.domainId && c.affectedDomains?.includes(a.domainId))?.actionId || c.sourceId);
+    const supTasks = tasks.filter(t => t.taskType === 'RECTIFICATION');
+    const verifyDeps = supTasks.length ? supTasks.map(t => t.id) : [t2];
+    mk('G001', 'PRIMARY', 'VERIFICATION', verifyDeps, c.sourceType, c.sourceId);
+    mk('G001', 'PRIMARY', 'RESULT_CONFIRMATION', verifyDeps, c.sourceType, c.sourceId);
+    APP_DATA.regulatoryCoordinationTasks = [...(APP_DATA.regulatoryCoordinationTasks || []).filter(t => t.coordinationCaseId !== caseId), ...tasks];
+    this.buildRegulatoryTaskDependencies();
+    return tasks;
+  },
+
+  buildRegulatoryTaskDependencies() {
+    const tasks = APP_DATA.regulatoryCoordinationTasks || [];
+    tasks.forEach(t => {
+      const deps = t.dependencyTasks || [];
+      const blocked = deps.some(did => {
+        const dep = tasks.find(x => x.id === did);
+        return dep && dep.status !== 'COMPLETED';
+      });
+      if (blocked && t.status !== 'COMPLETED') t.status = 'BLOCKED';
+      else if (!blocked && t.status === 'BLOCKED') t.status = 'READY';
+      if (t.dueDate && t.dueDate < this._coordToday() && !['COMPLETED'].includes(t.status)) t.status = 'OVERDUE';
+      if (t.status === 'IN_PROGRESS' || t.status === 'READY') {
+        const allDepsDone = deps.every(did => (tasks.find(x => x.id === did) || {}).status === 'COMPLETED');
+        if (allDepsDone && t.status === 'BLOCKED') t.status = 'READY';
+      }
+    });
+    return tasks;
+  },
+
+  proposeRegulatoryEscalation(opts) {
+    const o = opts || {};
+    const task = (APP_DATA.regulatoryCoordinationTasks || []).find(t => t.id === o.taskId);
+    const c = (APP_DATA.regulatoryCoordinationCases || []).find(x => x.id === (o.caseId || task?.coordinationCaseId));
+    if (!c && !task) return { success: false, message: '无协同上下文' };
+    let level = 'LEVEL_1';
+    let reason = o.reason || '任务超期';
+    if (task?.status === 'OVERDUE') level = 'LEVEL_2';
+    if (c?.severity === 'CRITICAL') level = 'LEVEL_3';
+    if ((APP_DATA.regulatoryEscalationRecords || []).filter(e => e.coordinationCaseId === c?.id && e.status === 'CONFIRMED').length >= 2) level = 'CRITICAL';
+    const rec = {
+      escalationId: 'RES-' + Date.now(),
+      coordinationCaseId: c?.id || task?.coordinationCaseId,
+      taskId: task?.id,
+      escalationType: o.escalationType || (task?.status === 'OVERDUE' ? 'TASK_OVERDUE' : 'RISK_DETERIORATION'),
+      level,
+      status: 'PROPOSED',
+      proposedAt: this._coordNow(),
+      responsibleRole: 'ROLE-GROUP-REG',
+      requiresHumanDecision: true,
+      reason,
+      escalationPath: ['ENTITY', 'REGION', 'DOMAIN', 'GROUP_REG', 'GROUP_LEADER'],
+      dataStatus: 'DERIVED',
+      sourceTraceability: { caseId: c?.id, taskId: task?.id, sourceType: c?.sourceType, sourceId: c?.sourceId }
+    };
+    APP_DATA.regulatoryEscalationRecords = APP_DATA.regulatoryEscalationRecords || [];
+    APP_DATA.regulatoryEscalationRecords.push(rec);
+    return { success: true, escalation: rec, requiresHumanDecision: true };
+  },
+
+  confirmRegulatoryEscalation(escalationId, opts) {
+    const o = opts || {};
+    const esc = (APP_DATA.regulatoryEscalationRecords || []).find(e => e.escalationId === escalationId);
+    if (!esc) return { success: false, message: '升级记录不存在' };
+    const access = this.canRegulatoryAccess(this.getCurrentRegulatoryUser()?.userId, 'regulatoryEscalationRecords', escalationId, 'CONFIRM');
+    if (!access.allowed) {
+      this.createRegulatoryAuditLog({ actionType: 'OVERRIDE_DENIED', objectType: 'regulatoryEscalationRecords', objectId: escalationId, reason: access.reason });
+      return { success: false, denied: true, message: access.reason };
+    }
+    const before = { status: esc.status };
+    esc.status = 'CONFIRMED';
+    esc.confirmedAt = this._coordNow();
+    esc.confirmedBy = this.getCurrentRegulatoryUser()?.userId;
+    this.createRegulatoryAuditLog({ actionType: 'CONFIRM', objectType: 'regulatoryEscalationRecords', objectId: escalationId, beforeState: before, afterState: { status: esc.status }, reason: o.reason || '人工确认升级督办' });
+    return { success: true, escalation: esc, requiresHumanDecision: true };
+  },
+
+  rejectRegulatoryEscalation(escalationId, opts) {
+    const esc = (APP_DATA.regulatoryEscalationRecords || []).find(e => e.escalationId === escalationId);
+    if (!esc) return { success: false, message: '升级记录不存在' };
+    const before = { status: esc.status };
+    esc.status = 'REJECTED';
+    esc.rejectedAt = this._coordNow();
+    this.createRegulatoryAuditLog({ actionType: 'REJECT', objectType: 'regulatoryEscalationRecords', objectId: escalationId, beforeState: before, afterState: { status: esc.status }, reason: (opts || {}).reason || '拒绝升级' });
+    return { success: true, escalation: esc };
+  },
+
+  submitRegulatoryCoordinationFeedback(opts) {
+    const o = opts || {};
+    const task = (APP_DATA.regulatoryCoordinationTasks || []).find(t => t.id === o.taskId);
+    if (!task) return { success: false, message: '协同任务不存在' };
+    const fb = {
+      feedbackId: 'RCF-' + Date.now(),
+      coordinationCaseId: task.coordinationCaseId,
+      taskId: task.id,
+      feedbackType: o.feedbackType || 'PROGRESS_UPDATE',
+      submittedBy: this.getCurrentRegulatoryUser()?.userId,
+      submittedAt: this._coordNow(),
+      organizationId: task.organizationId,
+      sourceType: task.sourceType,
+      sourceId: task.sourceId,
+      evidence: o.evidence || o.notes || '',
+      status: 'SUBMITTED',
+      dataStatus: 'REAL',
+      sourceTraceability: { taskId: task.id, caseId: task.coordinationCaseId }
+    };
+    APP_DATA.regulatoryCoordinationFeedbackIndex = APP_DATA.regulatoryCoordinationFeedbackIndex || [];
+    APP_DATA.regulatoryCoordinationFeedbackIndex.push(fb);
+    if (o.autoAccept) {
+      fb.status = 'ACCEPTED';
+      task.status = 'COMPLETED';
+      task.completionEvidence = o.evidence;
+      this.buildRegulatoryTaskDependencies();
+    }
+    this.createRegulatoryAuditLog({ actionType: 'SUBMIT', objectType: 'regulatoryCoordinationFeedbackIndex', objectId: fb.feedbackId, afterState: { status: fb.status, taskId: task.id }, reason: '协同反馈提交' });
+    return { success: true, feedback: fb, requiresHumanDecision: true };
+  },
+
+  reviewRegulatoryCoordinationFeedback(feedbackId, opts) {
+    const o = opts || {};
+    const fb = (APP_DATA.regulatoryCoordinationFeedbackIndex || []).find(f => f.feedbackId === feedbackId);
+    if (!fb) return { success: false, message: '反馈不存在' };
+    const before = { status: fb.status };
+    fb.status = o.approved === false ? 'REJECTED' : 'ACCEPTED';
+    fb.reviewedAt = this._coordNow();
+    fb.reviewNotes = o.reason || '';
+    if (fb.status === 'REJECTED') fb.supplementRequired = { requirement: '请补充材料后重新提交', requiresHumanDecision: true };
+    else {
+      const task = (APP_DATA.regulatoryCoordinationTasks || []).find(t => t.id === fb.taskId);
+      if (task) { task.status = 'COMPLETED'; task.completionEvidence = fb.evidence; this.buildRegulatoryTaskDependencies(); }
+    }
+    this.createRegulatoryAuditLog({ actionType: o.approved === false ? 'REJECT' : 'ACCEPT', objectType: 'regulatoryCoordinationFeedbackIndex', objectId: feedbackId, beforeState: before, afterState: { status: fb.status }, reason: fb.reviewNotes });
+    return { success: true, feedback: fb, requiresHumanDecision: true };
+  },
+
+  buildJointRectificationVerification(caseId) {
+    const c = (APP_DATA.regulatoryCoordinationCases || []).find(x => x.id === caseId);
+    if (!c) return null;
+    const tasks = (APP_DATA.regulatoryCoordinationTasks || []).filter(t => t.coordinationCaseId === caseId);
+    const rectTasks = tasks.filter(t => t.taskType === 'RECTIFICATION' || t.taskType === 'VERIFICATION');
+    const orgResults = [...new Set(tasks.map(t => t.organizationId))].map(orgId => {
+      const orgTasks = tasks.filter(t => t.organizationId === orgId);
+      const rects = orgTasks.filter(t => t.taskType === 'RECTIFICATION');
+      const allRectDone = rects.length ? rects.every(t => t.status === 'COMPLETED') : true;
+      const verify = orgTasks.find(t => t.taskType === 'VERIFICATION');
+      return { organizationId: orgId, rectificationComplete: allRectDone, verificationStatus: verify?.status === 'COMPLETED' ? 'VERIFIED' : 'PENDING', evidence: verify?.completionEvidence };
+    });
+    const keyOrgs = orgResults.filter(r => r.organizationId !== 'G001');
+    const allKeyDone = keyOrgs.length ? keyOrgs.every(r => r.rectificationComplete) : false;
+    const allVerified = keyOrgs.every(r => r.verificationStatus === 'VERIFIED');
+    const primaryConfirmed = c.status === 'CONFIRMED' && c.confirmedBy;
+    let status = 'PENDING';
+    if (allKeyDone && allVerified && primaryConfirmed) status = 'FULLY_VERIFIED';
+    else if (keyOrgs.some(r => r.rectificationComplete || r.verificationStatus === 'VERIFIED')) status = 'PARTIALLY_VERIFIED';
+    const result = {
+      verificationId: 'RJV-' + caseId,
+      coordinationCaseId: caseId,
+      status,
+      organizationResults: orgResults,
+      primaryConfirmed: !!primaryConfirmed,
+      keyEvidencePassed: allVerified,
+      allKeyOrgsComplete: allKeyDone,
+      dataStatus: 'DERIVED',
+      sourceTraceability: { caseId, sourceType: c.sourceType, sourceId: c.sourceId },
+      evaluatedAt: this._coordNow()
+    };
+    const idx = (APP_DATA.regulatoryJointVerificationIndex || []).findIndex(v => v.coordinationCaseId === caseId);
+    if (idx >= 0) APP_DATA.regulatoryJointVerificationIndex[idx] = result;
+    else {
+      APP_DATA.regulatoryJointVerificationIndex = APP_DATA.regulatoryJointVerificationIndex || [];
+      APP_DATA.regulatoryJointVerificationIndex.push(result);
+    }
+    return result;
+  },
+
+  evaluateCoordinationEffectiveness(caseId) {
+    const c = (APP_DATA.regulatoryCoordinationCases || []).find(x => x.id === caseId);
+    if (!c) return null;
+    const tasks = (APP_DATA.regulatoryCoordinationTasks || []).filter(t => t.coordinationCaseId === caseId);
+    const feedbacks = (APP_DATA.regulatoryCoordinationFeedbackIndex || []).filter(f => f.coordinationCaseId === caseId);
+    const escalations = (APP_DATA.regulatoryEscalationRecords || []).filter(e => e.coordinationCaseId === caseId);
+    const joint = this.buildJointRectificationVerification(caseId);
+    const completed = tasks.filter(t => t.status === 'COMPLETED').length;
+    const dims = {
+      responsibilityTimeliness: c.status === 'CONFIRMED' ? 80 : null,
+      taskAssignmentTimeliness: tasks.length ? Math.round(tasks.filter(t => t.status !== 'BLOCKED').length / tasks.length * 100) : null,
+      feedbackTimeliness: feedbacks.length ? Math.round(feedbacks.filter(f => f.status === 'ACCEPTED').length / feedbacks.length * 100) : null,
+      crossOrgExecutionEfficiency: tasks.length ? Math.round(completed / tasks.length * 100) : null,
+      rectificationCompletionRate: joint?.allKeyOrgsComplete ? 100 : joint?.status === 'PARTIALLY_VERIFIED' ? 50 : null,
+      verificationPassRate: joint?.status === 'FULLY_VERIFIED' ? 100 : joint?.status === 'PARTIALLY_VERIFIED' ? 50 : null,
+      escalationTimeliness: escalations.length ? Math.round(escalations.filter(e => e.status === 'CONFIRMED').length / escalations.length * 100) : null,
+      regulatoryOutcomeEffectiveness: joint?.status === 'FULLY_VERIFIED' ? 90 : null
+    };
+    const vals = Object.values(dims).filter(v => v != null);
+    let overallResult = 'INSUFFICIENT_DATA';
+    if (vals.length) {
+      const avg = vals.reduce((a, b) => a + b, 0) / vals.length;
+      overallResult = avg >= 75 ? 'EFFECTIVE' : avg >= 50 ? 'PARTIALLY_EFFECTIVE' : 'INEFFECTIVE';
+    }
+    const evaluation = {
+      evaluationId: 'RCE-' + caseId,
+      coordinationCaseId: caseId,
+      dimensions: dims,
+      overallResult,
+      trendStatus: 'INSUFFICIENT_HISTORY',
+      recommendations: overallResult !== 'EFFECTIVE' ? [{ reason: '协同效率待提升', suggestedAction: '加强跨组织督办与反馈机制', requiresHumanDecision: true, evaluationOnly: true }] : [],
+      dataStatus: vals.length ? 'DERIVED' : 'INSUFFICIENT_DATA',
+      sourceTraceable: true,
+      evaluatedAt: this._coordNow()
+    };
+    APP_DATA.regulatoryCoordinationResultIndexes = APP_DATA.regulatoryCoordinationResultIndexes || [];
+    const ei = APP_DATA.regulatoryCoordinationResultIndexes.findIndex(r => r.coordinationCaseId === caseId);
+    if (ei >= 0) APP_DATA.regulatoryCoordinationResultIndexes[ei] = evaluation;
+    else APP_DATA.regulatoryCoordinationResultIndexes.push(evaluation);
+    return evaluation;
+  },
+
+  filterCoordinationCasesByScope(cases) {
+    const user = this.getCurrentRegulatoryUser();
+    if (!user) return [];
+    const assignments = this.getUserRoleAssignments(user.userId);
+    if (assignments.some(a => a.scopeType === 'GROUP')) return cases;
+    return cases.filter(c => {
+      const entityIds = c.affectedEntities || [];
+      return assignments.some(asg => {
+        if (asg.scopeType === 'ENTITY') return (asg.scopeIds || []).some(sid => entityIds.includes(sid));
+        if (asg.scopeType === 'DOMAIN') return (c.affectedDomains || []).some(d => (asg.scopeIds || []).includes(d));
+        if (asg.scopeType === 'REGION') {
+          return entityIds.some(eid => {
+            const ent = (APP_DATA.globalLegalEntities || []).find(e => e.entityId === eid);
+            return ent && (asg.scopeIds || []).includes(ent.regionId);
+          });
+        }
+        return false;
+      });
+    });
+  },
+
+  syncRegulatoryCoordinationQueue() {
+    const queue = APP_DATA.regulatoryQueue || [];
+    const existingIds = new Set(queue.filter(q => q.queueType?.startsWith('COORDINATION') || q.queueType === 'ESCALATION_CONFIRMATION' || q.queueType === 'JOINT_VERIFICATION').map(q => q.sourceId));
+    let qSeq = queue.length + 1;
+    const addQ = (queueType, sourceType, sourceId, title, priority, role, scope) => {
+      const qid = 'RQ-CO-' + String(qSeq++).padStart(4, '0');
+      if (existingIds.has(sourceId)) return;
+      queue.push({
+        queueItemId: qid,
+        queueType,
+        sourceType,
+        sourceId,
+        title,
+        priority: priority || 'HIGH',
+        status: 'PENDING',
+        department: '集团监管部门',
+        responsibleRole: role,
+        responsibleScope: scope,
+        dueDate: this._coordToday(),
+        isOverdue: false,
+        description: title,
+        recommendedAction: '人工确认后执行',
+        nextPageId: 'regulatory-workbench',
+        dataStatus: 'DERIVED'
+      });
+    };
+    (APP_DATA.regulatoryCoordinationCases || []).filter(c => c.status === 'PROPOSED').forEach(c =>
+      addQ('COORDINATION_CONFIRMATION', 'regulatoryCoordinationCases', c.id, '协同事项确认 · ' + c.caseType, c.priority, 'ROLE-GROUP-REG', 'GROUP:G001'));
+    (APP_DATA.regulatoryCoordinationTasks || []).filter(t => ['READY', 'IN_PROGRESS'].includes(t.status)).forEach(t =>
+      addQ('COORDINATION_TASK', 'regulatoryCoordinationTasks', t.id, '协同任务 · ' + t.taskType, 'HIGH', t.role === 'PRIMARY' ? 'ROLE-ENTITY-REG' : 'ROLE-DOMAIN-REG', 'ENTITY:' + t.organizationId));
+    (APP_DATA.regulatoryCoordinationFeedbackIndex || []).filter(f => f.status === 'SUBMITTED').forEach(f =>
+      addQ('COORDINATION_FEEDBACK', 'regulatoryCoordinationFeedbackIndex', f.feedbackId, '协同反馈审核 · ' + f.feedbackType, 'MEDIUM', 'ROLE-GROUP-REG', 'GROUP:G001'));
+    (APP_DATA.regulatoryEscalationRecords || []).filter(e => e.status === 'PROPOSED').forEach(e =>
+      addQ('ESCALATION_CONFIRMATION', 'regulatoryEscalationRecords', e.escalationId, '升级督办确认 · ' + e.level, 'CRITICAL', 'ROLE-GROUP-LEADER', 'GROUP:G001'));
+    (APP_DATA.regulatoryJointVerificationIndex || []).filter(v => v.status === 'PENDING' || v.status === 'PARTIALLY_VERIFIED').forEach(v =>
+      addQ('JOINT_VERIFICATION', 'regulatoryJointVerificationIndex', v.verificationId, '联合验证 · ' + v.status, 'HIGH', 'ROLE-GROUP-REG', 'GROUP:G001'));
+    APP_DATA.regulatoryQueue = queue;
+    return queue;
+  },
+
+  computeRegulatoryCoordinationMetrics() {
+    const cases = APP_DATA.regulatoryCoordinationCases || [];
+    const tasks = APP_DATA.regulatoryCoordinationTasks || [];
+    const escalations = APP_DATA.regulatoryEscalationRecords || [];
+    const joints = APP_DATA.regulatoryJointVerificationIndex || [];
+    const resp = APP_DATA.regulatoryCoordinationResponsibilityIndex || [];
+    APP_DATA.regulatoryCoordinationMetrics = {
+      coordinationCaseCount: cases.length,
+      proposedCaseCount: cases.filter(c => c.status === 'PROPOSED').length,
+      confirmedCaseCount: cases.filter(c => c.status === 'CONFIRMED').length,
+      primaryOwnerCount: resp.length,
+      coordinationTaskCount: tasks.length,
+      overdueTaskCount: tasks.filter(t => t.status === 'OVERDUE').length,
+      escalationCount: escalations.length,
+      openEscalationCount: escalations.filter(e => e.status === 'PROPOSED' || e.status === 'CONFIRMED').length,
+      jointRectificationCount: cases.filter(c => c.caseType === 'MAJOR_RECTIFICATION' || (c.supportingOrganizations || []).length > 1).length,
+      jointVerificationCount: joints.length,
+      fullyVerifiedCount: joints.filter(v => v.status === 'FULLY_VERIFIED').length,
+      trendStatus: 'INSUFFICIENT_HISTORY',
+      dataStatus: 'DERIVED'
+    };
+    return APP_DATA.regulatoryCoordinationMetrics;
+  },
+
+  renderCoordinationDashboardPanel() {
+    const m = APP_DATA.regulatoryCoordinationMetrics || {};
+    const cases = APP_DATA.regulatoryCoordinationCases || [];
+    const tasks = APP_DATA.regulatoryCoordinationTasks || [];
+    const escalations = APP_DATA.regulatoryEscalationRecords || [];
+    const joints = APP_DATA.regulatoryJointVerificationIndex || [];
+    return `<div class="card"><div class="card-title">跨组织监管协同 ${this.renderPublicUnifiedStatusBadge('DERIVED')}</div>
+      <div class="group-metrics">${[
+        [m.coordinationCaseCount || cases.length, '跨组织监管事项', `App.navigatePublic('regulatory-workbench')`],
+        [m.proposedCaseCount || cases.filter(c => c.status === 'PROPOSED').length, '待协同事项', `App.navigatePublic('regulatory-queue',{queueType:'COORDINATION_CONFIRMATION'})`],
+        [m.overdueTaskCount || tasks.filter(t => t.status === 'OVERDUE').length, '超期协同任务', `App.navigatePublic('regulatory-supervision-tasks')`],
+        [m.openEscalationCount || escalations.filter(e => e.status === 'PROPOSED').length, '升级督办事项', `App.navigatePublic('regulatory-queue',{queueType:'ESCALATION_CONFIRMATION'})`],
+        [m.jointRectificationCount || 0, '联合整改事项', `App.navigatePublic('rectification')`],
+        [joints.filter(v => v.status !== 'FULLY_VERIFIED').length, '待联合验证', `App.navigatePublic('regulatory-queue',{queueType:'JOINT_VERIFICATION'})`]
+      ].map(([v, l, n]) => this.renderPublicKpiCard(l, v, n)).join('')}</div>
+      ${cases.length ? `<table class="data-table"><thead><tr><th>事项</th><th>类型</th><th>主责</th><th>状态</th><th>严重度</th></tr></thead><tbody>${cases.slice(0, 5).map(c => `<tr class="clickable" onclick="App.navigatePublic('regulatory-workbench')"><td>${c.id}</td><td>${c.caseType}</td><td>${c.primaryOrganization}</td><td>${this.renderPublicUnifiedStatusBadge(c.status)}</td><td>${this.renderPublicPriorityBadge(c.severity)}</td></tr>`).join('')}</tbody></table>` : ''}
+    </div>`;
+  },
+
+  renderCoordinationWorkbenchPanel() {
+    const user = this.getCurrentRegulatoryUser();
+    const cases = this.filterCoordinationCasesByScope(APP_DATA.regulatoryCoordinationCases || []);
+    const tasks = (APP_DATA.regulatoryCoordinationTasks || []).filter(t => cases.some(c => c.id === t.coordinationCaseId));
+    const feedbacks = (APP_DATA.regulatoryCoordinationFeedbackIndex || []).filter(f => f.submittedBy === user?.userId || f.status === 'SUBMITTED');
+    const primaryTasks = tasks.filter(t => t.role === 'PRIMARY');
+    const supportTasks = tasks.filter(t => t.role === 'SUPPORTING');
+    return `<div class="card"><div class="card-title">跨组织协同工作台</div>
+      <div class="group-metrics">${[
+        [primaryTasks.filter(t => ['READY', 'IN_PROGRESS', 'OVERDUE'].includes(t.status)).length, '我的主责事项', `App.navigatePublic('regulatory-my-work')`],
+        [supportTasks.filter(t => ['READY', 'IN_PROGRESS'].includes(t.status)).length, '我的协同事项', `App.navigatePublic('regulatory-queue',{queueType:'COORDINATION_TASK'})`],
+        [feedbacks.filter(f => f.status === 'REJECTED').length, '待补充反馈', `App.navigatePublic('regulatory-workbench')`],
+        [cases.filter(c => c.status === 'PROPOSED').length, '待我确认', `App.navigatePublic('regulatory-queue',{queueType:'COORDINATION_CONFIRMATION'})`],
+        [(APP_DATA.regulatoryEscalationRecords || []).filter(e => e.status === 'PROPOSED').length, '待我升级', `App.navigatePublic('regulatory-queue',{queueType:'ESCALATION_CONFIRMATION'})`],
+        [(APP_DATA.regulatoryJointVerificationIndex || []).filter(v => v.status !== 'FULLY_VERIFIED').length, '待联合验证', `App.navigatePublic('regulatory-queue',{queueType:'JOINT_VERIFICATION'})`]
+      ].map(([v, l, n]) => this.renderPublicKpiCard(l, v, n)).join('')}</div>
+    </div>`;
+  },
+
+  renderCoordinationRolePanel(roleType) {
+    const cases = this.filterCoordinationCasesByScope(APP_DATA.regulatoryCoordinationCases || []);
+    const tasks = APP_DATA.regulatoryCoordinationTasks || [];
+    const escalations = APP_DATA.regulatoryEscalationRecords || [];
+    let items = [];
+    if (roleType === 'GROUP_LEADER') {
+      items = [
+        [cases.filter(c => c.severity === 'CRITICAL').length, '重大跨组织事项'],
+        [escalations.filter(e => e.status === 'PROPOSED').length, '待升级事项'],
+        [cases.filter(c => c.caseType === 'CROSS_DOMAIN_RISK').length, '重大协同风险'],
+        [cases.filter(c => (c.supportingOrganizations || []).length > 2).length, '监管资源冲突']
+      ];
+    } else if (roleType === 'GROUP_REGULATORY') {
+      items = [
+        [cases.length, '全部协同事项'],
+        [tasks.filter(t => t.status === 'OVERDUE').length, '超期事项'],
+        [escalations.length, '升级事项'],
+        [cases.filter(c => c.caseType.includes('DOMAIN')).length, '跨领域风险'],
+        [cases.filter(c => c.caseType === 'MAJOR_RECTIFICATION').length, '联合整改']
+      ];
+    } else if (roleType === 'DOMAIN_REGULATOR') {
+      items = [
+        [cases.filter(c => (c.affectedDomains || []).length).length, '本领域协同事项'],
+        [tasks.filter(t => t.taskType === 'RISK_ASSESSMENT' && t.status !== 'COMPLETED').length, '待风险评估'],
+        [tasks.filter(t => t.taskType === 'KRI_REVIEW' && t.status !== 'COMPLETED').length, '待KRI复核'],
+        [cases.filter(c => c.status === 'PROPOSED').length, '待策略调整']
+      ];
+    } else {
+      const scopeId = this.regulatoryRoleScopeId || (APP_DATA.regulatoryRoleProfiles || []).find(r => r.roleType === roleType)?.defaultScopeId;
+      items = [
+        [tasks.filter(t => t.organizationId === scopeId && t.role === 'PRIMARY').length, '本法人主责事项'],
+        [tasks.filter(t => t.organizationId === scopeId && t.role === 'SUPPORTING').length, '本法人协同任务'],
+        [tasks.filter(t => t.organizationId === scopeId && t.taskType === 'RECTIFICATION').length, '待整改'],
+        [tasks.filter(t => t.organizationId === scopeId && ['READY'].includes(t.status)).length, '待反馈'],
+        [tasks.filter(t => t.organizationId === scopeId && t.taskType === 'VERIFICATION').length, '待验证']
+      ];
+    }
+    return `<div class="card"><div class="card-title">跨组织协同 · ${roleType}</div>
+      <div class="group-metrics">${items.map(([v, l]) => this.renderPublicKpiCard(l, v, `App.navigatePublic('regulatory-workbench')`)).join('')}</div>
+    </div>`;
+  },
+
   renderOperatingCycleDashboardPanel() {
     const cycles = APP_DATA.regulatoryOperatingCycles || [];
     const m = APP_DATA.regulatoryOperatingMetrics || {};
@@ -3144,7 +3775,9 @@ Object.assign(App, {
       'regulatoryImprovementExecution:VIEW': 'IMPROVEMENT_EXECUTION_VIEW', 'regulatoryImprovementExecution:MANAGE': 'IMPROVEMENT_EXECUTION_MANAGE',
       'regulatoryImprovementEffectiveness:VIEW': 'EFFECTIVENESS_VIEW', 'regulatoryImprovementEffectiveness:VALIDATE': 'EFFECTIVENESS_VALIDATE',
       'regulatoryOperatingCycles:VIEW': 'OPERATING_VIEW', 'regulatoryOperatingCycles:MANAGE': 'OPERATING_MANAGE',
-      'regulatoryOperatingRecommendations:MANAGE': 'OPERATING_MANAGE', 'regulatoryOperatingRecommendations:VIEW': 'OPERATING_VIEW'
+      'regulatoryOperatingRecommendations:MANAGE': 'OPERATING_MANAGE', 'regulatoryOperatingRecommendations:VIEW': 'OPERATING_VIEW',
+      'regulatoryCoordinationCases:VIEW': 'COORDINATION_VIEW', 'regulatoryCoordinationCases:MANAGE': 'COORDINATION_MANAGE',
+      'regulatoryEscalationRecords:CONFIRM': 'COORDINATION_ESCALATE', 'regulatoryEscalationRecords:VIEW': 'COORDINATION_VIEW'
     };
     if (map[resourceType + ':' + action]) return map[resourceType + ':' + action];
     if (action === 'APPROVE') return 'ACTION_APPROVE';
@@ -4980,6 +5613,7 @@ Object.assign(App, {
       ${this.renderGroupOverviewRectificationSummary(m)}
       ${this.renderGroupOverviewHealthSummary()}
       ${this.renderOperatingCycleDashboardPanel()}
+      ${this.renderCoordinationDashboardPanel()}
       ${this.renderGroupOverviewOperationsEntry()}
       ${this.renderGroupOverviewPageCatalog(m)}
       <div id="groupOverviewDetail"></div>`;
@@ -7376,6 +8010,7 @@ Object.assign(App, {
       </div>
       ${this.renderBatchAdaptationWorkbenchPanel()}
       ${this.renderDailyOperationsWorkbenchPanel()}
+      ${this.renderCoordinationWorkbenchPanel()}
       ${this.renderPeriodicFocusPanel()}
       ${this.renderClosureVerificationWorkbenchPanel()}
       ${this.renderDomainClosureDashboardPanel()}
@@ -7397,7 +8032,7 @@ Object.assign(App, {
     if (f.overdue === 'true') list = list.filter(q => q.isOverdue);
     if (f.department) list = list.filter(q => q.department === f.department);
     const depts = [...new Set((APP_DATA.regulatoryQueue || []).map(q => q.department).filter(Boolean))];
-    const types = ['DECISION','ACTION','SUPERVISION_TASK','FEEDBACK','VERIFICATION','RULE_APPROVAL','RULE_DEPLOYMENT','RULE_ANOMALY','STRATEGIC_REVIEW','PLAN_VARIANCE'];
+    const types = ['DECISION','ACTION','SUPERVISION_TASK','FEEDBACK','VERIFICATION','RULE_APPROVAL','RULE_DEPLOYMENT','RULE_ANOMALY','STRATEGIC_REVIEW','PLAN_VARIANCE','COORDINATION_CONFIRMATION','COORDINATION_TASK','COORDINATION_FEEDBACK','ESCALATION_CONFIRMATION','JOINT_VERIFICATION'];
     const filterBar = `<div class="filter-bar" style="margin-bottom:12px;display:flex;flex-wrap:wrap;gap:8px">
       <select onchange="App.regulatoryQueueFilter={...(App.regulatoryQueueFilter||{}),queueType:this.value||null};App.renderRegulatoryQueue()"><option value="">全部类型</option>${types.map(t=>`<option value="${t}" ${f.queueType===t?'selected':''}>${t}</option>`).join('')}</select>
       <select onchange="App.regulatoryQueueFilter={...(App.regulatoryQueueFilter||{}),priority:this.value||null};App.renderRegulatoryQueue()"><option value="">全部优先级</option>${['CRITICAL','HIGH','MEDIUM','LOW'].map(p=>`<option value="${p}" ${f.priority===p?'selected':''}>${p}</option>`).join('')}</select>
@@ -7553,6 +8188,7 @@ Object.assign(App, {
       <div class="group-metrics">${kpiHtml}</div>
       ${this.renderRoleJourneyPanel(role.roleId)}
       ${this.renderOperatingRolePathPanel(role.roleType)}
+      ${this.renderCoordinationRolePanel(role.roleType)}
       <div class="group-two">
         <div class="card"><div class="card-title">当前最重要的问题</div>${urgentHtml}</div>
         <div class="card"><div class="card-title">我的待办</div>${pendingHtml ? `<table class="data-table"><thead><tr><th>类型</th><th>标题</th><th>优先级</th><th>截止</th><th>超期</th></tr></thead><tbody>${pendingHtml}</tbody></table>` : this.renderPublicEmptyState('暂无')}<p>${this.renderPublicLinkButton('我的监管工作', `App.navigatePublic('regulatory-my-work')`)}</p></div>

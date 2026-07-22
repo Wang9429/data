@@ -135,6 +135,7 @@ const App = {
     if (this.initializeClosureVerification) this.initializeClosureVerification();
     if (this.initializeRegulatoryOperatingCycle) this.initializeRegulatoryOperatingCycle();
     if (this.initializeRegulatoryOperatingRuntime) this.initializeRegulatoryOperatingRuntime();
+    if (this.initializeRegulatoryCoordination) this.initializeRegulatoryCoordination();
     this.renderNav();
     this.renderGroupOverview();
     this.renderRegulatoryEvents();
