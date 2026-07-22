@@ -1982,3 +1982,528 @@ Object.assign(APP_DATA, {
     affectedEntityCount: new Set(rules.flatMap(r => r.affectedEntityIds || [])).size
   };
 })();
+
+(function () {
+  const TODAY = '2026-07-22';
+  const rules = APP_DATA.regulatoryRules || [];
+  const params = APP_DATA.regulatoryRuleParameters || [];
+  const entities = (APP_DATA.globalLegalEntities || []).filter(e => e.entityId !== 'G001');
+  const priorities = APP_DATA.regulatoryPrioritiesRecalculated || APP_DATA.regulatoryPriorities || {};
+  const events = APP_DATA.regulatoryEvents || [];
+  const warnings = APP_DATA.warnings || [];
+  const rects = APP_DATA.rectificationTasks || [];
+  const actions = APP_DATA.regulatoryActions || [];
+  const feedbacks = APP_DATA.regulatoryActionFeedbacks || [];
+  const maturity = APP_DATA.regulatoryMaturity || {};
+  const strategy = APP_DATA.regulatoryStrategyAnalysis || {};
+  const health = APP_DATA.regulatoryHealthScores || {};
+  const entityHealth = health.entities || [];
+  const simResults = APP_DATA.regulatorySimulationResults || [];
+  const cdrMatters = APP_DATA.crossDomainRiskMatters || [];
+
+  const paramMap = () => Object.fromEntries(params.map(p => [p.paramId, p.currentValue]));
+  const buildSnapshot = (ids) => {
+    const m = paramMap();
+    const snap = {};
+    (ids || []).forEach(id => { if (m[id] !== undefined) snap[id] = m[id]; });
+    return snap;
+  };
+
+  const govFamilies = [
+    { ruleId: 'RULE-001', ruleName: '监管优先级规则', ruleType: 'PRIORITY', logicRef: 'calculateRegulatoryPriority', phase10Ids: ['RULE-PRI-001', 'RULE-PRI-002', 'RULE-PRI-003', 'RULE-KRI-001'], paramIds: ['PRIORITY_HIGH_RISK_EVENT_WEIGHT', 'PRIORITY_MAJOR_RISK_WEIGHT', 'PRIORITY_OVERDUE_RECTIFICATION_WEIGHT', 'PRIORITY_CRITICAL_HEALTH_SCORE', 'PRIORITY_CRITICAL_THRESHOLD', 'PRIORITY_HIGH_THRESHOLD', 'PRIORITY_KRI_WEIGHT'] },
+    { ruleId: 'RULE-002', ruleName: '监管策略分层规则', ruleType: 'STRATEGY', logicRef: 'getRegulatoryStrategyLevel', phase10Ids: ['RULE-STR-001', 'RULE-STR-002'], paramIds: ['STRATEGY_FOCUS_HIGH_RISK_MIN', 'STRATEGY_FOCUS_OVERDUE_MIN'] },
+    { ruleId: 'RULE-003', ruleName: '监管行动生成规则', ruleType: 'ACTION', logicRef: 'regulatoryActions', phase10Ids: ['RULE-ACT-001', 'RULE-ACT-002'], paramIds: ['ACTION_OVERDUE_TRIGGER_DAYS'] },
+    { ruleId: 'RULE-004', ruleName: '监管成熟度评分规则', ruleType: 'MATURITY', logicRef: 'regulatoryMaturity', phase10Ids: ['RULE-MAT-001', 'RULE-MAT-002'], paramIds: ['MATURITY_L5_THRESHOLD', 'MATURITY_L4_THRESHOLD', 'MATURITY_L3_THRESHOLD', 'MATURITY_L2_THRESHOLD', 'MATURITY_DATA_WEIGHT', 'MATURITY_COVERAGE_WEIGHT', 'MATURITY_MONITOR_WEIGHT', 'MATURITY_CLOSURE_WEIGHT', 'MATURITY_OPTIMIZE_WEIGHT'] },
+    { ruleId: 'RULE-005', ruleName: '风险事件识别规则', ruleType: 'RISK_DETECTION', logicRef: 'regulatoryEvents', phase10Ids: ['RULE-RISK-001'], paramIds: [] }
+  ];
+
+  const calcPriority = (entityId, p) => {
+    const ent = entities.find(e => e.entityId === entityId);
+    const h = entityHealth.find(x => x.objectId === entityId);
+    if (!ent) return { priority: 'LOW', score: 0 };
+    const highEvts = events.filter(e => e.entityId === entityId && e.riskLevel === 'HIGH');
+    const majorWarn = warnings.filter(w => w.entityId === entityId && w.level === '重大');
+    const overdue = rects.filter(t => t.entityId === entityId && t.deadline && t.deadline < TODAY && t.status !== '已关闭' && !t.closedAt);
+    const qualCount = (APP_DATA.dataQualityIssues || []).filter(q => (APP_DATA.dataObjects || []).some(o => o.entityId === entityId && o.objectId === q.objectId)).length;
+    const cbRisk = (APP_DATA.crossBorderDataActivities || []).filter(a => a.entityId === entityId && (a.complianceStatus === '高风险' || a.complianceStatus === '异常')).length;
+    const cdrCount = cdrMatters.filter(m => (m.entityIds || []).includes(entityId)).length;
+    const verifiedActs = actions.filter(a => a.entityId === entityId && a.status === 'VERIFIED').length;
+    let score = 0;
+    if (highEvts.length) score += highEvts.length * (p.PRIORITY_HIGH_RISK_EVENT_WEIGHT || 12);
+    if (majorWarn.length) score += majorWarn.length * (p.PRIORITY_MAJOR_RISK_WEIGHT || 10);
+    if (overdue.length) score += overdue.length * (p.PRIORITY_OVERDUE_RECTIFICATION_WEIGHT || 18);
+    if (qualCount) score += qualCount * (p.PRIORITY_QUALITY_WEIGHT || 6);
+    if ((ent.kriExceptionCount || 0) > 0) score += ent.kriExceptionCount * (p.PRIORITY_KRI_WEIGHT || 5);
+    if (cbRisk) score += cbRisk * (p.PRIORITY_CB_RISK_WEIGHT || 10);
+    if (cdrCount) score += cdrCount * (p.PRIORITY_CDR_WEIGHT || 8);
+    if (h && h.level === 'CRITICAL') score += p.PRIORITY_CRITICAL_HEALTH_SCORE || 25;
+    else if (h && h.level === 'WARNING') score += p.PRIORITY_WARNING_HEALTH_SCORE || 12;
+    score = Math.max(0, score - verifiedActs * 5);
+    const priority = score >= (p.PRIORITY_CRITICAL_THRESHOLD || 55) ? 'CRITICAL' : score >= (p.PRIORITY_HIGH_THRESHOLD || 35) ? 'HIGH' : score >= (p.PRIORITY_MEDIUM_THRESHOLD || 18) ? 'MEDIUM' : 'LOW';
+    return { priority, score };
+  };
+
+  const calcStrategy = (entityId, p) => {
+    const evts = events.filter(e => e.entityId === entityId);
+    const h = entityHealth.find(x => x.objectId === entityId);
+    const overdue = rects.filter(t => t.entityId === entityId && t.deadline && t.deadline < TODAY && t.status !== '已关闭').length;
+    const highRisk = evts.filter(e => e.riskLevel === 'HIGH').length;
+    if (highRisk >= (p.STRATEGY_FOCUS_HIGH_RISK_MIN || 2) && h?.level === 'CRITICAL' && overdue >= (p.STRATEGY_FOCUS_OVERDUE_MIN || 1)) return 'FOCUS';
+    if (cdrMatters.some(m => (m.entityIds || []).includes(entityId)) || h?.level === 'WARNING') return 'SPECIAL';
+    return 'ROUTINE';
+  };
+
+  const countNewActions = (entityId, afterPri) => {
+    const existing = actions.filter(a => a.entityId === entityId).length;
+    const wouldTrigger = ['CRITICAL', 'HIGH'].includes(afterPri) ? 1 : 0;
+    return Math.max(0, wouldTrigger - (existing > 0 ? 0 : 0));
+  };
+
+  const buildImpact = (changeRequestId, ruleId, beforeP, afterP, beforeVersionId, afterVersionId) => {
+    const affectedEntities = [];
+    const affectedRegions = new Set();
+    const affectedRiskMatters = new Set();
+    const affectedActions = [];
+    entities.forEach(ent => {
+      const cur = priorities[ent.entityId] || {};
+      const before = calcPriority(ent.entityId, beforeP);
+      const after = calcPriority(ent.entityId, afterP);
+      const stratBefore = (strategy.entities || []).find(x => x.objectId === ent.entityId)?.strategyLevel || calcStrategy(ent.entityId, beforeP);
+      const stratAfter = calcStrategy(ent.entityId, afterP);
+      if (before.priority !== after.priority || stratBefore !== stratAfter) {
+        const newActs = countNewActions(ent.entityId, after.priority);
+        const entWarns = warnings.filter(w => w.entityId === ent.entityId).map(w => w.id);
+        entWarns.forEach(id => affectedRiskMatters.add(id));
+        if (ent.regionId) affectedRegions.add(ent.regionId);
+        affectedEntities.push({
+          entityId: ent.entityId,
+          entityName: ent.entityName,
+          beforePriority: before.priority,
+          afterPriority: after.priority,
+          scoreChange: after.score - before.score,
+          strategyBefore: stratBefore,
+          strategyAfter: stratAfter,
+          newActionCount: newActs,
+          simulationOnly: true
+        });
+        if (newActs > 0) {
+          const act = actions.find(a => a.entityId === ent.entityId);
+          if (act) affectedActions.push(act.actionId);
+        }
+      }
+    });
+    const upgrades = affectedEntities.filter(e => ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'].indexOf(e.afterPriority) > ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'].indexOf(e.beforePriority)).length;
+    const downgrades = affectedEntities.filter(e => ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'].indexOf(e.afterPriority) < ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'].indexOf(e.beforePriority)).length;
+    const stratChanges = affectedEntities.filter(e => e.strategyBefore !== e.strategyAfter).length;
+    const newActionCount = affectedEntities.reduce((s, e) => s + (e.newActionCount || 0), 0);
+    const beforeCrit = Object.values(priorities).filter(p => p.priority === 'CRITICAL').length;
+    const beforeHigh = Object.values(priorities).filter(p => p.priority === 'HIGH').length;
+    const afterPriorities = {};
+    entities.forEach(e => { afterPriorities[e.entityId] = calcPriority(e.entityId, afterP); });
+    const afterCrit = Object.values(afterPriorities).filter(p => p.priority === 'CRITICAL').length;
+    const afterHigh = Object.values(afterPriorities).filter(p => p.priority === 'HIGH').length;
+    const beforeSpecial = (strategy.entities || []).filter(e => e.strategyLevel === 'SPECIAL' || e.strategyLevel === 'FOCUS').length;
+    const afterSpecial = entities.filter(e => ['SPECIAL', 'FOCUS'].includes(calcStrategy(e.entityId, afterP))).length;
+    return {
+      impactAnalysisId: 'IMP-' + changeRequestId,
+      changeRequestId,
+      ruleId,
+      beforeVersionId,
+      afterVersionId,
+      affectedEntities,
+      affectedRegions: [...affectedRegions],
+      affectedRiskMatters: [...affectedRiskMatters],
+      affectedActions,
+      summary: {
+        affectedEntityCount: affectedEntities.length,
+        priorityUpgradeCount: upgrades,
+        priorityDowngradeCount: downgrades,
+        strategyChangeCount: stratChanges,
+        newActionCount,
+        beforeCriticalCount: beforeCrit,
+        afterCriticalCount: afterCrit,
+        beforeHighCount: beforeHigh,
+        afterHighCount: afterHigh,
+        beforeSpecialCount: beforeSpecial,
+        afterSpecialCount: afterSpecial
+      },
+      comparisonTable: [
+        { metric: 'CRITICAL 法人', before: beforeCrit, after: afterCrit, change: afterCrit - beforeCrit },
+        { metric: 'HIGH 法人', before: beforeHigh, after: afterHigh, change: afterHigh - beforeHigh },
+        { metric: 'SPECIAL/FOCUS 法人', before: beforeSpecial, after: afterSpecial, change: afterSpecial - beforeSpecial },
+        { metric: '新增监管行动', before: 0, after: newActionCount, change: newActionCount }
+      ],
+      generatedAt: TODAY,
+      simulationOnly: true
+    };
+  };
+
+  const versions = [];
+  govFamilies.forEach((fam, idx) => {
+    const vId = 'RULE-V' + String(idx + 1).padStart(3, '0');
+    versions.push({
+      versionId: vId,
+      ruleId: fam.ruleId,
+      versionNo: '1.0.0',
+      ruleName: fam.ruleName,
+      ruleType: fam.ruleType,
+      status: 'ACTIVE',
+      basedOnVersionId: null,
+      parameterSnapshot: buildSnapshot(fam.paramIds),
+      logicRef: fam.logicRef,
+      phase10RuleIds: fam.phase10Ids,
+      changeType: 'INITIAL_RELEASE',
+      changeSummary: '系统初始规则版本',
+      createdAt: '2026-07-01',
+      submittedAt: '2026-07-01',
+      approvedAt: '2026-07-01',
+      publishedAt: '2026-07-01',
+      effectiveFrom: '2026-07-01',
+      createdBy: '系统默认',
+      approvedBy: '系统默认',
+      publishedBy: '系统默认',
+      sourceType: 'SYSTEM_DEFAULT',
+      effectivenessLevel: null,
+      needsOptimization: false
+    });
+  });
+
+  const proposedOverrides = { PRIORITY_OVERDUE_RECTIFICATION_WEIGHT: 25, PRIORITY_HIGH_THRESHOLD: 50 };
+  const baseP = { ...paramMap(), PRIORITY_QUALITY_WEIGHT: 6, PRIORITY_CB_RISK_WEIGHT: 10, PRIORITY_CDR_WEIGHT: 8, PRIORITY_WARNING_HEALTH_SCORE: 12, PRIORITY_MEDIUM_THRESHOLD: 18, PRIORITY_LONG_OPEN_RECT_WEIGHT: 8 };
+  const afterP = { ...baseP, ...proposedOverrides };
+
+  const changeRequests = [
+    {
+      changeRequestId: 'CR-001',
+      ruleId: 'RULE-001',
+      baseVersionId: 'RULE-V001',
+      proposedVersionId: 'RULE-V001',
+      changeReason: '系统初始发布',
+      changeSummary: '监管优先级规则初始版本正式发布',
+      parameterChanges: [],
+      logicChanges: [],
+      simulationIds: ['SIM-BASE'],
+      impactAnalysisId: 'IMP-CR-001',
+      affectedEntityIds: [],
+      affectedRegionIds: [],
+      affectedRiskMatterIds: [],
+      affectedActionIds: [],
+      status: 'PUBLISHED',
+      applicant: '系统默认',
+      applicantDepartment: '集团监管部',
+      submittedAt: '2026-07-01',
+      approvedBy: '系统默认',
+      approvedAt: '2026-07-01',
+      rejectionReason: null,
+      sourceType: 'SYSTEM_DEFAULT'
+    },
+    {
+      changeRequestId: 'CR-002',
+      ruleId: 'RULE-001',
+      baseVersionId: 'RULE-V001',
+      proposedVersionId: 'RULE-V006',
+      changeReason: '提高超期整改权重并调整HIGH阈值，强化重点法人识别',
+      changeSummary: '参数调整：超期整改权重 18→25，HIGH阈值 35→50',
+      parameterChanges: Object.keys(proposedOverrides).map(k => ({ paramId: k, beforeValue: baseP[k], afterValue: proposedOverrides[k] })),
+      logicChanges: [],
+      simulationIds: ['SIM-PRI-WEIGHT'],
+      impactAnalysisId: 'IMP-CR-002',
+      affectedEntityIds: [],
+      affectedRegionIds: [],
+      affectedRiskMatterIds: [],
+      affectedActionIds: [],
+      status: 'PENDING_APPROVAL',
+      applicant: '系统默认',
+      applicantDepartment: '集团监管部',
+      submittedAt: '2026-07-20',
+      approvedBy: null,
+      approvedAt: null,
+      rejectionReason: null,
+      sourceType: 'SYSTEM_DEFAULT'
+    },
+    {
+      changeRequestId: 'CR-003',
+      ruleId: 'RULE-002',
+      baseVersionId: 'RULE-V002',
+      proposedVersionId: null,
+      changeReason: '优化策略分层阈值',
+      changeSummary: '草稿：调整重点策略触发条件',
+      parameterChanges: [{ paramId: 'STRATEGY_FOCUS_HIGH_RISK_MIN', beforeValue: 2, afterValue: 3 }],
+      logicChanges: [],
+      simulationIds: [],
+      impactAnalysisId: null,
+      affectedEntityIds: [],
+      affectedRegionIds: [],
+      affectedRiskMatterIds: [],
+      affectedActionIds: [],
+      status: 'DRAFT',
+      applicant: '系统默认',
+      applicantDepartment: '集团监管部',
+      submittedAt: null,
+      approvedBy: null,
+      approvedAt: null,
+      rejectionReason: null,
+      sourceType: 'SYSTEM_DEFAULT'
+    },
+    {
+      changeRequestId: 'CR-004',
+      ruleId: 'RULE-001',
+      baseVersionId: 'RULE-V001',
+      proposedVersionId: 'RULE-V006',
+      changeReason: 'KRI异常权重提升验证',
+      changeSummary: '仿真验证 KRI 权重 5→12',
+      parameterChanges: [{ paramId: 'PRIORITY_KRI_WEIGHT', beforeValue: 5, afterValue: 12 }],
+      logicChanges: [],
+      simulationIds: ['SIM-KRI'],
+      impactAnalysisId: 'IMP-CR-004',
+      affectedEntityIds: [],
+      affectedRegionIds: [],
+      affectedRiskMatterIds: [],
+      affectedActionIds: [],
+      status: 'IMPACT_ASSESSED',
+      applicant: '系统默认',
+      applicantDepartment: '集团监管部',
+      submittedAt: '2026-07-18',
+      approvedBy: null,
+      approvedAt: null,
+      rejectionReason: null,
+      sourceType: 'SYSTEM_DEFAULT'
+    },
+    {
+      changeRequestId: 'CR-005',
+      ruleId: 'RULE-004',
+      baseVersionId: 'RULE-V004',
+      proposedVersionId: 'RULE-V007',
+      changeReason: '提高闭环监管维度权重',
+      changeSummary: '成熟度权重调整已通过审批，待发布',
+      parameterChanges: [{ paramId: 'MATURITY_CLOSURE_WEIGHT', beforeValue: 25, afterValue: 30 }],
+      logicChanges: [],
+      simulationIds: ['SIM-MAT-WEIGHT'],
+      impactAnalysisId: 'IMP-CR-005',
+      affectedEntityIds: [],
+      affectedRegionIds: [],
+      affectedRiskMatterIds: [],
+      affectedActionIds: [],
+      status: 'APPROVED',
+      applicant: '系统默认',
+      applicantDepartment: '集团监管部',
+      submittedAt: '2026-07-15',
+      approvedBy: '系统默认',
+      approvedAt: '2026-07-19',
+      rejectionReason: null,
+      sourceType: 'SYSTEM_DEFAULT'
+    }
+  ];
+
+  versions.push({
+    versionId: 'RULE-V006',
+    ruleId: 'RULE-001',
+    versionNo: '1.1.0',
+    ruleName: '监管优先级规则',
+    ruleType: 'PRIORITY',
+    status: 'PENDING_PUBLISH',
+    basedOnVersionId: 'RULE-V001',
+    parameterSnapshot: { ...buildSnapshot(govFamilies[0].paramIds), ...proposedOverrides },
+    logicRef: 'calculateRegulatoryPriority',
+    phase10RuleIds: govFamilies[0].phase10Ids,
+    changeType: 'PARAMETER_CHANGE',
+    changeSummary: '超期整改权重与HIGH阈值调整',
+    createdAt: '2026-07-20',
+    submittedAt: '2026-07-20',
+    approvedAt: null,
+    publishedAt: null,
+    effectiveFrom: null,
+    createdBy: '系统默认',
+    approvedBy: null,
+    publishedBy: null,
+    sourceType: 'SYSTEM_DEFAULT',
+    effectivenessLevel: null,
+    needsOptimization: false
+  });
+
+  versions.push({
+    versionId: 'RULE-V007',
+    ruleId: 'RULE-004',
+    versionNo: '1.1.0',
+    ruleName: '监管成熟度评分规则',
+    ruleType: 'MATURITY',
+    status: 'APPROVED',
+    basedOnVersionId: 'RULE-V004',
+    parameterSnapshot: { ...buildSnapshot(govFamilies[3].paramIds), MATURITY_CLOSURE_WEIGHT: 30 },
+    logicRef: 'regulatoryMaturity',
+    phase10RuleIds: govFamilies[3].phase10Ids,
+    changeType: 'PARAMETER_CHANGE',
+    changeSummary: '闭环监管维度权重 25→30',
+    createdAt: '2026-07-15',
+    submittedAt: '2026-07-15',
+    approvedAt: '2026-07-19',
+    publishedAt: null,
+    effectiveFrom: null,
+    createdBy: '系统默认',
+    approvedBy: '系统默认',
+    publishedBy: null,
+    sourceType: 'SYSTEM_DEFAULT',
+    effectivenessLevel: null,
+    needsOptimization: false
+  });
+
+  const impactAnalyses = [
+    buildImpact('CR-001', 'RULE-001', baseP, baseP, 'RULE-V001', 'RULE-V001'),
+    buildImpact('CR-002', 'RULE-001', baseP, afterP, 'RULE-V001', 'RULE-V006'),
+    buildImpact('CR-004', 'RULE-001', baseP, { ...baseP, PRIORITY_KRI_WEIGHT: 12 }, 'RULE-V001', 'RULE-V006'),
+    buildImpact('CR-005', 'RULE-004', baseP, { ...baseP, MATURITY_CLOSURE_WEIGHT: 30 }, 'RULE-V004', 'RULE-V007')
+  ];
+
+  changeRequests.forEach(cr => {
+    const imp = impactAnalyses.find(i => i.impactAnalysisId === cr.impactAnalysisId);
+    if (imp) {
+      cr.affectedEntityIds = imp.affectedEntities.map(e => e.entityId);
+      cr.affectedRegionIds = imp.affectedRegions;
+      cr.affectedRiskMatterIds = imp.affectedRiskMatters;
+      cr.affectedActionIds = imp.affectedActions;
+    }
+  });
+
+  const approvalStages = ['RULE_OWNER_REVIEW', 'BUSINESS_REVIEW', 'RISK_REVIEW', 'FINAL_APPROVAL'];
+  const approvals = [];
+  changeRequests.filter(cr => ['PENDING_APPROVAL', 'APPROVED', 'PUBLISHED'].includes(cr.status)).forEach(cr => {
+    const ver = versions.find(v => v.versionId === (cr.proposedVersionId || cr.baseVersionId));
+    approvalStages.forEach((stage, si) => {
+      const isPublished = cr.status === 'PUBLISHED';
+      const isApproved = cr.status === 'APPROVED' || isPublished;
+      const isPending = cr.status === 'PENDING_APPROVAL';
+      let approvalStatus = 'PENDING';
+      if (isPublished) approvalStatus = 'APPROVED';
+      else if (isApproved && si < approvalStages.length) approvalStatus = 'APPROVED';
+      else if (isPending && si === 0) approvalStatus = 'APPROVED';
+      else if (isPending && si === 1) approvalStatus = 'PENDING';
+      else if (isPending) approvalStatus = 'WAITING';
+      approvals.push({
+        approvalId: 'APR-' + cr.changeRequestId.replace('CR-', '') + '-' + String(si + 1).padStart(2, '0'),
+        changeRequestId: cr.changeRequestId,
+        ruleId: cr.ruleId,
+        versionId: ver ? ver.versionId : cr.baseVersionId,
+        approvalStage: stage,
+        approvalStatus,
+        approver: approvalStatus === 'APPROVED' ? '系统默认' : (approvalStatus === 'PENDING' ? '待指定' : '—'),
+        approvalComment: approvalStatus === 'APPROVED' ? '系统默认审批通过' : null,
+        submittedAt: cr.submittedAt || TODAY,
+        approvedAt: approvalStatus === 'APPROVED' ? (cr.approvedAt || cr.submittedAt || TODAY) : null,
+        sourceType: 'SYSTEM_DEFAULT'
+      });
+    });
+  });
+
+  const calcRuntimeMetrics = (ruleId, versionId) => {
+    const fam = govFamilies.find(f => f.ruleId === ruleId);
+    const totalEvents = events.length;
+    const highEvents = events.filter(e => e.riskLevel === 'HIGH').length;
+    const totalWarnings = warnings.length;
+    const closedRects = rects.filter(t => t.status === '已关闭' || t.closedAt).length;
+    const overdueRects = rects.filter(t => t.deadline && t.deadline < TODAY && t.status !== '已关闭').length;
+    const verifiedActs = actions.filter(a => a.status === 'VERIFIED').length;
+    const completedActs = actions.filter(a => ['COMPLETED', 'VERIFIED'].includes(a.status)).length;
+    const hasHistory = (APP_DATA.regulatoryMaturityTrend || {}).periods?.length > 1;
+    const base = {
+      ruleId,
+      versionId,
+      evaluationPeriodStart: '2026-04-01',
+      evaluationPeriodEnd: '2026-07-22',
+      sourceType: 'SYSTEM_DEFAULT'
+    };
+    if (!hasHistory && ruleId !== 'RULE-005') {
+      return { ...base, dataStatus: 'INSUFFICIENT_HISTORY', eventRecognitionRate: null, highRiskRecognitionRate: null, falsePositiveRate: null, rectificationClosureRate: null, overdueRectificationRate: null, averageActionDuration: null, averageRiskClosureDuration: null, actionVerificationRate: null };
+    }
+    return {
+      ...base,
+      dataStatus: 'CALCULATED',
+      eventRecognitionRate: totalWarnings ? Math.round(totalEvents / totalWarnings * 100) : null,
+      highRiskRecognitionRate: totalWarnings ? Math.round(highEvents / totalWarnings * 100) : null,
+      falsePositiveRate: null,
+      rectificationClosureRate: rects.length ? Math.round(closedRects / rects.length * 100) : null,
+      overdueRectificationRate: rects.length ? Math.round(overdueRects / rects.length * 100) : null,
+      averageActionDuration: completedActs ? Math.round(actions.filter(a => ['COMPLETED', 'VERIFIED'].includes(a.status)).reduce((s, a) => s + (a.durationDays || 14), 0) / completedActs) : null,
+      averageRiskClosureDuration: null,
+      actionVerificationRate: actions.length ? Math.round(verifiedActs / actions.length * 100) : null
+    };
+  };
+
+  const runtimeMetrics = versions.filter(v => v.status === 'ACTIVE').map(v => calcRuntimeMetrics(v.ruleId, v.versionId));
+
+  const effectiveness = versions.filter(v => v.status === 'ACTIVE').map((v, i) => {
+    const metrics = runtimeMetrics.find(m => m.versionId === v.versionId);
+    const hasData = metrics && metrics.dataStatus === 'CALCULATED';
+    const optRecs = (APP_DATA.regulatoryOptimizationRecommendations || []).slice(0, 2).map(r => r.recommendationId);
+    return {
+      effectivenessId: 'EFF-' + String(i + 1).padStart(3, '0'),
+      ruleId: v.ruleId,
+      versionId: v.versionId,
+      evaluationPeriod: '2026-Q2',
+      beforeMetrics: hasData ? { actionVerificationRate: Math.max(0, (metrics.actionVerificationRate || 0) - 5) } : {},
+      afterMetrics: hasData ? { actionVerificationRate: metrics.actionVerificationRate } : {},
+      effectivenessScore: hasData ? Math.min(100, Math.round((metrics.actionVerificationRate || 0) * 0.6 + (metrics.rectificationClosureRate || 0) * 0.4)) : null,
+      effectivenessLevel: hasData ? (metrics.actionVerificationRate >= 80 ? 'GOOD' : metrics.actionVerificationRate >= 60 ? 'ATTENTION' : 'INEFFECTIVE') : 'INSUFFICIENT_DATA',
+      improvementItems: hasData ? ['行动验证率较基线提升'] : [],
+      degradationItems: hasData && metrics.overdueRectificationRate > 20 ? ['超期整改率偏高'] : [],
+      recommendationIds: optRecs,
+      evaluationStatus: hasData ? 'PRELIMINARY' : 'INSUFFICIENT_DATA',
+      dataStatus: hasData ? 'CALCULATED' : 'INSUFFICIENT_HISTORY'
+    };
+  });
+
+  versions.forEach(v => {
+    const eff = effectiveness.find(e => e.versionId === v.versionId);
+    if (eff) {
+      v.effectivenessLevel = eff.effectivenessLevel;
+      v.needsOptimization = ['ATTENTION', 'INEFFECTIVE', 'INSUFFICIENT_DATA'].includes(eff.effectivenessLevel);
+    }
+  });
+
+  const optimizationLoop = effectiveness.filter(e => ['ATTENTION', 'INEFFECTIVE'].includes(e.effectivenessLevel)).map((e, i) => ({
+    optimizationId: 'OPT-RULE-' + String(i + 1).padStart(3, '0'),
+    ruleId: e.ruleId,
+    currentVersionId: e.versionId,
+    triggerType: e.effectivenessLevel === 'INEFFECTIVE' ? 'EFFECTIVENESS_DECLINE' : 'MATURENESS_GAP',
+    triggerSourceIds: e.recommendationIds,
+    recommendation: e.effectivenessLevel === 'INEFFECTIVE' ? '建议复核规则参数并提交变更申请' : '建议结合成熟度短板优化规则权重',
+    suggestedParameterChanges: e.ruleId === 'RULE-001' ? [{ paramId: 'PRIORITY_OVERDUE_RECTIFICATION_WEIGHT', suggestedValue: 22 }] : [],
+    simulationRequired: true,
+    nextChangeRequestId: e.ruleId === 'RULE-001' ? 'CR-002' : null,
+    sourceType: 'SYSTEM_DEFAULT'
+  }));
+
+  if (!optimizationLoop.length) {
+    optimizationLoop.push({
+      optimizationId: 'OPT-RULE-001',
+      ruleId: 'RULE-001',
+      currentVersionId: 'RULE-V001',
+      triggerType: 'MANUAL_REVIEW',
+      triggerSourceIds: [],
+      recommendation: '建议定期复核优先级权重与阈值',
+      suggestedParameterChanges: [],
+      simulationRequired: true,
+      nextChangeRequestId: 'CR-002',
+      sourceType: 'SYSTEM_DEFAULT'
+    });
+  }
+
+  APP_DATA.regulatoryRuleVersions = versions;
+  APP_DATA.regulatoryRuleChangeRequests = changeRequests;
+  APP_DATA.regulatoryRuleApprovals = approvals;
+  APP_DATA.regulatoryRuleImpactAnalysis = impactAnalyses;
+  APP_DATA.regulatoryRuleRuntimeMetrics = runtimeMetrics;
+  APP_DATA.regulatoryRuleEffectiveness = effectiveness;
+  APP_DATA.regulatoryRuleOptimizationLoop = optimizationLoop;
+
+  APP_DATA.regulatoryRuleGovernanceMetrics = {
+    totalRules: govFamilies.length,
+    activeVersions: versions.filter(v => v.status === 'ACTIVE').length,
+    pendingPublishVersions: versions.filter(v => ['PENDING_PUBLISH', 'APPROVED'].includes(v.status)).length,
+    pendingApprovalChanges: changeRequests.filter(cr => cr.status === 'PENDING_APPROVAL').length,
+    changesLast30Days: changeRequests.filter(cr => cr.submittedAt && cr.submittedAt >= '2026-06-22').length,
+    needsReevaluation: versions.filter(v => v.needsOptimization).length,
+    totalVersions: versions.length,
+    publishedChanges: changeRequests.filter(cr => cr.status === 'PUBLISHED').length,
+    impactAssessedCount: changeRequests.filter(cr => ['IMPACT_ASSESSED', 'PENDING_APPROVAL', 'APPROVED', 'PUBLISHED'].includes(cr.status)).length
+  };
+})();
