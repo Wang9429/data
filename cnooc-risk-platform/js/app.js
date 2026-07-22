@@ -2487,6 +2487,10 @@ const App = {
         <button class="btn btn-outline" onclick="App.navigate('rectification')">查看整改闭环</button>
       </div>
     `;
+    const groupOverlay = this.renderPenetrationGroupSupervisionOverlay ? this.renderPenetrationGroupSupervisionOverlay(riskId) : '';
+    if (groupOverlay) {
+      container.insertAdjacentHTML('afterbegin', groupOverlay);
+    }
   },
 
   renderControls() {

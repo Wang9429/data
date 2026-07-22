@@ -4937,60 +4937,122 @@ Object.assign(App, {
     return `<div class="kri-lineage" style="flex-wrap:wrap;margin:8px 0">${steps}</div>`;
   },
 
-  renderDashboardGroupRegulatoryPerspectiveCard() {
-    const metrics = [
-      ['8,562亿元', '集团投资总体态势', '1,286项 · 同比+8.6%', `App.navigate('portfolio')`],
-      ['12/38/75家', '区域/法人投资分布', '境内928项 · 境外358项', `App.navigate('portfolio')`],
-      ['128项', '重点项目监管情况', '重大投资128项 · 在管86项', `App.navigate('major')`],
-      ['72.0%', '投资风险集中度', '前十大法人68.2%', `App.navigate('warnings')`],
-      ['12项', '重大事项影响', '待决策4项 · 督办3项', `App.navigate('major')`],
-      ['76.4%', '整改闭环情况', '整改86项 · 逾期12项', `App.navigate('rectification')`]
+  renderGroupPenetrationSupervisionChain(riskId = 'risk-2', direction = 'down') {
+    const w = (APP_DATA.warnings || []).find(x => x.id === riskId) || (APP_DATA.warnings || [])[0] || {};
+    const rect = (APP_DATA.rectificationTasks || []).find(t => t.riskMatterId === w.id || t.riskId === w.id) || (APP_DATA.rectificationTasks || [])[0];
+    const defs = [
+      ['集团', '集团总部', '整体风险关注', `App.navigate('dashboard')`],
+      ['区域', '中东区域', '风险集中度较高', `App.navigate('warnings')`],
+      ['国家', '沙特阿拉伯', '重点国别监管', `App.navigate('portfolio')`],
+      ['法人', w.unit || 'B公司', '关联多个风险事项', `App.navigate('portfolio')`],
+      ['项目', w.project || '某境外能源项目', '触发重点监管', `App.navigate('portfolio')`],
+      ['投资事项', '投后经营跟踪', '重大事项影响', `App.navigate('process',{stageId:'post-invest'})`],
+      ['风险事项', w.name || '风险事项', '影响范围较大', `App.showWarningDetail('${w.id || 'risk-2'}')`],
+      ['KRI', w.indicator || '投资收益率', '连续超阈值', `App.navigate('controls')`],
+      ['预警', `${w.status || '红色'}预警`, '已触发监管关注', `App.filterWarnings('红色')`],
+      ['监管行动', '专项督办', '集团投资管理部', `App.navigate('major')`],
+      ['整改', rect ? rect.title : '整改任务', rect ? rect.status : '整改中', `App.navigate('rectification')`],
+      ['验证', rect && rect.status === '已关闭' ? '已验证关闭' : '待验证', rect ? (rect.progress >= 90 ? '证据已提交' : '证据待补充') : '—', `App.navigate('rectification')`]
     ];
-    return `<div class="card" style="margin-bottom:20px;border:1px solid #dce3ec;background:linear-gradient(180deg,#f8fbff 0%,#fff 100%)">
-      <div class="card-title">集团监管视角 · 投资活动总体态势</div>
-      <p class="insight-note">集团总部从<strong>全级次、全链条、全过程</strong>观察投资活动：覆盖总体规模、区域与法人分布、重点项目、风险集中度、重大事项影响与整改闭环，均基于现有投资管理页面与数据展示。</p>
-      <div class="group-metrics">${metrics.map(([v, l, sub, nav]) => `<button class="metric-card" onclick="${nav}"><div class="value">${v}</div><div class="label">${l}</div><div class="sub-items">${sub}</div></button>`).join('')}</div>
+    const ordered = direction === 'up' ? [...defs].reverse() : defs;
+    const steps = ordered.map(([label, name, sub, nav]) => this.renderLineageNode(label, name, sub, nav));
+    const title = direction === 'up' ? '向上追溯：底层风险对集团整体风险的影响' : '向下穿透：集团层面风险定位到底层对象';
+    return `<div style="margin:8px 0"><div class="insight-note"><b>${title}</b></div>${this.renderLineagePath(steps)}</div>`;
+  },
+
+  renderGroupFocusObjectsTable() {
+    const rows = [
+      ['中东区域', '区域', '风险集中度较高', '8项重大风险 · 占集团42%', `App.navigate('warnings')`],
+      ['沙特阿拉伯', '国家', 'KRI连续异常', '投资收益率连续2期低于阈值', `App.navigate('warnings')`],
+      ['B公司', '法人', '同一法人关联多个风险事项', '关联风险事项5项 · 整改超期2项', `App.navigate('portfolio')`],
+      ['某境外能源项目', '项目', '重大事项影响范围较大', '集团督办 · 收益偏离重大', `App.openInvestmentPenetrationFromWarnings('risk-2')`],
+      ['投资收益未达预期风险', '风险事项', 'KRI超阈值 + 整改超期', '红色预警 · 整改中', `App.showWarningDetail('risk-2')`]
+    ];
+    return `<table class="data-table"><thead><tr><th>重点监管对象</th><th>层级</th><th>为什么关注</th><th>监管信号</th><th>操作</th></tr></thead><tbody>${rows.map(r => `<tr><td><b>${r[0]}</b></td><td>${r[1]}</td><td>${r[2]}</td><td>${r[3]}</td><td><button class="btn btn-outline" style="padding:4px 10px;font-size:12px" onclick="${r[4]}">向下穿透</button></td></tr>`).join('')}</tbody></table>`;
+  },
+
+  renderGroupResponsibilityClosureTrace(riskId = 'risk-2') {
+    const w = (APP_DATA.warnings || []).find(x => x.id === riskId) || (APP_DATA.warnings || [])[0] || {};
+    const rect = (APP_DATA.rectificationTasks || []).find(t => t.riskMatterId === w.id || t.riskId === w.id) || (APP_DATA.rectificationTasks || []).find(t => t.id === 'RECT-202601001');
+    const owner = `${w.unit || 'B公司'}投资管理部 → 项目公司`;
+    const steps = [
+      this.renderLineageNode('风险事项', w.name || '—', w.level || '—', `App.showWarningDetail('${w.id || 'risk-2'}')`),
+      this.renderLineageNode('责任组织', owner, '主责 + 协同', `App.navigate('warnings')`),
+      this.renderLineageNode('监管行动', '集团专项督办', '投资管理部', `App.navigate('major')`),
+      this.renderLineageNode('整改任务', rect ? rect.title : '—', rect ? rect.status : '—', `App.navigate('rectification')`),
+      this.renderLineageNode('整改证据', rect ? '已上传分析报告' : '—', rect && rect.progress >= 90 ? '待验证' : '补充中', `App.navigate('rectification')`),
+      this.renderLineageNode('验证结果', rect && rect.status === '已关闭' ? '验证通过' : '待验证', rect ? `进度${rect.progress}%` : '—', `App.navigate('rectification')`)
+    ];
+    return `<div class="card" style="margin-top:12px;border:1px dashed #bfd5e7"><div class="card-title" style="font-size:14px">责任定位与整改验证追溯</div>
+      <p class="insight-note">回答：<b>谁负责</b>、<b>当前整改状态</b>、<b>是否超期</b>、<b>证据是否提交</b>、<b>是否完成验证关闭</b>。</p>
+      ${this.renderLineagePath(steps)}
+      <p style="margin-top:8px">${this.renderPublicLinkButton('查看整改闭环', `App.navigate('rectification')`)} ${this.renderPublicLinkButton('进入投资穿透分析', `App.openInvestmentPenetrationFromWarnings('${w.id || 'risk-2'}')`)}</p>
+    </div>`;
+  },
+
+  renderPenetrationGroupSupervisionOverlay(riskId) {
+    const w = (APP_DATA.warnings || []).find(x => x.id === riskId) || (APP_DATA.warnings || [])[0];
+    return `<div class="card" style="margin-bottom:16px;border:2px solid #c9daf5;background:#f8fbff">
+      <div class="card-title">集团穿透式监管视角 · 风险定位与追溯</div>
+      <p class="insight-note">本页为<b>投资风险监测</b>下的详情分析视图（非独立菜单）。展示集团如何从整体风险穿透定位到具体 KRI、预警、责任组织与整改验证。</p>
+      ${this.renderGroupPenetrationSupervisionChain(riskId, 'down')}
+      ${this.renderGroupPenetrationSupervisionChain(riskId, 'up')}
+      ${this.renderGroupResponsibilityClosureTrace(riskId)}
+    </div>`;
+  },
+
+  renderDashboardGroupRegulatoryPerspectiveCard() {
+    const focusMetrics = [
+      ['8项', '集团重大风险', '较上期+2项', `App.navigate('warnings')`],
+      ['中东区域', '重点监管区域', '风险集中度较高', `App.navigate('warnings')`],
+      ['B公司', '重点监管法人', '关联5项风险事项', `App.navigate('portfolio')`],
+      ['3项', '超期未验证整改', '影响集团闭环判断', `App.navigate('rectification')`]
+    ];
+    return `<div class="card" style="margin-bottom:20px;border:2px solid #c9daf5;background:linear-gradient(180deg,#f8fbff 0%,#fff 100%)">
+      <div class="card-title">集团穿透式监管视角 · 投资风险态势与重点对象</div>
+      <p class="insight-note"><b>集团现在重点关注哪里？</b> 从集团整体投资风险出发，识别区域、国家、法人、项目与风险事项等重点监管对象，并说明<b>为什么需要关注</b>，支持向下穿透定位底层风险与向上追溯影响。</p>
+      <div class="group-metrics">${focusMetrics.map(([v, l, sub, nav]) => `<button class="metric-card" onclick="${nav}"><div class="value">${v}</div><div class="label">${l}</div><div class="sub-items">${sub}</div></button>`).join('')}</div>
+      ${this.renderGroupFocusObjectsTable()}
+      <div style="margin-top:16px"><div class="card-title" style="font-size:14px;border:0;padding-bottom:4px">监管穿透主链路</div>
+      <p class="insight-note"><b>需要穿透到哪里？</b> 集团 → 区域 → 国家 → 法人 → 项目 → 投资事项 → 风险事项 → KRI → 预警 → 监管行动 → 整改 → 验证</p>
+      ${this.renderGroupPenetrationSupervisionChain('risk-2', 'down')}
+      ${this.renderGroupPenetrationSupervisionChain('risk-2', 'up')}
+      </div>
+      ${this.renderGroupResponsibilityClosureTrace('risk-2')}
+      <p style="margin-top:12px">${this.renderPublicLinkButton('进入投资风险监测', `App.navigate('warnings')`)} ${this.renderPublicLinkButton('进入投资穿透分析', `App.openInvestmentPenetrationFromWarnings('risk-2')`)} ${this.renderPublicLinkButton('查看整改闭环', `App.navigate('rectification')`)}</p>
     </div>`;
   },
 
   renderDashboardGroupRegulatoryDemoEntry() {
     const steps = ['投资驾驶舱', '投资风险监测', '投资穿透分析', '整改闭环', '监管复盘'];
     const path = steps.map((label, i) => `${i ? '<i>→</i>' : ''}<button onclick="App.startGroupRegulatoryPerspectiveWalkthrough(${i})"><b>${label}</b></button>`).join('');
-    return `<div class="card" style="margin-bottom:20px;border:1px solid #c9daf5;background:#fff">
-      <div class="card-title">集团监管视角演示入口</div>
-      <p class="insight-note">展示集团总部如何基于<strong>现有投资监管能力</strong>，实现对下属单位投资活动的穿透监管。演示路径仅使用已有页面跳转，不新增集团监管平台页面。</p>
+    return `<div class="card" style="margin-bottom:20px;border:1px solid #dce3ec;background:#fff">
+      <div class="card-title">集团穿透式监管视角演示入口</div>
+      <p class="insight-note">展示集团总部如何基于<strong>现有投资监管能力</strong>，从识别重点监管对象出发，向下穿透至区域、国家、法人、项目与风险事项，关联 KRI 和预警，定位责任组织并跟踪整改验证。不新增页面，仅复用已有投资管理页面。</p>
       <div class="kri-lineage" style="flex-wrap:wrap;margin:12px 0">${path}</div>
-      <p style="margin-top:8px">${this.renderPublicLinkButton('开始演示', 'App.startGroupRegulatoryPerspectiveWalkthrough(0)')} ${this.renderPublicLinkButton('进入投资风险监测', `App.navigate('warnings')`)} ${this.renderPublicLinkButton('查看整改闭环', `App.navigate('rectification')`)}</p>
+      <p style="margin-top:8px">${this.renderPublicLinkButton('开始演示', 'App.startGroupRegulatoryPerspectiveWalkthrough(0)')} ${this.renderPublicLinkButton('进入投资风险监测', `App.navigate('warnings')`)} ${this.renderPublicLinkButton('进入投资穿透分析', `App.openInvestmentPenetrationFromWarnings('risk-2')`)} ${this.renderPublicLinkButton('查看整改闭环', `App.navigate('rectification')`)}</p>
     </div>`;
   },
 
   renderWarningsGroupRegulatoryChain() {
     const w = (APP_DATA.warnings || [])[0];
-    const steps = [
-      this.renderLineageNode('集团', '集团总部', '全级次监管', `App.navigate('dashboard')`),
-      this.renderLineageNode('区域', '中东/境内', '6大区域', `App.navigate('portfolio')`),
-      this.renderLineageNode('法人', w ? w.unit : 'A/B/C/D公司', '125家法人', `App.navigate('portfolio')`),
-      this.renderLineageNode('项目', w ? w.project : '监管项目', '1,286项', `App.navigate('portfolio')`),
-      this.renderLineageNode('风险事项', w ? w.name : '风险事项', '46项', `App.showWarningDetail('${w ? w.id : 'risk-2'}')`),
-      this.renderLineageNode('KRI', w ? w.indicator : 'KRI指标', '28项异常', `App.navigate('controls')`),
-      this.renderLineageNode('预警', '风险预警', '8项重大', `App.filterWarnings('红色')`),
-      this.renderLineageNode('整改', '整改任务', '18项未闭环', `App.navigate('rectification')`)
-    ];
-    return `<div class="card" style="margin-bottom:16px"><div class="card-title">集团监管视角 · 投资风险穿透链路</div>
-      <p class="insight-note">在原有风险监测能力上叠加集团总部穿透维度：<strong>集团 → 区域 → 法人 → 项目 → 风险事项 → KRI → 预警 → 整改</strong>。点击下方节点可跳转至对应已有页面。</p>
-      ${this.renderLineagePath(steps)}
+    return `<div class="card" style="margin-bottom:16px"><div class="card-title">集团穿透式监管视角 · 风险穿透与追溯</div>
+      <p class="insight-note"><b>向下穿透：</b>从集团层面异常定位到具体区域、国家、法人、项目、投资事项、风险事项、KRI 与预警。<b>向上追溯：</b>底层项目风险如何影响法人、区域及集团整体风险判断。</p>
+      ${this.renderGroupPenetrationSupervisionChain(w ? w.id : 'risk-2', 'down')}
+      ${this.renderGroupPenetrationSupervisionChain(w ? w.id : 'risk-2', 'up')}
+      ${this.renderGroupResponsibilityClosureTrace(w ? w.id : 'risk-2')}
     </div>`;
   },
 
   renderPortfolioGroupPlanningPerspective() {
     const blocks = [
-      { title: '投资布局分析', value: '6大板块', desc: '清洁能源、装备制造、工程建设等；境内72% · 境外28%', nav: `App.showPortfolioDetail('投资布局','集团总体')` },
-      { title: '区域投资结构', value: '74.6%', desc: '前十大区域投资占比；中东、亚洲、非洲为重点区域', nav: `App.showPortfolioDetail('区域投资结构','中东')` },
-      { title: '子企业投资集中度', value: '68.2%', desc: '前十大法人集中度；A公司30.8% · B公司21.3%', nav: `App.showPortfolioDetail('子企业集中度','前十大法人')` },
-      { title: '战略方向匹配分析', value: '92.4%', desc: '主业匹配率；偏离主业项目14项待复核', nav: `App.navigate('controls')` }
+      { title: '投资布局分析', value: '6大板块', desc: '（辅助）清洁能源、装备制造等结构背景', nav: `App.showPortfolioDetail('投资布局','集团总体')` },
+      { title: '区域投资结构', value: '74.6%', desc: '（辅助）区域规模分布，非监管关注主因', nav: `App.showPortfolioDetail('区域投资结构','中东')` },
+      { title: '子企业投资集中度', value: '68.2%', desc: '（辅助）集中度背景，结合风险事项判断', nav: `App.showPortfolioDetail('子企业集中度','前十大法人')` },
+      { title: '战略方向匹配分析', value: '92.4%', desc: '（辅助）主业匹配，偏离项纳入监管关注', nav: `App.navigate('controls')` }
     ];
-    return `<div class="card"><div class="card-title">集团监管视角 · 投资规划与布局</div>
-      <p class="insight-note">在原有投资组合分析基础上，增加集团总部规划与监管视角：关注投资布局、区域结构、子企业集中度与战略方向匹配，数据均来自现有组合分析模块。</p>
+    return `<div class="card"><div class="card-title">辅助分析 · 投资规划与布局背景</div>
+      <p class="insight-note"><b>说明：</b>以下内容为投资组合分析的<strong>辅助背景信息</strong>，用于理解投资结构；集团穿透式监管的核心仍是<b>风险识别 → 重点对象 → 逐层穿透 → 责任整改 → 验证关闭</b>。请结合驾驶舱「集团穿透式监管视角」查看重点监管对象。</p>
       <div class="portfolio-analysis-row">${blocks.map(b => `<button class="analysis-card" onclick="${b.nav}"><h4>${b.title}</h4><strong>${b.value}</strong><p>${b.desc}</p></button>`).join('')}</div>
     </div>`;
   },
