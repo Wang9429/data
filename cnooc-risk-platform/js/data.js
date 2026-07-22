@@ -6376,3 +6376,33 @@ Object.assign(APP_DATA, {
     { permissionSetId: 'PS-CO-03', permissionCode: 'COORDINATION_ESCALATE', resourceType: 'regulatoryEscalationRecords', action: 'CONFIRM', riskLevel: 'HIGH' }
   ];
 })();
+
+(function () {
+  APP_DATA.regulatoryOperationalScenarioDefinitions = [
+    { scenarioCode: 'OS-01', name: '重大风险监管', scenarioType: 'MAJOR_RISK', theme: '重大投资风险', triggerSourceType: 'warnings', roleType: 'GROUP_REGULATORY' },
+    { scenarioCode: 'OS-02', name: '数据质量影响监管', scenarioType: 'DATA_QUALITY_IMPACT', theme: '数据质量风险', triggerSourceType: 'regulatoryDataQualityIssues', roleType: 'GROUP_REGULATORY' },
+    { scenarioCode: 'OS-03', name: '规则变更影响监管', scenarioType: 'RULE_CHANGE_IMPACT', theme: '资金安全', triggerSourceType: 'regulatoryRules', roleType: 'GROUP_REGULATORY' },
+    { scenarioCode: 'OS-04', name: '跨法人监管协同', scenarioType: 'CROSS_ENTITY', theme: '跨法人风险', triggerSourceType: 'crossDomainRiskMatters', roleType: 'GROUP_REGULATORY' },
+    { scenarioCode: 'OS-05', name: '跨领域监管协同', scenarioType: 'CROSS_DOMAIN', theme: '境外经营风险', triggerSourceType: 'crossDomainRiskMatters', roleType: 'GROUP_REGULATORY' },
+    { scenarioCode: 'OS-06', name: '重大整改验证', scenarioType: 'MAJOR_RECTIFICATION', theme: '重大整改风险', triggerSourceType: 'rectificationTasks', roleType: 'GROUP_REGULATORY' },
+    { scenarioCode: 'OS-07', name: '监管运营周期运行', scenarioType: 'OPERATING_CYCLE', theme: '资金安全', triggerSourceType: 'regulatoryOperatingCycleInstances', roleType: 'GROUP_REGULATORY' },
+    { scenarioCode: 'OS-08', name: '集团领导决策', scenarioType: 'GROUP_LEADER_DECISION', theme: '重大投资风险', triggerSourceType: 'regulatoryOperatingRecommendations', roleType: 'GROUP_LEADER' }
+  ];
+  APP_DATA.regulatoryOperationalScenarios = APP_DATA.regulatoryOperationalScenarios || [];
+  APP_DATA.regulatoryOperationalThemes = APP_DATA.regulatoryOperationalThemes || [];
+  APP_DATA.regulatoryOperationalScenarioOrchestrationIndex = APP_DATA.regulatoryOperationalScenarioOrchestrationIndex || [];
+  APP_DATA.regulatoryOperationalScenarioResultIndexes = APP_DATA.regulatoryOperationalScenarioResultIndexes || [];
+  APP_DATA.regulatoryOperationalLedger = APP_DATA.regulatoryOperationalLedger || [];
+  APP_DATA.regulatoryOperationalMetrics = APP_DATA.regulatoryOperationalMetrics || {};
+  const rpmOp = APP_DATA.regulatoryRolePermissionMap || {};
+  ['ROLE-GROUP-LEADER', 'ROLE-GROUP-REG', 'ROLE-DOMAIN-REG', 'ROLE-ENTITY-REG'].forEach(r => {
+    rpmOp[r] = [...new Set([...(rpmOp[r] || []), 'OPERATIONAL_VIEW'])];
+  });
+  rpmOp['ROLE-GROUP-REG'] = [...new Set([...(rpmOp['ROLE-GROUP-REG'] || []), 'OPERATIONAL_MANAGE'])];
+  rpmOp['ROLE-GROUP-LEADER'] = [...new Set([...(rpmOp['ROLE-GROUP-LEADER'] || []), 'OPERATIONAL_MANAGE'])];
+  APP_DATA.regulatoryRolePermissionMap = rpmOp;
+  APP_DATA.regulatoryPermissionSets = [...(APP_DATA.regulatoryPermissionSets || []),
+    { permissionSetId: 'PS-OS-01', permissionCode: 'OPERATIONAL_VIEW', resourceType: 'regulatoryOperationalScenarios', action: 'VIEW', riskLevel: 'LOW' },
+    { permissionSetId: 'PS-OS-02', permissionCode: 'OPERATIONAL_MANAGE', resourceType: 'regulatoryOperationalScenarios', action: 'MANAGE', riskLevel: 'MEDIUM' }
+  ];
+})();
