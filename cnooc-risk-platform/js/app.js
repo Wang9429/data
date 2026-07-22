@@ -139,6 +139,7 @@ const App = {
     if (this.initializeRegulatoryOperationalScenarios) this.initializeRegulatoryOperationalScenarios();
     if (this.initializeRegulatoryFinalAcceptance) this.initializeRegulatoryFinalAcceptance();
     if (this.initializeRegulatoryFinalRemediation) this.initializeRegulatoryFinalRemediation();
+    if (this.initializeRegulatoryDeliveryReadiness) this.initializeRegulatoryDeliveryReadiness();
     this.renderNav();
     this.renderGroupOverview();
     this.renderRegulatoryEvents();

@@ -6438,3 +6438,23 @@ Object.assign(APP_DATA, {
     { permissionSetId: 'PS-FA-03', permissionCode: 'ACCEPTANCE_REMEDIATION_MANAGE', resourceType: 'regulatoryFinalAcceptanceRemediationIndexes', action: 'MANAGE', riskLevel: 'MEDIUM' }
   ];
 })();
+
+(function () {
+  APP_DATA.regulatoryDeliveryReadinessIndex = APP_DATA.regulatoryDeliveryReadinessIndex || {};
+  APP_DATA.regulatoryGoLiveChecklistIndex = APP_DATA.regulatoryGoLiveChecklistIndex || {};
+  APP_DATA.regulatoryHandoverIndex = APP_DATA.regulatoryHandoverIndex || {};
+  APP_DATA.regulatoryUserTrainingIndex = APP_DATA.regulatoryUserTrainingIndex || [];
+  APP_DATA.regulatoryDeliveryDocumentIndex = APP_DATA.regulatoryDeliveryDocumentIndex || [];
+  APP_DATA.regulatoryGoLiveCheckItemIndex = APP_DATA.regulatoryGoLiveCheckItemIndex || [];
+  APP_DATA.regulatoryPostGoLiveActionIndexes = APP_DATA.regulatoryPostGoLiveActionIndexes || [];
+  APP_DATA.regulatoryFinalDeliveryPackageIndex = APP_DATA.regulatoryFinalDeliveryPackageIndex || {};
+  const rpmDr = APP_DATA.regulatoryRolePermissionMap || {};
+  ['ROLE-GROUP-LEADER', 'ROLE-GROUP-REG', 'ROLE-DOMAIN-REG', 'ROLE-ENTITY-REG'].forEach(r => {
+    rpmDr[r] = [...new Set([...(rpmDr[r] || []), 'DELIVERY_READINESS_VIEW'])];
+  });
+  APP_DATA.regulatoryRolePermissionMap = rpmDr;
+  APP_DATA.regulatoryPermissionSets = [...(APP_DATA.regulatoryPermissionSets || []),
+    { permissionSetId: 'PS-DR-01', permissionCode: 'DELIVERY_READINESS_VIEW', resourceType: 'regulatoryDeliveryReadinessIndex', action: 'VIEW', riskLevel: 'LOW' },
+    { permissionSetId: 'PS-DR-02', permissionCode: 'DELIVERY_READINESS_VIEW', resourceType: 'regulatoryHandoverIndex', action: 'VIEW', riskLevel: 'LOW' }
+  ];
+})();
