@@ -5193,3 +5193,508 @@ Object.assign(APP_DATA, {
   rpm2['ROLE-ENTITY-REG'] = [...new Set([...(rpm2['ROLE-ENTITY-REG'] || []), 'METRIC_VIEW', 'KRI_VIEW', 'WARNING_VIEW', 'WARNING_JUDGE'])];
   APP_DATA.regulatoryRolePermissionMap = rpm2;
 })();
+
+(function () {
+  const TODAY = '2026-07-22';
+  const warnings = APP_DATA.warnings || [];
+  const cdrMatters = APP_DATA.crossDomainRiskMatters || [];
+  const events = APP_DATA.regulatoryEvents || [];
+  const rects = APP_DATA.rectificationTasks || [];
+  const entities = APP_DATA.globalLegalEntities || [];
+  const regions = APP_DATA.globalRegions || [];
+  const priorityObjects = APP_DATA.regulatoryPriorityObjects || [];
+  const regulatoryWarnings = APP_DATA.regulatoryWarnings || [];
+  const kriRuntime = APP_DATA.regulatoryKriRuntime || [];
+  const actions = APP_DATA.regulatoryActions || [];
+  const dataGov = APP_DATA.regulatoryDataGovernanceMetrics || {};
+  const km = APP_DATA.regulatoryMetricKriMetrics || {};
+  const maturity = APP_DATA.regulatoryMaturity || {};
+  const qualityIssues = APP_DATA.regulatoryDataQualityIssues || [];
+
+  const ANALYSIS_WEIGHTS = {
+    riskExposure: 0.2,
+    dataCredibility: 0.15,
+    kriHealth: 0.15,
+    warningEffectiveness: 0.1,
+    rectificationClosure: 0.15,
+    actionExecution: 0.1,
+    maturity: 0.15
+  };
+  APP_DATA.regulatoryAnalysisWeights = ANALYSIS_WEIGHTS;
+
+  const allRisks = [
+    ...warnings.map(w => ({ id: w.id, name: w.name, level: w.level, entityId: w.entityId, domainId: w.domainId, riskType: w.category || w.type, riskScenarioId: w.riskScenarioId })),
+    ...cdrMatters.map(m => ({ id: m.riskMatterId, name: m.riskMatterName, level: m.riskLevel, entityId: (m.affectedEntityIds || [])[0], domainId: m.domainId, riskType: m.riskType, riskScenarioId: m.riskScenarioId }))
+  ];
+  const totalRiskCount = Math.max(allRisks.length, 1);
+
+  function concLevel(rate) {
+    if (rate >= 0.35) return 'HIGH_CONCENTRATION';
+    if (rate >= 0.2) return 'MEDIUM_CONCENTRATION';
+    return 'LOW_CONCENTRATION';
+  }
+
+  function riskLevelFromCount(count, level) {
+    if (level === '重大' || level === 'HIGH' || level === 'CRITICAL' || count >= 4) return 'HIGH';
+    if (level === '较大' || level === 'MEDIUM' || count >= 2) return 'MEDIUM';
+    return 'LOW';
+  }
+
+  const regulatoryRiskConcentration = [];
+  let rcSeq = 1;
+
+  regions.forEach(r => {
+    const eIds = entities.filter(e => e.regionId === r.regionId && e.entityId !== 'G001').map(e => e.entityId);
+    const count = allRisks.filter(w => eIds.includes(w.entityId)).length;
+    const warnCount = regulatoryWarnings.filter(w => eIds.includes(w.entityId)).length;
+    const rectOverdue = rects.filter(t => eIds.includes(t.entityId) && t.deadline && t.deadline < TODAY && t.status !== '已关闭').length;
+    const rate = (count + warnCount) / (totalRiskCount + regulatoryWarnings.length || 1);
+    if (!count && !warnCount && !rectOverdue) return;
+    const maxLevel = allRisks.filter(w => eIds.includes(w.entityId)).some(w => w.level === '重大') ? 'HIGH' : 'MEDIUM';
+    regulatoryRiskConcentration.push({
+      concentrationId: 'RC-R-' + String(rcSeq++).padStart(3, '0'),
+      dimension: 'byRegion',
+      objectId: r.regionId,
+      objectName: r.regionName,
+      scopeType: 'REGION',
+      count: count + warnCount,
+      riskCount: count,
+      warningCount: warnCount,
+      rectOverdueCount: rectOverdue,
+      totalCount: totalRiskCount,
+      concentrationRate: Math.round(rate * 1000) / 1000,
+      concentrationLevel: concLevel(rate),
+      riskLevel: riskLevelFromCount(count, maxLevel),
+      priority: priorityObjects.find(p => p.objectId === r.regionId)?.priority || (count >= 3 ? 'HIGH' : 'MEDIUM'),
+      status: rectOverdue > 0 ? 'ATTENTION' : 'NORMAL',
+      interpretation: rate >= 0.35 ? (maxLevel === 'HIGH' ? '集中度高且风险等级高' : '集中度高但风险等级低') : (count >= 1 ? '集中度低但单项风险严重' : '集中度低')
+    });
+  });
+
+  entities.filter(e => e.entityId !== 'G001').forEach(ent => {
+    const count = allRisks.filter(w => w.entityId === ent.entityId).length;
+    const warnCount = regulatoryWarnings.filter(w => w.entityId === ent.entityId).length;
+    const rectOverdue = rects.filter(t => t.entityId === ent.entityId && t.deadline && t.deadline < TODAY && t.status !== '已关闭').length;
+    const rate = (count + warnCount) / (totalRiskCount + regulatoryWarnings.length || 1);
+    if (!count && !warnCount && !rectOverdue) return;
+    const levels = allRisks.filter(w => w.entityId === ent.entityId).map(w => w.level);
+    const maxLevel = levels.includes('重大') ? 'HIGH' : levels.includes('较大') ? 'MEDIUM' : 'LOW';
+    regulatoryRiskConcentration.push({
+      concentrationId: 'RC-E-' + String(rcSeq++).padStart(3, '0'),
+      dimension: 'byEntity',
+      objectId: ent.entityId,
+      objectName: ent.entityName,
+      scopeType: 'ENTITY',
+      regionId: ent.regionId,
+      count: count + warnCount,
+      riskCount: count,
+      warningCount: warnCount,
+      rectOverdueCount: rectOverdue,
+      totalCount: totalRiskCount,
+      concentrationRate: Math.round(rate * 1000) / 1000,
+      concentrationLevel: concLevel(rate),
+      riskLevel: maxLevel,
+      priority: priorityObjects.find(p => p.objectId === ent.entityId)?.priority || (maxLevel === 'HIGH' ? 'CRITICAL' : 'MEDIUM'),
+      status: rectOverdue > 0 ? 'OVERDUE' : 'NORMAL',
+      interpretation: rate >= 0.35 ? (maxLevel === 'HIGH' ? '集中度高且风险等级高' : '集中度高但风险等级低') : (maxLevel === 'HIGH' ? '集中度低但单项风险严重' : '集中度低')
+    });
+  });
+
+  const domains = [...new Set([...allRisks.map(r => r.domainId), ...kriRuntime.map(k => (APP_DATA.groupKris || []).find(g => g.id === k.kriId)?.category)].filter(Boolean))];
+  domains.forEach(dom => {
+    const count = allRisks.filter(w => w.domainId === dom).length;
+    const kriCount = kriRuntime.filter(k => (APP_DATA.groupKris || []).find(g => g.id === k.kriId)?.category === dom && ['WARNING', 'CRITICAL'].includes(k.status)).length;
+    const rate = (count + kriCount) / (totalRiskCount + kriRuntime.length || 1);
+    if (!count && !kriCount) return;
+    regulatoryRiskConcentration.push({
+      concentrationId: 'RC-D-' + String(rcSeq++).padStart(3, '0'),
+      dimension: 'byDomain',
+      objectId: dom,
+      objectName: dom,
+      scopeType: 'DOMAIN',
+      count: count + kriCount,
+      riskCount: count,
+      kriAnomalyCount: kriCount,
+      totalCount: totalRiskCount,
+      concentrationRate: Math.round(rate * 1000) / 1000,
+      concentrationLevel: concLevel(rate),
+      riskLevel: count >= 2 ? 'HIGH' : 'MEDIUM',
+      priority: count >= 2 ? 'HIGH' : 'MEDIUM',
+      status: 'NORMAL',
+      interpretation: rate >= 0.35 ? '领域风险集中' : '领域风险分散'
+    });
+  });
+
+  const riskTypes = [...new Set(allRisks.map(r => r.riskType).filter(Boolean))];
+  riskTypes.forEach(rt => {
+    const count = allRisks.filter(w => w.riskType === rt).length;
+    const rate = count / totalRiskCount;
+    regulatoryRiskConcentration.push({
+      concentrationId: 'RC-T-' + String(rcSeq++).padStart(3, '0'),
+      dimension: 'byRiskType',
+      objectId: rt,
+      objectName: rt,
+      scopeType: 'RISK_TYPE',
+      count,
+      totalCount: totalRiskCount,
+      concentrationRate: Math.round(rate * 1000) / 1000,
+      concentrationLevel: concLevel(rate),
+      riskLevel: count >= 3 ? 'HIGH' : 'MEDIUM',
+      priority: 'MEDIUM',
+      status: 'NORMAL',
+      interpretation: '风险类型集中度分析（集中度≠严重程度）'
+    });
+  });
+
+  kriRuntime.filter(k => ['WARNING', 'CRITICAL', 'ATTENTION'].includes(k.status)).forEach(k => {
+    const rate = 1 / Math.max(kriRuntime.length, 1);
+    regulatoryRiskConcentration.push({
+      concentrationId: 'RC-K-' + k.kriRuntimeId,
+      dimension: 'byKri',
+      objectId: k.kriId,
+      objectName: k.kriName,
+      scopeType: 'KRI',
+      count: 1,
+      totalCount: kriRuntime.length,
+      concentrationRate: Math.round(rate * 1000) / 1000,
+      concentrationLevel: k.status === 'CRITICAL' ? 'HIGH_CONCENTRATION' : 'MEDIUM_CONCENTRATION',
+      riskLevel: k.status === 'CRITICAL' ? 'HIGH' : 'MEDIUM',
+      priority: k.status === 'CRITICAL' ? 'HIGH' : 'MEDIUM',
+      status: k.status,
+      interpretation: 'KRI异常集中度'
+    });
+  });
+
+  regulatoryWarnings.forEach(w => {
+    regulatoryRiskConcentration.push({
+      concentrationId: 'RC-W-' + w.regulatoryWarningId,
+      dimension: 'byWarning',
+      objectId: w.regulatoryWarningId,
+      objectName: w.regulatoryWarningId,
+      scopeType: 'WARNING',
+      entityId: w.entityId,
+      count: 1,
+      totalCount: regulatoryWarnings.length,
+      concentrationRate: Math.round(1 / Math.max(regulatoryWarnings.length, 1) * 1000) / 1000,
+      concentrationLevel: w.warningLevel === 'CRITICAL' ? 'HIGH_CONCENTRATION' : 'MEDIUM_CONCENTRATION',
+      riskLevel: w.warningLevel === 'CRITICAL' ? 'HIGH' : 'MEDIUM',
+      priority: w.warningLevel,
+      status: w.status,
+      interpretation: '预警集中度'
+    });
+  });
+
+  rects.filter(t => t.deadline && t.deadline < TODAY && t.status !== '已关闭').forEach(t => {
+    regulatoryRiskConcentration.push({
+      concentrationId: 'RC-RECT-' + t.taskId,
+      dimension: 'byRectification',
+      objectId: t.taskId,
+      objectName: t.title,
+      scopeType: 'RECTIFICATION',
+      entityId: t.entityId,
+      count: 1,
+      totalCount: rects.length,
+      concentrationRate: Math.round(1 / Math.max(rects.length, 1) * 1000) / 1000,
+      concentrationLevel: 'HIGH_CONCENTRATION',
+      riskLevel: 'HIGH',
+      priority: t.level || 'HIGH',
+      status: 'OVERDUE',
+      interpretation: '整改超期集中度'
+    });
+  });
+
+  const regulatoryRiskPropagation = [];
+  let rpSeq = 1;
+
+  const kriGroups = {};
+  kriRuntime.filter(k => ['WARNING', 'CRITICAL', 'ATTENTION'].includes(k.status)).forEach(k => {
+    if (!kriGroups[k.kriId]) kriGroups[k.kriId] = [];
+    kriGroups[k.kriId].push(k);
+  });
+  Object.keys(kriGroups).forEach(kriId => {
+    const group = kriGroups[kriId];
+    const entityIds = [...new Set(group.map(g => g.scopeId))];
+    if (entityIds.length < 2) return;
+    const regionIds = [...new Set(entityIds.map(eid => (entities.find(e => e.entityId === eid) || {}).regionId).filter(Boolean))];
+    regulatoryRiskPropagation.push({
+      propagationId: 'RP-' + String(rpSeq++).padStart(3, '0'),
+      propagationType: 'POTENTIAL_PROPAGATION',
+      chainType: 'CROSS_ENTITY_KRI',
+      title: '跨法人同类KRI异常',
+      description: `KRI ${kriId} 在 ${entityIds.length} 个法人出现异常，需进一步核实`,
+      steps: [
+        { step: 1, label: 'KRI异常', objectType: 'regulatoryKriRuntime', objectIds: group.map(g => g.kriRuntimeId), pageId: 'regulatory-kri-monitoring' },
+        { step: 2, label: '关联预警', objectType: 'regulatoryWarnings', objectIds: regulatoryWarnings.filter(w => w.kriId === kriId).map(w => w.regulatoryWarningId), pageId: 'regulatory-warning-center' },
+        { step: 3, label: '原始风险', objectType: 'warnings', objectIds: warnings.filter(w => w.kriId === kriId).map(w => w.id), pageId: 'warnings' }
+      ],
+      affectedEntityIds: entityIds,
+      affectedRegionIds: regionIds,
+      kriId,
+      requiresVerification: true,
+      confidence: 0.65
+    });
+  });
+
+  regions.forEach(r => {
+    const eIds = entities.filter(e => e.regionId === r.regionId).map(e => e.entityId);
+    const regionRisks = allRisks.filter(w => eIds.includes(w.entityId));
+    const types = [...new Set(regionRisks.map(w => w.riskType).filter(Boolean))];
+    types.forEach(rt => {
+      const sameType = regionRisks.filter(w => w.riskType === rt);
+      if (sameType.length < 2) return;
+      regulatoryRiskPropagation.push({
+        propagationId: 'RP-' + String(rpSeq++).padStart(3, '0'),
+        propagationType: 'POTENTIAL_PROPAGATION',
+        chainType: 'CROSS_ENTITY_SAME_RISK_TYPE',
+        title: `区域${r.regionName}同类风险`,
+        description: `${rt} 在 ${sameType.length} 个法人出现`,
+        steps: [
+          { step: 1, label: '区域风险集中', objectType: 'regulatoryRiskConcentration', objectIds: [regulatoryRiskConcentration.find(c => c.dimension === 'byRegion' && c.objectId === r.regionId)?.concentrationId].filter(Boolean), pageId: 'regulatory-risk-concentration' },
+          { step: 2, label: '风险事项', objectType: 'warnings', objectIds: sameType.map(s => s.id), pageId: 'warnings' }
+        ],
+        affectedRegionIds: [r.regionId],
+        affectedEntityIds: sameType.map(s => s.entityId),
+        requiresVerification: true,
+        confidence: 0.6
+      });
+    });
+  });
+
+  qualityIssues.filter(i => i.kriId && i.status !== 'CLOSED').slice(0, 6).forEach(issue => {
+    const kri = kriRuntime.find(k => k.kriId === issue.kriId);
+    const warn = regulatoryWarnings.find(w => w.kriId === issue.kriId);
+    if (!kri) return;
+    regulatoryRiskPropagation.push({
+      propagationId: 'RP-' + String(rpSeq++).padStart(3, '0'),
+      propagationType: 'POTENTIAL_PROPAGATION',
+      chainType: 'DATA_QUALITY_TO_KRI',
+      title: '数据质量→KRI→预警传导链',
+      description: '数据质量异常可能导致KRI可信度下降及预警偏差',
+      steps: [
+        { step: 1, label: '数据质量异常', objectType: 'regulatoryDataQualityIssues', objectIds: [issue.qualityIssueId], pageId: 'regulatory-data-quality' },
+        { step: 2, label: 'KRI可信度下降', objectType: 'regulatoryKriRuntime', objectIds: [kri.kriRuntimeId], pageId: 'regulatory-kri-monitoring' },
+        ...(warn ? [{ step: 3, label: '预警识别', objectType: 'regulatoryWarnings', objectIds: [warn.regulatoryWarningId], pageId: 'regulatory-warning-center' }] : []),
+        ...((warnings.filter(w => w.kriId === issue.kriId).map(w => w.id)).length ? [{ step: warn ? 4 : 3, label: '原始风险', objectType: 'warnings', objectIds: warnings.filter(w => w.kriId === issue.kriId).map(w => w.id), pageId: 'warnings' }] : []),
+        { step: warn ? 5 : (warnings.filter(w => w.kriId === issue.kriId).length ? 4 : 3), label: '整改', objectType: 'rectificationTasks', objectIds: rects.filter(t => t.entityId === kri.scopeId).slice(0, 2).map(t => t.taskId), pageId: 'rectification' }
+      ],
+      kriId: issue.kriId,
+      requiresVerification: true,
+      confidence: 0.72
+    });
+  });
+
+  const closedActions = actions.filter(a => ['COMPLETED', 'VERIFIED'].includes(a.status)).length;
+  const actionClosureRate = actions.length ? Math.round(closedActions / actions.length * 1000) / 10 : null;
+  const verifiedRects = rects.filter(t => t.verificationStatus === '验证通过' || t.status === '已关闭').length;
+  const rectVerificationRate = rects.length ? Math.round(verifiedRects / rects.length * 1000) / 10 : null;
+  const highRiskEntities = regulatoryRiskConcentration.filter(c => c.dimension === 'byEntity' && (c.riskLevel === 'HIGH' || c.concentrationLevel === 'HIGH_CONCENTRATION')).length;
+
+  const regulatoryScenarioAnalysis = [
+    { scenarioId: 'SCN-001', scenarioType: 'DATA_QUALITY_DECLINE', title: '数据质量下降', description: '模拟数据质量下降对KRI可信度与预警判断的影响', status: 'READY', simulationOnly: true, baseDataRef: 'regulatoryDataGovernanceMetrics', impactAreas: ['KRI可信度', '预警可信度', '监管判断复核'] },
+    { scenarioId: 'SCN-002', scenarioType: 'CRITICAL_WARNING_INCREASE', title: '重大预警增加', description: '模拟重大预警增加对风险集中度与监管资源需求的影响', status: 'READY', simulationOnly: true, baseDataRef: 'regulatoryMetricKriMetrics', impactAreas: ['风险集中度', '监管优先级', '监管资源'] },
+    { scenarioId: 'SCN-003', scenarioType: 'RECTIFICATION_OVERDUE_INCREASE', title: '整改超期增加', description: '模拟整改超期对闭环率与监管绩效的影响', status: 'READY', simulationOnly: true, baseDataRef: 'rectificationTasks', impactAreas: ['闭环率', '监管绩效', '重点法人'] },
+    { scenarioId: 'SCN-004', scenarioType: 'KRI_THRESHOLD_CHANGE', title: 'KRI阈值变化', description: '情景分析≠真实规则变更，须走规则治理闭环', status: 'READY', simulationOnly: true, baseDataRef: 'regulatoryRules', impactAreas: ['KRI状态', '预警数量', '规则治理'], ruleWorkflowRequired: true }
+  ];
+
+  const regulatoryDecisionRecommendations = [];
+  let recSeq = 1;
+
+  regulatoryRiskConcentration.filter(c => c.dimension === 'byEntity' && (c.concentrationLevel === 'HIGH_CONCENTRATION' || c.riskLevel === 'HIGH')).slice(0, 8).forEach(c => {
+    regulatoryDecisionRecommendations.push({
+      recommendationId: 'REC-' + String(recSeq++).padStart(3, '0'),
+      recommendationType: 'FOCUS_ENTITY',
+      sourceAnalysisId: c.concentrationId,
+      affectedScope: { scopeType: 'ENTITY', scopeId: c.objectId, scopeName: c.objectName },
+      priority: c.riskLevel === 'HIGH' ? 'HIGH' : 'MEDIUM',
+      reason: `${c.objectName} 风险集中度 ${Math.round(c.concentrationRate * 100)}%，${c.interpretation}`,
+      evidence: [{ type: 'regulatoryRiskConcentration', id: c.concentrationId }, { type: 'warnings', ids: warnings.filter(w => w.entityId === c.objectId).map(w => w.id).slice(0, 3) }],
+      confidence: Math.min(0.95, 0.6 + c.concentrationRate),
+      suggestedAction: '加强重点法人监管',
+      requiresHumanDecision: true,
+      status: 'PENDING',
+      entityId: c.objectId,
+      regionId: c.regionId
+    });
+  });
+
+  regulatoryRiskConcentration.filter(c => c.dimension === 'byRegion' && c.concentrationLevel === 'HIGH_CONCENTRATION').slice(0, 3).forEach(c => {
+    regulatoryDecisionRecommendations.push({
+      recommendationId: 'REC-' + String(recSeq++).padStart(3, '0'),
+      recommendationType: 'FOCUS_REGION',
+      sourceAnalysisId: c.concentrationId,
+      affectedScope: { scopeType: 'REGION', scopeId: c.objectId, scopeName: c.objectName },
+      priority: 'HIGH',
+      reason: `区域 ${c.objectName} 风险集中度偏高`,
+      evidence: [{ type: 'regulatoryRiskConcentration', id: c.concentrationId }],
+      confidence: 0.78,
+      suggestedAction: '提升区域监管关注',
+      requiresHumanDecision: true,
+      status: 'PENDING',
+      regionId: c.objectId
+    });
+  });
+
+  if (dataGov.severeIssueCount > 0 || dataGov.openIssueCount > 0) {
+    regulatoryDecisionRecommendations.push({
+      recommendationId: 'REC-' + String(recSeq++).padStart(3, '0'),
+      recommendationType: 'REVIEW_DATA_QUALITY',
+      sourceAnalysisId: 'ANA-DQ',
+      affectedScope: { scopeType: 'GROUP', scopeId: 'G001', scopeName: '集团' },
+      priority: dataGov.severeIssueCount > 0 ? 'HIGH' : 'MEDIUM',
+      reason: `数据质量异常 ${dataGov.openIssueCount} 项，严重 ${dataGov.severeIssueCount} 项，影响监管判断`,
+      evidence: [{ type: 'regulatoryDataQualityIssues', ids: qualityIssues.filter(i => i.status !== 'CLOSED').slice(0, 5).map(i => i.qualityIssueId) }],
+      confidence: 0.82,
+      suggestedAction: '启动数据质量复核',
+      requiresHumanDecision: true,
+      status: 'PENDING'
+    });
+  }
+
+  kriRuntime.filter(k => k.dataStatus === 'INSUFFICIENT_DATA' || (k.credibilityScore != null && k.credibilityScore < 70)).slice(0, 3).forEach(k => {
+    regulatoryDecisionRecommendations.push({
+      recommendationId: 'REC-' + String(recSeq++).padStart(3, '0'),
+      recommendationType: 'REVIEW_KRI',
+      sourceAnalysisId: k.kriRuntimeId,
+      affectedScope: { scopeType: k.scopeType, scopeId: k.scopeId },
+      priority: 'MEDIUM',
+      reason: `KRI ${k.kriName} 数据可信度不足，需复核`,
+      evidence: [{ type: 'regulatoryKriRuntime', id: k.kriRuntimeId }, { type: 'regulatoryMetrics', id: k.metricId }],
+      confidence: 0.7,
+      suggestedAction: '复核KRI数据可信度',
+      requiresHumanDecision: true,
+      status: 'PENDING',
+      kriId: k.kriId
+    });
+  });
+
+  regulatoryWarnings.filter(w => w.status === 'PENDING_REVIEW').slice(0, 4).forEach(w => {
+    regulatoryDecisionRecommendations.push({
+      recommendationId: 'REC-' + String(recSeq++).padStart(3, '0'),
+      recommendationType: 'REVIEW_WARNING',
+      sourceAnalysisId: w.regulatoryWarningId,
+      affectedScope: { scopeType: 'ENTITY', scopeId: w.entityId },
+      priority: w.warningLevel === 'CRITICAL' ? 'CRITICAL' : 'HIGH',
+      reason: `预警 ${w.regulatoryWarningId} 待研判`,
+      evidence: [{ type: 'regulatoryWarnings', id: w.regulatoryWarningId }, { type: 'regulatoryKriRuntime', id: w.kriRuntimeId }],
+      confidence: 0.75,
+      suggestedAction: '完成预警研判',
+      requiresHumanDecision: true,
+      status: 'PENDING',
+      entityId: w.entityId
+    });
+  });
+
+  const resourceAlloc = APP_DATA.regulatoryResourceAllocations || [];
+  if (highRiskEntities > 2) {
+    regulatoryDecisionRecommendations.push({
+      recommendationId: 'REC-' + String(recSeq++).padStart(3, '0'),
+      recommendationType: 'ALLOCATE_RESOURCE',
+      sourceAnalysisId: 'ANA-RES',
+      affectedScope: { scopeType: 'GROUP', scopeId: 'G001' },
+      priority: 'HIGH',
+      reason: `高风险法人 ${highRiskEntities} 家，建议重新配置监管资源`,
+      evidence: [{ type: 'regulatoryResourceAllocations', count: resourceAlloc.length }],
+      confidence: 0.68,
+      suggestedAction: '优化监管资源配置',
+      requiresHumanDecision: true,
+      status: 'PENDING'
+    });
+  }
+
+  const regulatoryAnalysisIndexes = [
+    { analysisIndexId: 'AI-001', analysisType: 'COMPOSITE', title: '集团综合监管态势', status: 'READY', calculatedAt: TODAY + ' 08:00:00', scopeType: 'GROUP', scopeId: 'G001' },
+    { analysisIndexId: 'AI-002', analysisType: 'CONCENTRATION', title: '风险集中度分析', status: 'READY', calculatedAt: TODAY + ' 08:00:00', scopeType: 'GROUP', scopeId: 'G001' },
+    { analysisIndexId: 'AI-003', analysisType: 'PROPAGATION', title: '风险传导分析', status: 'READY', calculatedAt: TODAY + ' 08:00:00', scopeType: 'GROUP', scopeId: 'G001' },
+    { analysisIndexId: 'AI-004', analysisType: 'SCENARIO', title: '情景分析', status: 'READY', calculatedAt: TODAY + ' 08:00:00', scopeType: 'GROUP', scopeId: 'G001' },
+    { analysisIndexId: 'AI-005', analysisType: 'DECISION', title: '决策建议', status: 'READY', calculatedAt: TODAY + ' 08:00:00', scopeType: 'GROUP', scopeId: 'G001' }
+  ];
+
+  const regulatoryAnalysisResults = [
+    { resultId: 'AR-001', analysisIndexId: 'AI-001', resultType: 'COMPOSITE_HEALTH', title: '集团综合监管健康度', dataStatus: 'OK', calculatedAt: TODAY + ' 08:00:00' },
+    { resultId: 'AR-002', analysisIndexId: 'AI-002', resultType: 'CONCENTRATION_SUMMARY', title: '风险集中度摘要', dataStatus: 'OK', itemCount: regulatoryRiskConcentration.length, calculatedAt: TODAY + ' 08:00:00' },
+    { resultId: 'AR-003', analysisIndexId: 'AI-003', resultType: 'PROPAGATION_SUMMARY', title: '风险传导摘要', dataStatus: 'OK', itemCount: regulatoryRiskPropagation.length, calculatedAt: TODAY + ' 08:00:00' },
+    { resultId: 'AR-004', analysisIndexId: 'AI-004', resultType: 'SCENARIO_CATALOG', title: '情景分析目录', dataStatus: 'OK', itemCount: regulatoryScenarioAnalysis.length, calculatedAt: TODAY + ' 08:00:00' },
+    { resultId: 'AR-005', analysisIndexId: 'AI-005', resultType: 'RECOMMENDATION_SUMMARY', title: '决策建议摘要', dataStatus: 'OK', itemCount: regulatoryDecisionRecommendations.length, calculatedAt: TODAY + ' 08:00:00' }
+  ];
+
+  const topRegion = regulatoryRiskConcentration.filter(c => c.dimension === 'byRegion').sort((a, b) => b.concentrationRate - a.concentrationRate)[0];
+  const topEntity = regulatoryRiskConcentration.filter(c => c.dimension === 'byEntity').sort((a, b) => b.concentrationRate - a.concentrationRate)[0];
+  const topDomain = regulatoryRiskConcentration.filter(c => c.dimension === 'byDomain').sort((a, b) => b.concentrationRate - a.concentrationRate)[0];
+
+  APP_DATA.regulatoryRiskConcentration = regulatoryRiskConcentration;
+  APP_DATA.regulatoryRiskPropagation = regulatoryRiskPropagation;
+  APP_DATA.regulatoryScenarioAnalysis = regulatoryScenarioAnalysis;
+  APP_DATA.regulatoryDecisionRecommendations = regulatoryDecisionRecommendations;
+  APP_DATA.regulatoryAnalysisIndexes = regulatoryAnalysisIndexes;
+  APP_DATA.regulatoryAnalysisResults = regulatoryAnalysisResults;
+  APP_DATA.regulatoryAnalysisMetrics = {
+    highRiskEntityCount: highRiskEntities,
+    criticalWarningCount: km.criticalWarningCount || 0,
+    pendingReviewCount: km.pendingReviewCount || 0,
+    highPriorityObjectCount: priorityObjects.filter(p => p.priority === 'CRITICAL' || p.priority === 'HIGH').length,
+    actionClosureRate,
+    rectificationVerificationRate: rectVerificationRate,
+    dataCredibility: km.avgCredibility || dataGov.overallQualityScore,
+    trendDataStatus: 'INSUFFICIENT_HISTORY',
+    pendingRecommendationCount: regulatoryDecisionRecommendations.filter(r => r.status === 'PENDING').length,
+    highConcentrationRegionCount: regulatoryRiskConcentration.filter(c => c.dimension === 'byRegion' && c.concentrationLevel === 'HIGH_CONCENTRATION').length,
+    potentialPropagationCount: regulatoryRiskPropagation.filter(p => p.propagationType === 'POTENTIAL_PROPAGATION').length,
+    topConcentrationRegion: topRegion?.objectName || '—',
+    topConcentrationEntity: topEntity?.objectName || '—',
+    topConcentrationDomain: topDomain?.objectName || '—',
+    scenarioCount: regulatoryScenarioAnalysis.length,
+    maturityScore: maturity.overallScore || maturity.compositeScore || null
+  };
+
+  let srSeq = (APP_DATA.regulatorySearchIndex || []).length + 1;
+  const addSearch = (item) => {
+    (APP_DATA.regulatorySearchIndex = APP_DATA.regulatorySearchIndex || []).push({
+      resultId: 'SR-' + String(srSeq++).padStart(4, '0'),
+      objectType: item.objectType,
+      objectId: item.objectId,
+      title: item.title,
+      subtitle: item.subtitle || '',
+      entityId: item.entityId || null,
+      regionId: item.regionId || null,
+      domainId: item.domainId || null,
+      priority: item.priority || null,
+      status: item.status || null,
+      matchedFields: item.matchedFields || ['title'],
+      targetPageId: item.targetPageId,
+      targetParams: item.targetParams || {},
+      category: item.category || '综合分析'
+    });
+  };
+
+  regulatoryAnalysisResults.forEach(r => addSearch({ objectType: 'ANALYSIS_RESULT', objectId: r.resultId, title: r.title, subtitle: r.resultType, category: '综合分析', targetPageId: 'regulatory-analysis-center', targetParams: { resultId: r.resultId } }));
+  regulatoryRiskConcentration.filter(c => ['byRegion', 'byEntity', 'byDomain'].includes(c.dimension)).slice(0, 15).forEach(c => addSearch({ objectType: 'RISK_CONCENTRATION', objectId: c.concentrationId, title: c.objectName + ' · 风险集中度', subtitle: c.concentrationLevel, category: '综合分析', targetPageId: 'regulatory-risk-concentration', targetParams: { concentrationId: c.concentrationId, dimension: c.dimension }, entityId: c.scopeType === 'ENTITY' ? c.objectId : c.entityId, regionId: c.regionId }));
+  regulatoryRiskPropagation.slice(0, 10).forEach(p => addSearch({ objectType: 'RISK_PROPAGATION', objectId: p.propagationId, title: p.title, subtitle: p.propagationType, category: '综合分析', targetPageId: 'regulatory-risk-propagation', targetParams: { propagationId: p.propagationId } }));
+  regulatoryScenarioAnalysis.forEach(s => addSearch({ objectType: 'SCENARIO_ANALYSIS', objectId: s.scenarioId, title: s.title, subtitle: 'simulationOnly', category: '综合分析', targetPageId: 'regulatory-scenario-analysis', targetParams: { scenarioId: s.scenarioId } }));
+  regulatoryDecisionRecommendations.slice(0, 12).forEach(r => addSearch({ objectType: 'DECISION_RECOMMENDATION', objectId: r.recommendationId, title: r.recommendationType + ' · ' + (r.affectedScope?.scopeName || r.affectedScope?.scopeId), subtitle: r.status, category: '综合分析', targetPageId: 'regulatory-decision-recommendations', targetParams: { recommendationId: r.recommendationId }, priority: r.priority, status: r.status, entityId: r.entityId, regionId: r.regionId }));
+
+  const phase20Perms = [
+    { permissionSetId: 'PS-034', permissionCode: 'ANALYSIS_VIEW', resourceType: 'regulatoryAnalysisResults', action: 'VIEW', riskLevel: 'LOW' },
+    { permissionSetId: 'PS-035', permissionCode: 'ANALYSIS_RUN', resourceType: 'regulatoryScenarioAnalysis', action: 'RUN', riskLevel: 'MEDIUM' },
+    { permissionSetId: 'PS-036', permissionCode: 'ANALYSIS_EXPORT', resourceType: 'regulatoryAnalysisResults', action: 'EXPORT', riskLevel: 'HIGH' },
+    { permissionSetId: 'PS-037', permissionCode: 'DECISION_RECOMMENDATION_VIEW', resourceType: 'regulatoryDecisionRecommendations', action: 'VIEW', riskLevel: 'LOW' },
+    { permissionSetId: 'PS-038', permissionCode: 'DECISION_RECOMMENDATION_CONFIRM', resourceType: 'regulatoryDecisionRecommendations', action: 'CONFIRM', riskLevel: 'HIGH' },
+    { permissionSetId: 'PS-039', permissionCode: 'DECISION_RECOMMENDATION_REJECT', resourceType: 'regulatoryDecisionRecommendations', action: 'REJECT', riskLevel: 'MEDIUM' },
+    { permissionSetId: 'PS-040', permissionCode: 'DECISION_RECOMMENDATION_EXECUTE', resourceType: 'regulatoryDecisionRecommendations', action: 'EXECUTE', riskLevel: 'CRITICAL' }
+  ];
+  APP_DATA.regulatoryPermissionSets = [...(APP_DATA.regulatoryPermissionSets || []), ...phase20Perms];
+  const rpm3 = APP_DATA.regulatoryRolePermissionMap || {};
+  rpm3['ROLE-GROUP-LEADER'] = [...new Set([...(rpm3['ROLE-GROUP-LEADER'] || []), 'ANALYSIS_VIEW', 'DECISION_RECOMMENDATION_VIEW'])];
+  rpm3['ROLE-GROUP-REG'] = [...new Set([...(rpm3['ROLE-GROUP-REG'] || []), 'ANALYSIS_VIEW', 'ANALYSIS_RUN', 'ANALYSIS_EXPORT', 'DECISION_RECOMMENDATION_VIEW', 'DECISION_RECOMMENDATION_CONFIRM', 'DECISION_RECOMMENDATION_REJECT', 'DECISION_RECOMMENDATION_EXECUTE'])];
+  rpm3['ROLE-DOMAIN-REG'] = [...new Set([...(rpm3['ROLE-DOMAIN-REG'] || []), 'ANALYSIS_VIEW', 'DECISION_RECOMMENDATION_VIEW', 'DECISION_RECOMMENDATION_CONFIRM'])];
+  rpm3['ROLE-ENTITY-REG'] = [...new Set([...(rpm3['ROLE-ENTITY-REG'] || []), 'ANALYSIS_VIEW', 'DECISION_RECOMMENDATION_VIEW'])];
+  APP_DATA.regulatoryRolePermissionMap = rpm3;
+
+  const sm = APP_DATA.regulatoryScopeMatrix || [];
+  sm.forEach(row => {
+    if (row.roleId === 'ROLE-GROUP-LEADER' || row.roleId === 'ROLE-GROUP-REG') row.analysis = '全部';
+    else if (row.roleId === 'ROLE-DOMAIN-REG') row.analysis = '本领域';
+    else if (row.roleId === 'ROLE-ENTITY-REG') row.analysis = '本法人';
+    else row.analysis = '查看';
+  });
+  APP_DATA.regulatoryScopeMatrix = sm;
+})();

@@ -114,7 +114,12 @@ const App = {
     'regulatory-kri-monitoring': '集团KRI运行监测中心',
     'regulatory-warning-center': '集团监管预警中心',
     'regulatory-kri-effectiveness': '集团KRI有效性评价中心',
-    'regulatory-warning-strategy': '集团预警策略分析中心'
+    'regulatory-warning-strategy': '集团预警策略分析中心',
+    'regulatory-analysis-center': '集团监管综合分析中心',
+    'regulatory-risk-concentration': '集团监管风险集中度分析',
+    'regulatory-risk-propagation': '集团监管风险传导分析',
+    'regulatory-scenario-analysis': '集团监管情景分析中心',
+    'regulatory-decision-recommendations': '集团监管决策建议中心'
   },
 
   init() {
@@ -169,6 +174,11 @@ const App = {
     this.renderRegulatoryWarningCenter();
     this.renderRegulatoryKriEffectiveness();
     this.renderRegulatoryWarningStrategy();
+    this.renderRegulatoryAnalysisCenter();
+    this.renderRegulatoryRiskConcentration();
+    this.renderRegulatoryRiskPropagation();
+    this.renderRegulatoryScenarioAnalysis();
+    this.renderRegulatoryDecisionRecommendations();
     this.renderGlobalLegalEntities();
     this.renderGlobalRegions();
     this.renderCoverageGaps();
@@ -606,6 +616,26 @@ const App = {
       if (params.strategyAnalysisId) { this.regulatoryWarningStrategyFocusId = params.strategyAnalysisId; this.showRegulatoryWarningStrategyDetail(params.strategyAnalysisId); }
       else if (params.warningId) this.regulatoryWarningStrategyFilter = { ...(this.regulatoryWarningStrategyFilter || {}), warningId: params.warningId };
       else this.renderRegulatoryWarningStrategy();
+    }
+    if (pageId === 'regulatory-analysis-center') {
+      if (params.resultId) { this.regulatoryAnalysisResultFocusId = params.resultId; this.showRegulatoryAnalysisResultDetail(params.resultId); }
+      else this.renderRegulatoryAnalysisCenter();
+    }
+    if (pageId === 'regulatory-risk-concentration') {
+      if (params.concentrationId) { this.regulatoryConcentrationFocusId = params.concentrationId; this.showRegulatoryConcentrationDetail(params.concentrationId); }
+      else { if (params.dimension) this.regulatoryRiskConcentrationFilter = { ...(this.regulatoryRiskConcentrationFilter || {}), dimension: params.dimension }; this.renderRegulatoryRiskConcentration(); }
+    }
+    if (pageId === 'regulatory-risk-propagation') {
+      if (params.propagationId) { this.regulatoryPropagationFocusId = params.propagationId; this.showRegulatoryPropagationDetail(params.propagationId); }
+      else this.renderRegulatoryRiskPropagation();
+    }
+    if (pageId === 'regulatory-scenario-analysis') {
+      if (params.scenarioId) { this.regulatoryScenarioFocusId = params.scenarioId; this.showRegulatoryScenarioDetail(params.scenarioId); }
+      else this.renderRegulatoryScenarioAnalysis();
+    }
+    if (pageId === 'regulatory-decision-recommendations') {
+      if (params.recommendationId) { this.regulatoryRecommendationFocusId = params.recommendationId; this.showRegulatoryRecommendationDetail(params.recommendationId); }
+      else this.renderRegulatoryDecisionRecommendations();
     }
   },
 
