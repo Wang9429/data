@@ -423,7 +423,11 @@ Object.assign(APP_DATA, {
     { id: 'RECT-202601004', taskId: 'RECT-202601004', riskId: 'risk-4', riskMatterId: 'risk-4', title: '投资决策论证不足风险', company: 'C公司', entityId: 'C001', projectId: null, regionId: 'ME', countryId: 'ME-A', responsibleEntity: 'C项目公司', responsibleDepartment: '战略发展部', owner: '战略发展部', level: 'L3', status: '已关闭', verificationStatus: '已验证', deadline: '2026-05-20', closedAt: '2026-05-18', progress: 100, measure: '补充可研报告并完成专家评审。' },
     { id: 'RECT-CB-001', taskId: 'RECT-CB-001', riskId: 'risk-cb-001', riskMatterId: 'risk-cb-001', title: '未授权跨境数据传输风险', company: 'D公司', entityId: 'D001', projectId: 'GP002', regionId: 'AS', countryId: 'AS-A', responsibleEntity: 'D公司', responsibleDepartment: '区域信息管理岗', owner: '区域信息管理岗', level: 'L4', status: '整改执行', verificationStatus: '整改中', deadline: '2026-08-15', closedAt: null, progress: 45, measure: '暂停未授权传输通道；补办跨境传输审批；完善访问授权记录。' },
     { id: 'RECT-CB-002', taskId: 'RECT-CB-002', riskId: 'risk-cb-002', riskMatterId: 'risk-cb-002', title: '数据本地化存储不合规风险', company: 'B公司', entityId: 'B001', projectId: 'GP001', regionId: 'ME', countryId: 'ME-A', responsibleEntity: 'B公司', responsibleDepartment: '区域财务部', owner: '区域财务部', level: 'L3', status: '整改制定', verificationStatus: '待验证', deadline: '2026-08-30', closedAt: null, progress: 25, measure: '梳理本地化存储要求；制定数据回迁方案并完成审批。' },
-    { id: 'RECT-CB-003', taskId: 'RECT-CB-003', riskId: 'risk-cb-003', riskMatterId: 'risk-cb-003', title: '境外数据分类分级不到位风险', company: 'D公司', entityId: 'D001', projectId: 'GP002', regionId: 'AS', countryId: 'AS-A', responsibleEntity: 'D公司', responsibleDepartment: '区域信息管理岗', owner: '区域信息管理岗', level: 'L3', status: '整改中', verificationStatus: '整改中', deadline: '2026-09-15', closedAt: null, progress: 35, measure: '完成境外项目经营数据分类分级；纳入集团统一标准。' }
+    { id: 'RECT-CB-003', taskId: 'RECT-CB-003', riskId: 'risk-cb-003', riskMatterId: 'risk-cb-003', title: '境外数据分类分级不到位风险', company: 'D公司', entityId: 'D001', projectId: 'GP002', regionId: 'AS', countryId: 'AS-A', responsibleEntity: 'D公司', responsibleDepartment: '区域信息管理岗', owner: '区域信息管理岗', level: 'L3', status: '整改中', verificationStatus: '整改中', deadline: '2026-09-15', closedAt: null, progress: 35, measure: '完成境外项目经营数据分类分级；纳入集团统一标准。' },
+    { id: 'RECT-CD-001', taskId: 'RECT-CD-001', riskId: null, riskMatterId: 'CDR001', crossDomainRiskMatterId: 'CDR001', title: '投资决策整改', company: 'B公司', entityId: 'B001', projectId: 'GP001', regionId: 'ME', countryId: 'ME-A', responsibleEntity: 'B公司', responsibleDepartment: '投资管理部', collaboratingDepartments: ['财务资金部'], owner: '投资管理部', level: 'L4', status: '整改执行', verificationStatus: '整改中', deadline: '2026-09-30', closedAt: null, progress: 55, taskType: '跨领域协同整改', measure: '完善境外项目投资决策论证；建立跨部门联审机制。' },
+    { id: 'RECT-CD-002', taskId: 'RECT-CD-002', riskId: null, riskMatterId: 'CDR001', crossDomainRiskMatterId: 'CDR001', title: '资金支付整改', company: 'B公司', entityId: 'B001', projectId: 'GP001', regionId: 'ME', countryId: 'ME-A', responsibleEntity: 'B公司', responsibleDepartment: '财务资金部', collaboratingDepartments: ['投资管理部', '合同管理部'], owner: '财务资金部', level: 'L3', status: '整改制定', verificationStatus: '待验证', deadline: '2026-08-30', closedAt: null, progress: 30, taskType: '跨领域协同整改', measure: '梳理资金支付与合同履约匹配关系；建立支付前联审流程。' },
+    { id: 'RECT-CD-003', taskId: 'RECT-CD-003', riskId: null, riskMatterId: 'CDR002', crossDomainRiskMatterId: 'CDR002', title: '境外备案与数据合规整改', company: 'D公司', entityId: 'D001', projectId: 'GP002', regionId: 'AS', countryId: 'AS-A', responsibleEntity: 'D公司', responsibleDepartment: '区域信息管理岗', collaboratingDepartments: ['投资管理部', '财务资金部'], owner: '区域信息管理岗', level: 'L4', status: '整改执行', verificationStatus: '整改中', deadline: '2026-09-15', closedAt: null, progress: 40, taskType: '跨领域协同整改', measure: '完成境外备案程序；补办跨境数据传输审批；完善数据分类分级。' },
+    { id: 'RECT-CD-004', taskId: 'RECT-CD-004', riskId: null, riskMatterId: 'CDR003', crossDomainRiskMatterId: 'CDR003', title: '合同履约整改', company: 'C项目公司', entityId: 'C001', projectId: 'GP001', regionId: 'ME', countryId: 'ME-A', responsibleEntity: 'C项目公司', responsibleDepartment: '项目合同部', collaboratingDepartments: ['供应链管理部', '投资管理部'], owner: '项目合同部', level: 'L3', status: '整改中', verificationStatus: '整改中', deadline: '2026-08-20', closedAt: null, progress: 65, taskType: '跨领域协同整改', measure: '完善合同履约跟踪机制；建立供应链协同预警。' }
   ],
   portfolioSummary: [
     ['投资项目总数', '356', '个项目 · 覆盖18家企业'],
@@ -448,6 +452,39 @@ Object.assign(APP_DATA, {
     { activityId:'CBD004', sourceId:'SRC007', dataObjectId:'OBJ006', dataFieldIds:['FLD006'], entityId:'D001', regionId:'AS', countryId:'AS-A', sourceLocation:'东南亚某国·某东南亚城市', storageLocation:'东南亚某国·属地云', destinationLocation:'中国·北京', destinationRegionId:'CN', destinationCountryId:'CN-CN', transferType:'跨境传输', transferPath:'东南亚某国 → 北京', dataClassification:'重要数据', sensitivityLevel:'高', localStorageRequired:true, localStorageCompliant:false, transferApprovalRequired:true, transferApprovalStatus:'未审批', crossBorderReviewStatus:'未审查', sensitiveAccessStatus:'不合规', complianceStatus:'高风险', accessSubject:'未授权第三方分析平台', responsibleEntityId:'D001', responsibleDepartment:'区域信息管理岗', lastReviewDate:'2026-07-10', nextReviewDate:'2026-07-25', riskScenarioId:'CBR006', kriId:'KRI-CB-006', riskMatterId:'risk-cb-001', rectificationTaskId:'RECT-CB-001' },
     { activityId:'CBD005', sourceId:'SRC002', dataObjectId:'OBJ004', dataFieldIds:['FLD004'], entityId:'B001', regionId:'ME', countryId:'ME-A', sourceLocation:'中东某国·某海外城市', storageLocation:'中国·北京', destinationLocation:'中国·北京', destinationRegionId:'CN', destinationCountryId:'CN-CN', transferType:'违规存储', transferPath:'中东某国 → 北京（违规）', dataClassification:'敏感数据', sensitivityLevel:'高', localStorageRequired:true, localStorageCompliant:false, transferApprovalRequired:true, transferApprovalStatus:'待审批', crossBorderReviewStatus:'待审查', sensitiveAccessStatus:'部分合规', complianceStatus:'高风险', accessSubject:'集团财务系统', responsibleEntityId:'B001', responsibleDepartment:'区域财务部', lastReviewDate:'2026-07-12', nextReviewDate:'2026-08-12', riskScenarioId:'CBR003', kriId:'KRI-CB-003', riskMatterId:'risk-cb-002', rectificationTaskId:'RECT-CB-002' },
     { activityId:'CBD006', sourceId:'SRC007', dataObjectId:'OBJ006', dataFieldIds:[], entityId:'D001', regionId:'AS', countryId:'AS-A', sourceLocation:'东南亚某国·某东南亚城市', storageLocation:'东南亚某国·属地云', destinationLocation:'东南亚某国·某东南亚城市', destinationRegionId:'AS', destinationCountryId:'AS-A', transferType:'本地处理', transferPath:'本地', dataClassification:'未分级', sensitivityLevel:'—', localStorageRequired:true, localStorageCompliant:true, transferApprovalRequired:false, transferApprovalStatus:'不适用', crossBorderReviewStatus:'待审查', sensitiveAccessStatus:'待评估', complianceStatus:'关注', accessSubject:'境外项目团队', responsibleEntityId:'D001', responsibleDepartment:'区域信息管理岗', lastReviewDate:'2026-07-08', nextReviewDate:'2026-08-08', riskScenarioId:'CBR001', kriId:'KRI-CB-001', riskMatterId:'risk-cb-003', rectificationTaskId:'RECT-CB-003' }
+  ],
+  crossDomainRiskMatters: [
+    { riskMatterId:'CDR001', riskMatterName:'境外项目全生命周期协同管控风险', riskLevel:'高', status:'监测中', businessActivity:'境外项目投资', domainIds:['investment','finance','contract','supply','overseas'], scenarioIds:['scenario-approval','scenario-capex','scenario-post'], kriIds:['kri-post','kri-capex','kri-approval'], regionIds:['ME'], countryIds:['ME-A'], entityIds:['B001'], projectIds:['GP001'], primaryResponsibleDepartment:'投资管理部', collaboratingDepartments:['财务资金部','合同管理部','供应链管理部','国际业务部'], riskPropagationStatus:'已形成跨领域传导', relatedRectificationTaskIds:['RECT-CD-001','RECT-CD-002'], relatedCrossBorderActivityIds:[], relatedDataQualityIssueIds:['DQ002'], lastUpdateTime:'2026-07-22 10:30' },
+    { riskMatterId:'CDR002', riskMatterName:'境外数据与经营协同风险', riskLevel:'高', status:'监测中', businessActivity:'境外项目经营数据跨境传输', domainIds:['investment','finance','overseas'], scenarioIds:['scenario-filing','CBR002','CBR006'], kriIds:['kri-filing','KRI-CB-002','KRI-CB-006'], regionIds:['AS'], countryIds:['AS-A'], entityIds:['D001'], projectIds:['GP002'], primaryResponsibleDepartment:'区域信息管理岗', collaboratingDepartments:['投资管理部','财务资金部','国际业务部'], riskPropagationStatus:'已形成跨领域传导', relatedRectificationTaskIds:['RECT-CD-003','RECT-CB-001'], relatedCrossBorderActivityIds:['CBD001','CBD004'], relatedDataQualityIssueIds:['DQ005'], lastUpdateTime:'2026-07-22 09:15' },
+    { riskMatterId:'CDR003', riskMatterName:'供应链合同履约联动风险', riskLevel:'中', status:'关注', businessActivity:'境外项目合同履约', domainIds:['contract','supply','investment'], scenarioIds:['scenario-capex','scenario-approval'], kriIds:['kri-capex','kri-schedule'], regionIds:['ME'], countryIds:['ME-A'], entityIds:['C001'], projectIds:['GP001'], primaryResponsibleDepartment:'项目合同部', collaboratingDepartments:['供应链管理部','投资管理部'], riskPropagationStatus:'局部传导', relatedRectificationTaskIds:['RECT-CD-004'], relatedCrossBorderActivityIds:[], relatedDataQualityIssueIds:[], lastUpdateTime:'2026-07-21 16:00' }
+  ],
+  crossDomainRiskRelations: [
+    { relationId:'CDR-REL-001', riskMatterId:'CDR001', domainId:'investment', scenarioId:'scenario-approval', kriId:'kri-approval', relationType:'核心风险来源', propagationWeight:'高', controlResponsibility:'投资管理部' },
+    { relationId:'CDR-REL-002', riskMatterId:'CDR001', domainId:'finance', scenarioId:'scenario-capex', kriId:'kri-capex', relationType:'传导风险', propagationWeight:'高', controlResponsibility:'财务资金部' },
+    { relationId:'CDR-REL-003', riskMatterId:'CDR001', domainId:'contract', scenarioId:'scenario-capex', kriId:'kri-capex', relationType:'传导风险', propagationWeight:'中', controlResponsibility:'合同管理部' },
+    { relationId:'CDR-REL-004', riskMatterId:'CDR001', domainId:'supply', scenarioId:'scenario-capex', kriId:'kri-capex', relationType:'关联风险', propagationWeight:'中', controlResponsibility:'供应链管理部' },
+    { relationId:'CDR-REL-005', riskMatterId:'CDR001', domainId:'overseas', scenarioId:'scenario-post', kriId:'kri-post', relationType:'核心风险来源', propagationWeight:'高', controlResponsibility:'国际业务部' },
+    { relationId:'CDR-REL-006', riskMatterId:'CDR002', domainId:'investment', scenarioId:'scenario-filing', kriId:'kri-filing', relationType:'核心风险来源', propagationWeight:'高', controlResponsibility:'投资管理部' },
+    { relationId:'CDR-REL-007', riskMatterId:'CDR002', domainId:'overseas', scenarioId:'CBR002', kriId:'KRI-CB-002', relationType:'传导风险', propagationWeight:'高', controlResponsibility:'国际业务部' },
+    { relationId:'CDR-REL-008', riskMatterId:'CDR002', domainId:'finance', scenarioId:'CBR006', kriId:'KRI-CB-006', relationType:'关联风险', propagationWeight:'高', controlResponsibility:'财务资金部' },
+    { relationId:'CDR-REL-009', riskMatterId:'CDR003', domainId:'contract', scenarioId:'scenario-capex', kriId:'kri-capex', relationType:'核心风险来源', propagationWeight:'高', controlResponsibility:'项目合同部' },
+    { relationId:'CDR-REL-010', riskMatterId:'CDR003', domainId:'supply', scenarioId:'scenario-capex', kriId:'kri-schedule', relationType:'传导风险', propagationWeight:'中', controlResponsibility:'供应链管理部' },
+    { relationId:'CDR-REL-011', riskMatterId:'CDR003', domainId:'investment', scenarioId:'scenario-approval', kriId:'kri-approval', relationType:'关联风险', propagationWeight:'中', controlResponsibility:'投资管理部' }
+  ],
+  crossDomainRiskImpacts: [
+    { impactId:'CDI001', riskMatterId:'CDR001', regionId:'ME', countryId:'ME-A', entityId:'B001', projectId:'GP001', impactLevel:'高', impactStatus:'持续监测', sourceKriIds:['kri-post','kri-capex'] },
+    { impactId:'CDI002', riskMatterId:'CDR002', regionId:'AS', countryId:'AS-A', entityId:'D001', projectId:'GP002', impactLevel:'高', impactStatus:'持续监测', sourceKriIds:['kri-filing','KRI-CB-002','KRI-CB-006'] },
+    { impactId:'CDI003', riskMatterId:'CDR003', regionId:'ME', countryId:'ME-A', entityId:'C001', projectId:'GP001', impactLevel:'中', impactStatus:'关注', sourceKriIds:['kri-capex','kri-schedule'] }
+  ],
+  crossDomainResponsibilities: [
+    { responsibilityId:'RESP-CD-001', riskMatterId:'CDR001', entityId:'B001', projectId:'GP001', primaryDepartment:'投资管理部', collaboratingDepartments:['财务资金部','合同管理部','供应链管理部'], responsibilityType:'主责', responsibilityStatus:'已明确' },
+    { responsibilityId:'RESP-CD-002', riskMatterId:'CDR002', entityId:'D001', projectId:'GP002', primaryDepartment:'区域信息管理岗', collaboratingDepartments:['投资管理部','财务资金部'], responsibilityType:'主责', responsibilityStatus:'已明确' },
+    { responsibilityId:'RESP-CD-003', riskMatterId:'CDR003', entityId:'C001', projectId:'GP001', primaryDepartment:'项目合同部', collaboratingDepartments:['供应链管理部','投资管理部'], responsibilityType:'主责', responsibilityStatus:'已明确' }
+  ],
+  crossDomainRiskTrendHistory: [
+    { period:'7日', dates:['07-16','07-18','07-20','07-22'], matterCounts:[2,2,3,3], multiKriAlertCounts:[1,2,2,3], highRiskCounts:[1,1,2,2], closureRates:['33.3%','33.3%','50.0%','50.0%'] },
+    { period:'30日', dates:['06-22','06-29','07-06','07-13','07-20','07-22'], matterCounts:[1,1,2,2,3,3], multiKriAlertCounts:[0,1,1,2,2,3], highRiskCounts:[0,1,1,1,2,2], closureRates:['0%','0%','25.0%','33.3%','33.3%','50.0%'] },
+    { period:'90日', dates:['04-22','05-22','06-22','07-22'], matterCounts:[1,1,2,3], multiKriAlertCounts:[0,0,1,3], highRiskCounts:[0,0,1,2], closureRates:['0%','0%','25.0%','50.0%'] }
   ]
 });
 
@@ -479,5 +516,46 @@ Object.assign(APP_DATA, {
     unauthorizedTransferCount: unauthorized.length,
     overdueReviewCount: overdue.length,
     openRectificationCount: openRect.length
+  };
+})();
+
+(function () {
+  const matters = APP_DATA.crossDomainRiskMatters || [];
+  const rels = APP_DATA.crossDomainRiskRelations || [];
+  const allDomains = new Set(matters.flatMap(m => m.domainIds || []));
+  const allEntities = new Set(matters.flatMap(m => m.entityIds || []));
+  const allProjects = new Set(matters.flatMap(m => m.projectIds || []));
+  const allKris = new Set(matters.flatMap(m => m.kriIds || []));
+  const highRisk = matters.filter(m => m.riskLevel === '高');
+  const openRects = matters.flatMap(m => (m.relatedRectificationTaskIds || []).filter(tid => {
+    const t = (APP_DATA.rectificationTasks || []).find(x => x.taskId === tid);
+    return t && t.status !== '已关闭' && !t.closedAt;
+  }));
+  const collaborating = matters.filter(m => (m.collaboratingDepartments || []).length > 1);
+  const multiKriAlerts = matters.filter(m => {
+    const abnormal = (m.kriIds || []).filter(kid => {
+      const k = (APP_DATA.groupKris || []).find(x => x.id === kid);
+      return k && k.status && k.status !== '正常' && k.status !== '关注';
+    });
+    return abnormal.length >= 2;
+  });
+  const closedTasks = (APP_DATA.rectificationTasks || []).filter(t => (t.taskId || '').startsWith('RECT-CD') && (t.status === '已关闭' || t.closedAt));
+  const cdTasks = (APP_DATA.rectificationTasks || []).filter(t => (t.taskId || '').startsWith('RECT-CD'));
+  const pct = (n, d) => d ? (n / d * 100).toFixed(1) + '%' : '—';
+  matters.forEach(m => { m.openRectificationCount = (m.relatedRectificationTaskIds || []).filter(tid => {
+    const t = (APP_DATA.rectificationTasks || []).find(x => x.taskId === tid);
+    return t && t.status !== '已关闭' && !t.closedAt;
+  }).length; });
+  APP_DATA.crossDomainRiskMetrics = {
+    crossDomainMatterCount: matters.length,
+    highRiskMatterCount: highRisk.length,
+    involvedDomainCount: allDomains.size,
+    involvedEntityCount: allEntities.size,
+    involvedProjectCount: allProjects.size,
+    relatedKriCount: allKris.size,
+    pendingRectificationCount: openRects.length,
+    collaboratingRectificationCount: collaborating.length,
+    crossDomainClosureRate: pct(closedTasks.length, cdTasks.length),
+    multiKriAlertCount: multiKriAlerts.length
   };
 })();
