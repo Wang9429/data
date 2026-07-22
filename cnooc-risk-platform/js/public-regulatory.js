@@ -15,6 +15,9 @@ Object.assign(App, {
     { pageId: 'cross-domain-risks', label: '跨领域风险监管', category: '风险监管', entryFromGroupOverview: true, supportsPublicNavigation: true, supportsBackNavigation: true },
     { pageId: 'warnings', label: '集团风险预警', category: '风险事项', entryFromGroupOverview: false, supportsPublicNavigation: true, supportsBackNavigation: true },
     { pageId: 'rectification', label: '整改督办', category: '整改闭环', entryFromGroupOverview: false, supportsPublicNavigation: true, supportsBackNavigation: true },
+    { pageId: 'regulatory-events', label: '集团监管事件中心', category: '运营闭环', entryFromGroupOverview: false, supportsPublicNavigation: true, supportsBackNavigation: true },
+    { pageId: 'rectification-operations', label: '集团整改运营中心', category: '运营闭环', entryFromGroupOverview: false, supportsPublicNavigation: true, supportsBackNavigation: true },
+    { pageId: 'regulatory-evaluation', label: '集团监管评价', category: '运营闭环', entryFromGroupOverview: false, supportsPublicNavigation: true, supportsBackNavigation: true },
     { pageId: 'major', label: '重大事项监管', category: '重大事项', entryFromGroupOverview: false, supportsPublicNavigation: false, supportsBackNavigation: false }
   ],
 
@@ -50,6 +53,7 @@ Object.assign(App, {
 
   capturePublicFilters(pageId) {
     if (pageId === 'global-group-overview' || pageId === 'group') return { ...(this.groupOverviewFilter || {}) };
+    if (pageId === 'regulatory-events') return { ...(this.regulatoryEventFilter || {}) };
     if (pageId === 'data-governance') return { ...(this.dataGovFilter || {}) };
     if (pageId === 'cross-border-compliance') return { ...(this.cbFilter || {}) };
     if (pageId === 'cross-domain-risks') return { ...(this.cdrFilter || {}) };
@@ -71,12 +75,14 @@ Object.assign(App, {
       if (c.coverageCellId) ctx.coverageCellId = c.coverageCellId;
       if (c.gapId) ctx.gapId = c.gapId;
     }
+    if (pageId === 'regulatory-events') ctx.eventId = this.regulatoryEventFocusId;
     return ctx;
   },
 
   restorePublicFilters(pageId, filters) {
     if (!filters) return;
     if (pageId === 'global-group-overview' || pageId === 'group') this.groupOverviewFilter = { ...filters };
+    if (pageId === 'regulatory-events') this.regulatoryEventFilter = { ...filters };
     if (pageId === 'data-governance') this.dataGovFilter = { ...filters };
     if (pageId === 'cross-border-compliance') this.cbFilter = { ...filters };
     if (pageId === 'cross-domain-risks') this.cdrFilter = { ...filters };
@@ -241,6 +247,47 @@ Object.assign(App, {
     return `<div class="kri-lineage" style="flex-wrap:wrap">${(steps || []).map((s, i) => s + (i < steps.length - 1 ? this.renderLineageArrow() : '')).join('')}</div>`;
   },
 
+  renderPublicTimeline(steps) {
+    if (!steps || !steps.length) return this.renderPublicEmptyState('暂无生命周期记录');
+    return `<div class="kri-lineage" style="flex-wrap:wrap">${steps.map((s, i) => {
+      const active = s.active ? ' style="outline:2px solid #003d7a"' : '';
+      return `<span${active}><b>${this.escHtml(s.label)}</b><br><small>${this.escHtml(s.sub || '')}</small></span>${i < steps.length - 1 ? this.renderLineageArrow() : ''}`;
+    }).join('')}</div>`;
+  },
+
+  renderPublicTrendChart(trend, period) {
+    if (!trend) return this.renderPublicEmptyState('暂无趋势数据');
+    const items = [
+      ['新增事件', trend.newCount],
+      ['关闭事件', trend.closedCount],
+      ['超期事件', trend.overdueCount],
+      ['重新打开', trend.reopenedCount]
+    ];
+    const max = Math.max(...items.map(([, v]) => v), 1);
+    return `<div class="card" style="padding:12px"><b>近 ${period} 日趋势</b><div style="margin-top:8px">${items.map(([label, val]) => `<p style="display:flex;align-items:center;gap:8px;margin:6px 0"><span style="width:72px;font-size:12px">${label}</span><i style="flex:1;height:10px;background:#eef3f9;border-radius:4px;display:block"><b style="display:block;height:10px;background:#00a0e9;border-radius:4px;width:${Math.round(val / max * 100)}%"></b></i><em style="width:24px;text-align:right">${val}</em></p>`).join('')}</div></div>`;
+  },
+
+  renderPublicHealthBadge(level) {
+    const map = { HEALTHY: 'badge-success', ATTENTION: 'badge-warning', WARNING: 'badge-warning', CRITICAL: 'badge-danger' };
+    const label = { HEALTHY: '健康', ATTENTION: '关注', WARNING: '预警', CRITICAL: '严重' };
+    return `<span class="badge ${map[level] || 'badge-info'}">${label[level] || level || '—'}</span>`;
+  },
+
+  renderPublicKpiCard(label, value, onclick, sub) {
+    return `<button class="metric-card" onclick="${onclick || 'void(0)'}"><div class="value">${this.escHtml(value)}</div><div class="label">${this.escHtml(label)}</div>${sub ? `<div class="sub-items">${this.escHtml(sub)}</div>` : ''}</button>`;
+  },
+
+  renderPublicEventTypeBadge(type) {
+    const map = { DATA_QUALITY: '数据质量', RISK_MATTER: '风险事项', PLATFORM_ALERT: '运行异常', COVERAGE_GAP: '覆盖盲区', CROSS_DOMAIN: '跨领域风险', CROSS_BORDER: '跨境合规' };
+    return `<span class="badge badge-info">${map[type] || type || '—'}</span>`;
+  },
+
+  renderPublicEventStatusBadge(status) {
+    const map = { OPEN: '待处理', ACKNOWLEDGED: '待责任确认', IN_PROGRESS: '整改中', VERIFYING: '待验证', CLOSED: '已关闭', REOPENED: '已重开' };
+    const cls = { OPEN: 'badge-danger', ACKNOWLEDGED: 'badge-warning', IN_PROGRESS: 'badge-warning', VERIFYING: 'badge-info', CLOSED: 'badge-success', REOPENED: 'badge-danger' };
+    return `<span class="badge ${cls[status] || 'badge-info'}">${map[status] || status || '—'}</span>`;
+  },
+
   copyPublicId(id) {
     if (navigator.clipboard) navigator.clipboard.writeText(id).catch(() => {});
   },
@@ -280,6 +327,7 @@ Object.assign(App, {
 
   getPublicPageFilter(pageId) {
     if (pageId === 'global-group-overview' || pageId === 'group') return this.groupOverviewFilter || {};
+    if (pageId === 'regulatory-events') return this.regulatoryEventFilter || {};
     if (pageId === 'data-governance') return this.dataGovFilter || {};
     if (pageId === 'cross-border-compliance') return this.cbFilter || {};
     if (pageId === 'cross-domain-risks') return this.cdrFilter || {};
@@ -288,6 +336,7 @@ Object.assign(App, {
 
   setPublicFilter(pageId, key, value) {
     const store = pageId === 'global-group-overview' || pageId === 'group' ? 'groupOverviewFilter'
+      : pageId === 'regulatory-events' ? 'regulatoryEventFilter'
       : pageId === 'data-governance' ? 'dataGovFilter'
       : pageId === 'cross-border-compliance' ? 'cbFilter'
       : pageId === 'cross-domain-risks' ? 'cdrFilter' : 'publicFilter';
@@ -297,6 +346,7 @@ Object.assign(App, {
 
   clearPublicFilter(pageId) {
     if (pageId === 'global-group-overview' || pageId === 'group') this.groupOverviewFilter = {};
+    else if (pageId === 'regulatory-events') { this.regulatoryEventFilter = {}; this.regulatoryEventFocusId = null; }
     else if (pageId === 'data-governance') this.dataGovFilter = {};
     else if (pageId === 'cross-border-compliance') { this.cbFilter = {}; this.cbFocusActivityId = null; }
     else if (pageId === 'cross-domain-risks') { this.cdrFilter = {}; this.cdrFocusMatterId = null; }
@@ -570,7 +620,7 @@ Object.assign(App, {
   },
 
   renderGroupOverviewPageCatalog(m) {
-    const catalogIds = ['global-legal-entities', 'global-regions', 'coverage-gaps', 'platform-operations', 'data-governance', 'cross-border-compliance', 'cross-domain-risks', 'warnings', 'rectification'];
+    const catalogIds = ['global-legal-entities', 'global-regions', 'coverage-gaps', 'platform-operations', 'data-governance', 'cross-border-compliance', 'cross-domain-risks', 'warnings', 'rectification', 'regulatory-events', 'rectification-operations', 'regulatory-evaluation'];
     const metricMap = {
       'global-legal-entities': { core: `法人 ${m.entityCount}`, anomaly: `高风险 ${(m.entities || []).filter(e => (e.highRiskCount || 0) > 0).length}` },
       'global-regions': { core: `区域 ${m.regionCount} · 国家 ${m.countryCount}`, anomaly: `高风险区域 ${(m.regions || []).filter(r => (r.highRiskCount || 0) > 0).length}` },
@@ -580,7 +630,10 @@ Object.assign(App, {
       'cross-border-compliance': { core: `活动 ${m.crossBorderActivityCount}`, anomaly: `合规风险 ${m.crossBorderRiskCount}` },
       'cross-domain-risks': { core: `跨领域 ${m.crossDomainMatterCount}`, anomaly: `高风险 ${(m.cdrMatters || []).filter(x => x.riskLevel === '高').length}` },
       'warnings': { core: `风险事项 ${m.warningCount}`, anomaly: `高风险 ${m.highRiskMatterCount}` },
-      'rectification': { core: `整改 ${m.rectificationTaskCount}`, anomaly: `逾期 ${m.overdueRectificationCount}` }
+      'rectification': { core: `整改 ${m.rectificationTaskCount}`, anomaly: `逾期 ${m.overdueRectificationCount}` },
+      'regulatory-events': { core: `事件 ${(APP_DATA.regulatoryEventMetrics || {}).totalCount || 0}`, anomaly: `超期 ${(APP_DATA.regulatoryEventMetrics || {}).overdueCount || 0}` },
+      'rectification-operations': { core: `闭环率 ${(APP_DATA.regulatoryEvaluation || {}).overallRectificationClosureRate || 0}%`, anomaly: `超期率 ${this.getRectificationOverdueRate()}` },
+      'regulatory-evaluation': { core: `区域排名 ${(APP_DATA.regulatoryEvaluation || {}).regionRankings?.length || 0}`, anomaly: `数据治理 ${(APP_DATA.regulatoryEvaluation || {}).dataGovernanceMaturity || 0}%` }
     };
     const pages = (this.publicRegulatoryPages || []).filter(p => catalogIds.includes(p.pageId));
     return `<div class="card"><div class="card-title">公共监管页面目录</div>
@@ -619,8 +672,293 @@ Object.assign(App, {
       ${this.renderGroupOverviewCoverageSummary(m)}
       ${this.renderGroupOverviewRiskSummary(m)}
       ${this.renderGroupOverviewRectificationSummary(m)}
+      ${this.renderGroupOverviewHealthSummary()}
+      ${this.renderGroupOverviewOperationsEntry()}
       ${this.renderGroupOverviewPageCatalog(m)}
       <div id="groupOverviewDetail"></div>`;
+  },
+
+  renderGroupOverviewHealthSummary() {
+    const hs = APP_DATA.regulatoryHealthScores || {};
+    const entities = hs.entities || [];
+    const critical = entities.filter(e => e.level === 'CRITICAL' || e.level === 'WARNING');
+    const rows = entities.slice(0, 5).map(e => `<tr class="clickable" onclick="App.navigatePublic('global-legal-entities',{entityId:'${e.objectId}'})"><td>${e.objectName}</td><td>${this.renderPublicHealthBadge(e.level)}</td><td>${e.score}</td><td>${Math.round((e.dimensions.dataCoverage || 0) * 100)}%</td><td>${Math.round((e.dimensions.dataQuality || 0) * 100)}%</td><td>${Math.round((e.dimensions.kriHealth || 0) * 100)}%</td></tr>`).join('');
+    return `<div class="card"><div class="card-title">监管对象健康度</div>
+      <p class="insight-note">基于数据覆盖、数据质量、KRI、风险、整改、跨境合规、跨领域风险动态计算</p>
+      <div class="group-metrics">${[['HEALTHY', entities.filter(e => e.level === 'HEALTHY').length], ['ATTENTION', entities.filter(e => e.level === 'ATTENTION').length], ['WARNING', entities.filter(e => e.level === 'WARNING').length], ['CRITICAL', entities.filter(e => e.level === 'CRITICAL').length]].map(([l, c]) => `<div class="metric-card"><div class="value">${c}</div><div class="label">${l}</div></div>`).join('')}</div>
+      <table class="data-table"><thead><tr><th>法人</th><th>健康度</th><th>得分</th><th>数据覆盖</th><th>数据质量</th><th>KRI</th></tr></thead><tbody>${rows || '<tr><td colspan="6">暂无</td></tr>'}</tbody></table>
+      ${critical[0] ? `<p style="margin-top:8px">${this.renderPublicLinkButton('查看健康度较低法人', `App.navigatePublic('global-legal-entities',{entityId:'${critical[0].objectId}'})`)} ${this.renderPublicLinkButton('监管评价', `App.navigatePublic('regulatory-evaluation')`)}</p>` : ''}
+    </div>`;
+  },
+
+  renderGroupOverviewOperationsEntry() {
+    const em = APP_DATA.regulatoryEventMetrics || {};
+    return `<div class="card"><div class="card-title">监管运营闭环入口</div>
+      <div class="field-status-grid">
+        <button onclick="App.navigatePublic('regulatory-events')"><b>集团监管事件中心</b><span>事件 ${em.totalCount || 0} · 高风险 ${em.highPriorityCount || 0}</span><em>待处理 ${em.openCount || 0} · 超期 ${em.overdueCount || 0}</em></button>
+        <button onclick="App.navigatePublic('rectification-operations')"><b>集团整改运营中心</b><span>整改 ${(APP_DATA.rectificationTasks || []).length}</span><em>超期 ${(APP_DATA.rectificationTasks || []).filter(t => t.deadline && t.deadline < '2026-07-22' && t.status !== '已关闭').length}</em></button>
+        <button onclick="App.navigatePublic('regulatory-evaluation')"><b>集团监管评价</b><span>区域排名 ${(APP_DATA.regulatoryEvaluation || {}).regionRankings?.length || 0}</span><em>闭环率 ${(APP_DATA.regulatoryEvaluation || {}).overallRectificationClosureRate || 0}%</em></button>
+      </div>
+    </div>`;
+  },
+
+  getFilteredRegulatoryEvents() {
+    const f = this.regulatoryEventFilter || {};
+    return (APP_DATA.regulatoryEvents || []).filter(e => {
+      if (f.status && e.status !== f.status) return false;
+      if (f.riskLevel && e.riskLevel !== f.riskLevel) return false;
+      if (f.eventType && e.eventType !== f.eventType) return false;
+      if (f.regionId && e.regionId !== f.regionId) return false;
+      if (f.entityId && e.entityId !== f.entityId) return false;
+      if (f.domainId && e.domainId !== f.domainId) return false;
+      if (f.overdue === 'true' && !e.overdue) return false;
+      if (f.highPriority === 'true' && e.riskLevel !== 'HIGH') return false;
+      if (f.newInPeriod === 'true' && e.firstDetectedAt < '2026-07-15') return false;
+      return true;
+    });
+  },
+
+  setRegulatoryEventFilter(key, value) {
+    this.setPublicFilter('regulatory-events', key, value);
+    this.renderRegulatoryEvents();
+  },
+
+  renderRegulatoryEventsFilterBar() {
+    const f = this.regulatoryEventFilter || {};
+    const regions = APP_DATA.globalRegions || [];
+    const entities = APP_DATA.globalLegalEntities || [];
+    return `<div class="filter-bar public-filter-bar" style="margin-bottom:12px;display:flex;flex-wrap:wrap;gap:8px;align-items:center">
+      <select onchange="App.setRegulatoryEventFilter('riskLevel',this.value||null)"><option value="">全部风险等级</option>${['HIGH', 'MEDIUM', 'LOW'].map(l => `<option value="${l}" ${f.riskLevel === l ? 'selected' : ''}>${l}</option>`).join('')}</select>
+      <select onchange="App.setRegulatoryEventFilter('status',this.value||null)"><option value="">全部状态</option>${['OPEN', 'ACKNOWLEDGED', 'IN_PROGRESS', 'VERIFYING', 'CLOSED'].map(s => `<option value="${s}" ${f.status === s ? 'selected' : ''}>${s}</option>`).join('')}</select>
+      <select onchange="App.setRegulatoryEventFilter('regionId',this.value||null)"><option value="">全部区域</option>${regions.map(r => `<option value="${r.regionId}" ${f.regionId === r.regionId ? 'selected' : ''}>${r.regionName}</option>`).join('')}</select>
+      <select onchange="App.setRegulatoryEventFilter('entityId',this.value||null)"><option value="">全部法人</option>${entities.map(e => `<option value="${e.entityId}" ${f.entityId === e.entityId ? 'selected' : ''}>${e.entityName}</option>`).join('')}</select>
+      ${Object.keys(f).length ? `<button class="btn btn-outline" onclick="App.clearPublicFilter('regulatory-events')">清除筛选</button>` : ''}
+    </div>`;
+  },
+
+  renderRegulatoryEvents() {
+    const node = document.getElementById('regulatoryEvents');
+    if (!node) return;
+    const em = APP_DATA.regulatoryEventMetrics || {};
+    const events = this.getFilteredRegulatoryEvents();
+    const period = this.regulatoryEventTrendPeriod || '7';
+    const trend = (APP_DATA.regulatoryEventTrends || {})[period];
+    const kpiCards = [
+      ['全部事件', em.totalCount, null, `App.setRegulatoryEventFilter('status',null)`],
+      ['高风险事件', em.highPriorityCount, null, `App.setRegulatoryEventFilter('highPriority','true')`],
+      ['新增事件', em.newInPeriodCount, null, `App.setRegulatoryEventFilter('newInPeriod','true')`],
+      ['待责任确认', em.acknowledgedCount, null, `App.setRegulatoryEventFilter('status','ACKNOWLEDGED')`],
+      ['整改中', em.inProgressCount, null, `App.setRegulatoryEventFilter('status','IN_PROGRESS')`],
+      ['待验证', em.verifyingCount, null, `App.setRegulatoryEventFilter('status','VERIFYING')`],
+      ['超期事件', em.overdueCount, null, `App.setRegulatoryEventFilter('overdue','true')`],
+      ['已关闭', em.closedCount, null, `App.setRegulatoryEventFilter('status','CLOSED')`]
+    ];
+    const levelDist = ['HIGH', 'MEDIUM', 'LOW'].map(lv => ({ level: lv, count: events.filter(e => e.riskLevel === lv).length }));
+    const rows = events.map(e => {
+      const ent = APP_DATA.globalLegalEntities.find(x => x.entityId === e.entityId);
+      const reg = APP_DATA.globalRegions.find(x => x.regionId === e.regionId);
+      const dom = APP_DATA.regulationDomains.find(d => d.id === e.domainId);
+      const kri = e.kriId ? APP_DATA.groupKris.find(k => k.id === e.kriId) : null;
+      return `<tr class="clickable" onclick="App.showRegulatoryEventDetail('${e.eventId}')"><td>${e.eventId}</td><td>${this.renderPublicEventTypeBadge(e.eventType)}</td><td>${e.riskLevel}</td><td>${e.sourceObjectId}</td><td>${reg ? reg.regionName : e.regionId || '—'}</td><td>${ent ? ent.entityName : e.entityId || '—'}</td><td>${dom ? dom.name : e.domainId || '—'}</td><td>${kri ? kri.name : e.kriId || '—'}</td><td>${this.renderPublicEventStatusBadge(e.status)}</td><td>${e.responsibleDepartment}</td><td>${e.firstDetectedAt}</td><td>${e.dueDate || '—'}</td><td>${e.overdue ? '<span class="badge badge-danger">是</span>' : '否'}</td></tr>`;
+    }).join('');
+    node.innerHTML = `${this.renderPublicBackButton()}
+      <div class="group-hero"><div><span>集团公共监管运营</span><h2>集团监管事件中心</h2><p>统一聚合数据质量、KRI、风险事项、跨领域、跨境合规、覆盖盲区与运行异常。</p></div><div>当前事件 <b>${em.totalCount || 0}</b></div></div>
+      ${this.renderRegulatoryEventsFilterBar()}
+      <div class="group-metrics">${kpiCards.map(([l, v, , nav]) => this.renderPublicKpiCard(l, v, nav)).join('')}</div>
+      <div class="group-three">
+        <div>${['7', '30', '90'].map(p => `<button class="btn btn-outline" style="margin:2px" onclick="App.regulatoryEventTrendPeriod='${p}';App.renderRegulatoryEvents()">近${p}日</button>`).join('')}${this.renderPublicTrendChart(trend, period)}</div>
+        <div class="card" style="padding:12px"><b>风险等级分布</b>${levelDist.map(d => `<button class="btn btn-outline" style="margin:4px" onclick="App.setRegulatoryEventFilter('riskLevel','${d.level}')">${d.level}：${d.count}</button>`).join('')}</div>
+      </div>
+      <div class="card"><div class="card-title">监管事件清单</div>
+        ${events.length ? `<table class="data-table"><thead><tr><th>事件编号</th><th>类型</th><th>风险等级</th><th>监管对象</th><th>区域</th><th>法人</th><th>业务领域</th><th>KRI</th><th>状态</th><th>责任主体</th><th>发现时间</th><th>整改期限</th><th>超期</th></tr></thead><tbody>${rows}</tbody></table>` : this.renderPublicNoFilterResults()}
+      </div>
+      <div id="regulatoryEventDetail"></div>`;
+    if (this.regulatoryEventFocusId) setTimeout(() => this.showRegulatoryEventDetail(this.regulatoryEventFocusId), 0);
+  },
+
+  showRegulatoryEventDetail(eventId) {
+    const evt = (APP_DATA.regulatoryEvents || []).find(e => e.eventId === eventId);
+    const node = document.getElementById('regulatoryEventDetail');
+    this.regulatoryEventFocusId = eventId;
+    this.showPublicDetailOrNotFound(node, evt, () => {
+      const ent = evt.entityId ? APP_DATA.globalLegalEntities.find(e => e.entityId === evt.entityId) : null;
+      const proj = evt.projectId ? APP_DATA.globalProjects.find(p => p.projectId === evt.projectId) : null;
+      const reg = evt.regionId ? APP_DATA.globalRegions.find(r => r.regionId === evt.regionId) : null;
+      const country = evt.countryId ? APP_DATA.globalCountries.find(c => c.countryId === evt.countryId) : null;
+      const dom = evt.domainId ? APP_DATA.regulationDomains.find(d => d.id === evt.domainId) : null;
+      const kri = evt.kriId ? APP_DATA.groupKris.find(k => k.id === evt.kriId) : null;
+      const scenario = evt.scenarioId ? (APP_DATA.groupRiskScenarios.find(s => s.id === evt.scenarioId) || APP_DATA.crossBorderRiskScenarios.find(s => s.id === evt.scenarioId)) : null;
+      const warn = evt.riskMatterId ? APP_DATA.warnings.find(w => w.id === evt.riskMatterId) : null;
+      const cdr = (APP_DATA.crossDomainRiskMatters || []).find(m => m.riskMatterId === evt.riskMatterId || m.riskMatterId === evt.sourceObjectId);
+      const cb = evt.eventType === 'CROSS_BORDER' ? APP_DATA.crossBorderDataActivities.find(a => a.activityId === evt.sourceObjectId) : null;
+      const quality = evt.eventType === 'DATA_QUALITY' ? APP_DATA.dataQualityIssues.find(q => q.issueId === evt.sourceObjectId) : null;
+      const rect = evt.rectificationTaskId ? APP_DATA.rectificationTasks.find(t => t.taskId === evt.rectificationTaskId) : null;
+      const lifecycle = [
+        { label: '发现', sub: evt.firstDetectedAt, active: true },
+        { label: '识别', sub: evt.eventType, active: evt.status !== 'OPEN' },
+        { label: '责任确认', sub: evt.responsibleDepartment, active: ['ACKNOWLEDGED', 'IN_PROGRESS', 'VERIFYING', 'CLOSED'].includes(evt.status) },
+        { label: '整改', sub: rect ? rect.status : '—', active: ['IN_PROGRESS', 'VERIFYING', 'CLOSED'].includes(evt.status) },
+        { label: '验证', sub: rect ? rect.verificationStatus : '—', active: ['VERIFYING', 'CLOSED'].includes(evt.status) },
+        { label: '关闭', sub: rect && rect.closedAt ? rect.closedAt : (evt.status === 'CLOSED' ? evt.lastUpdatedAt : '—'), active: evt.status === 'CLOSED' }
+      ];
+      node.innerHTML = this.buildPublicDetailPanel({
+        objectType: '监管事件',
+        objectName: evt.eventId + ' · ' + (evt.eventType || '监管事件'),
+        objectId: evt.eventId,
+        status: evt.status,
+        updatedAt: evt.lastUpdatedAt,
+        sections: [
+          { title: '一、基础信息', content: this.renderPublicMetaGrid([
+            this.renderPublicIdField(evt.eventId, '事件 ID'),
+            { label: '事件类型', html: this.renderPublicEventTypeBadge(evt.eventType) },
+            { label: '风险等级', value: evt.riskLevel },
+            { label: '当前状态', html: this.renderPublicEventStatusBadge(evt.status) },
+            { label: '发现时间', value: evt.firstDetectedAt },
+            { label: '最后更新时间', value: evt.lastUpdatedAt }
+          ]) },
+          { title: '二、监管对象', content: `<p class="insight-note">${reg ? this.renderPublicLinkButton(reg.regionName, `App.navigatePublic('global-regions',{regionId:'${reg.regionId}'})`) : ''} ${country ? this.renderPublicLinkButton(country.countryName, `App.navigatePublic('global-regions',{regionId:'${country.regionId}',countryId:'${country.countryId}'})`) : ''} ${ent ? this.renderPublicLinkButton(ent.entityName, `App.navigatePublic('global-legal-entities',{entityId:'${ent.entityId}'})`) : ''} ${proj ? this.renderPublicLinkButton(proj.projectName, `App.navigatePublic('global-regions',{projectId:'${proj.projectId}'})`) : ''} ${dom ? this.renderPublicLinkButton(dom.name, `App.navigatePublic('cross-domain-risks',{domainId:'${dom.id}'})`) : ''}</p>` },
+          { title: '三、风险关联', content: `<p class="insight-note">${quality ? this.renderPublicLinkButton(quality.issueId + ' · ' + quality.anomalyType, `App.navigatePublic('data-governance',{qualityIssueId:'${quality.issueId}'})`) : ''} ${kri ? this.renderPublicLinkButton(kri.name, `App.navigatePublic('data-governance',{relationId:'LIN001'})`) : ''} ${scenario ? this.renderPublicLinkButton(scenario.name, `App.navigatePublic('cross-domain-risks')`) : ''} ${warn ? this.renderPublicLinkButton(warn.name, `App.showPublicWarningDetail('${warn.id}')`) : ''} ${cdr ? this.renderPublicLinkButton(cdr.riskMatterName, `App.showCrossDomainRiskMatterDetail('${cdr.riskMatterId}')`) : ''} ${cb ? this.renderPublicLinkButton(cb.activityId, `App.showCrossBorderActivityDetail('${cb.activityId}')`) : ''}</p>` },
+          { title: '四、责任主体', content: this.renderPublicMetaGrid([{ label: '责任法人', value: ent ? ent.entityName : evt.responsibleEntity || '—' }, { label: '责任部门', value: evt.responsibleDepartment }, { label: '协同部门', value: (evt.collaboratingDepartments || []).join('、') || '—' }]) },
+          { title: '五、整改闭环', content: rect ? `<p>${this.renderPublicLinkButton(rect.title, `App.showRectificationTaskDetail('${rect.taskId}')`)} · ${rect.status} · ${rect.verificationStatus} · 期限 ${rect.deadline || '—'}</p>` : this.renderPublicEmptyState('暂无关联整改任务') },
+          { title: '六、事件生命周期', content: this.renderPublicTimeline(lifecycle) }
+        ],
+        footer: `${rect ? this.renderPublicLinkButton('查看整改任务', `App.navigatePublic('rectification',{rectificationTaskId:'${rect.taskId}'})`) : ''}${warn ? this.renderPublicLinkButton('查看风险事项', `App.navigatePublic('warnings',{riskMatterId:'${warn.id}'})`) : ''}${ent ? this.renderPublicLinkButton('查看法人', `App.navigatePublic('global-legal-entities',{entityId:'${ent.entityId}'})`) : ''}`
+      });
+      node.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }, '监管事件');
+  },
+
+  getRectificationAgingStats() {
+    const tasks = APP_DATA.rectificationTasks || [];
+    const today = new Date('2026-07-22');
+    const buckets = { '0-30': 0, '31-60': 0, '61-90': 0, '90+': 0 };
+    tasks.forEach(t => {
+      const start = new Date((t.deadline || '2026-07-01').replace(/-/g, '/'));
+      const days = Math.abs(Math.round((today - start) / 86400000));
+      if (days <= 30) buckets['0-30']++;
+      else if (days <= 60) buckets['31-60']++;
+      else if (days <= 90) buckets['61-90']++;
+      else buckets['90+']++;
+    });
+    return buckets;
+  },
+
+  getRectificationByEntity() {
+    const map = {};
+    (APP_DATA.rectificationTasks || []).forEach(t => {
+      const key = t.entityId || '—';
+      if (!map[key]) map[key] = { entityId: key, count: 0, open: 0, overdue: 0 };
+      map[key].count++;
+      if (t.status !== '已关闭' && !t.closedAt) map[key].open++;
+      if (t.deadline && t.deadline < '2026-07-22' && t.status !== '已关闭') map[key].overdue++;
+    });
+    return Object.values(map).map(x => ({ ...x, entityName: (APP_DATA.globalLegalEntities.find(e => e.entityId === x.entityId) || {}).entityName || x.entityId }));
+  },
+
+  getRectificationByDepartment() {
+    const map = {};
+    (APP_DATA.rectificationTasks || []).forEach(t => {
+      const key = t.responsibleDepartment || t.owner || '—';
+      if (!map[key]) map[key] = { department: key, count: 0, open: 0 };
+      map[key].count++;
+      if (t.status !== '已关闭' && !t.closedAt) map[key].open++;
+    });
+    return Object.values(map);
+  },
+
+  getRectificationByDomain() {
+    const map = {};
+    (APP_DATA.rectificationTasks || []).forEach(t => {
+      const key = t.domainId || 'investment';
+      if (!map[key]) map[key] = { domainId: key, count: 0, open: 0 };
+      map[key].count++;
+      if (t.status !== '已关闭' && !t.closedAt) map[key].open++;
+    });
+    return Object.values(map).map(x => ({ ...x, domainName: (APP_DATA.regulationDomains.find(d => d.id === x.domainId) || {}).name || x.domainId }));
+  },
+
+  getRectificationByRegion() {
+    const map = {};
+    (APP_DATA.rectificationTasks || []).forEach(t => {
+      const key = t.regionId || '—';
+      if (!map[key]) map[key] = { regionId: key, count: 0, open: 0 };
+      map[key].count++;
+      if (t.status !== '已关闭' && !t.closedAt) map[key].open++;
+    });
+    return Object.values(map).map(x => ({ ...x, regionName: (APP_DATA.globalRegions.find(r => r.regionId === x.regionId) || {}).regionName || x.regionId }));
+  },
+
+  getRectificationClosureRate() {
+    const tasks = APP_DATA.rectificationTasks || [];
+    const closed = tasks.filter(t => t.status === '已关闭' || t.closedAt).length;
+    return tasks.length ? (closed / tasks.length * 100).toFixed(1) + '%' : '—';
+  },
+
+  getRectificationOverdueRate() {
+    const tasks = (APP_DATA.rectificationTasks || []).filter(t => t.status !== '已关闭' && !t.closedAt);
+    const overdue = tasks.filter(t => t.deadline && t.deadline < '2026-07-22').length;
+    return tasks.length ? (overdue / tasks.length * 100).toFixed(1) + '%' : '—';
+  },
+
+  renderRectificationOperations() {
+    const node = document.getElementById('rectificationOperations');
+    if (!node) return;
+    const tasks = APP_DATA.rectificationTasks || [];
+    const open = tasks.filter(t => t.status !== '已关闭' && !t.closedAt);
+    const overdue = open.filter(t => t.deadline && t.deadline < '2026-07-22');
+    const highRisk = open.filter(t => t.level === 'L4');
+    const verifying = tasks.filter(t => t.status === '整改验证' || t.verificationStatus === '验证中');
+    const longOpen = open.filter(t => t.progress < 50);
+    const aging = this.getRectificationAgingStats();
+    const byEntity = this.getRectificationByEntity();
+    const byDept = this.getRectificationByDepartment();
+    const byDomain = this.getRectificationByDomain();
+    const byRegion = this.getRectificationByRegion();
+    node.innerHTML = `${this.renderPublicBackButton()}
+      <div class="group-hero"><div><span>集团公共监管运营</span><h2>集团整改运营中心</h2><p>基于 rectificationTasks 动态聚合整改运营态势，不新增整改数据模型。</p></div><div>闭环率 <b>${this.getRectificationClosureRate()}</b></div></div>
+      <div class="group-metrics">${[
+        [tasks.length, '整改任务总量', `App.navigatePublic('rectification')`],
+        [overdue.length, '超期任务', `App.navigatePublic('rectification')`],
+        [highRisk.length, '高风险整改', `App.navigatePublic('rectification')`],
+        [verifying.length, '待验证', `App.navigatePublic('rectification')`],
+        [longOpen.length, '长期未关闭', `App.navigatePublic('rectification')`],
+        [this.getRectificationOverdueRate(), '超期率', `App.navigatePublic('rectification')`]
+      ].map(([v, l, nav]) => this.renderPublicKpiCard(l, v, nav)).join('')}</div>
+      <div class="group-three">
+        <div class="card"><b>整改状态</b><p>待处理 ${tasks.filter(t => t.status === '整改制定').length} · 整改中 ${tasks.filter(t => t.status === '整改中' || t.status === '整改执行').length} · 待验证 ${verifying.length} · 已关闭 ${tasks.filter(t => t.status === '已关闭' || t.closedAt).length}</p></div>
+        <div class="card"><b>整改时长</b>${Object.entries(aging).map(([k, v]) => `<p>${k} 天：${v}项</p>`).join('')}</div>
+        <div class="card"><b>闭环指标</b><p>闭环率 ${this.getRectificationClosureRate()}</p><p>超期率 ${this.getRectificationOverdueRate()}</p></div>
+      </div>
+      <div class="group-three">
+        <div class="card"><b>按责任法人</b><table class="data-table"><thead><tr><th>法人</th><th>任务</th><th>未闭环</th><th>超期</th></tr></thead><tbody>${byEntity.map(e => `<tr class="clickable" onclick="App.navigatePublic('global-legal-entities',{entityId:'${e.entityId}'})"><td>${e.entityName}</td><td>${e.count}</td><td>${e.open}</td><td>${e.overdue}</td></tr>`).join('')}</tbody></table></div>
+        <div class="card"><b>按责任部门</b><table class="data-table"><thead><tr><th>部门</th><th>任务</th><th>未闭环</th></tr></thead><tbody>${byDept.map(d => `<tr><td>${d.department}</td><td>${d.count}</td><td>${d.open}</td></tr>`).join('')}</tbody></table></div>
+      </div>
+      <div class="group-three">
+        <div class="card"><b>按业务领域</b>${byDomain.map(d => `<p>${d.domainName}：${d.count}（未闭环 ${d.open}）</p>`).join('')}</div>
+        <div class="card"><b>按区域</b>${byRegion.map(r => `<p><button class="btn btn-outline" onclick="App.navigatePublic('global-regions',{regionId:'${r.regionId}'})">${r.regionName}</button>：${r.count}（未闭环 ${r.open}）</p>`).join('')}</div>
+      </div>`;
+  },
+
+  renderRegulatoryEvaluation() {
+    const node = document.getElementById('regulatoryEvaluation');
+    if (!node) return;
+    const ev = APP_DATA.regulatoryEvaluation || {};
+    const regionRows = (ev.regionRankings || []).map(r => `<tr class="clickable" onclick="App.navigatePublic('global-regions',{regionId:'${r.objectId}'})"><td>${r.rank}</td><td>${r.objectName}</td><td>${r.score}</td><td>${this.renderPublicHealthBadge(r.level)}</td></tr>`).join('');
+    const entityRows = (ev.entityRankings || []).map(r => `<tr class="clickable" onclick="App.navigatePublic('global-legal-entities',{entityId:'${r.objectId}'})"><td>${r.rank}</td><td>${r.objectName}</td><td>${r.score}</td><td>${this.renderPublicHealthBadge(r.level)}</td></tr>`).join('');
+    const rectRows = (ev.rectificationEfficiencyRankings || []).map(r => `<tr class="clickable" onclick="App.navigatePublic('rectification-operations')"><td>${r.rank}</td><td>${r.objectName}</td><td>${r.score}%</td><td>${r.closedCount}/${r.taskCount}</td></tr>`).join('');
+    node.innerHTML = `${this.renderPublicBackButton()}
+      <div class="group-hero"><div><span>集团公共监管运营</span><h2>集团监管评价</h2><p>基于监管数据动态评价区域、法人监管能力与整改效率。</p></div></div>
+      <div class="group-metrics">${[
+        [ev.dataGovernanceMaturity + '%', '数据治理成熟度', `App.navigatePublic('data-governance')`],
+        [ev.crossBorderComplianceMaturity + '%', '跨境合规成熟度', `App.navigatePublic('cross-border-compliance')`],
+        [ev.crossDomainRiskMaturity + '%', '跨领域风险管理成熟度', `App.navigatePublic('cross-domain-risks')`],
+        [ev.overallRectificationClosureRate + '%', '整改闭环率', `App.navigatePublic('rectification-operations')`]
+      ].map(([v, l, nav]) => this.renderPublicKpiCard(l, v, nav)).join('')}</div>
+      <div class="group-three">
+        <div class="card"><div class="card-title">区域监管能力排名</div><table class="data-table"><thead><tr><th>排名</th><th>区域</th><th>得分</th><th>健康度</th></tr></thead><tbody>${regionRows}</tbody></table></div>
+        <div class="card"><div class="card-title">法人监管能力排名</div><table class="data-table"><thead><tr><th>排名</th><th>法人</th><th>得分</th><th>健康度</th></tr></thead><tbody>${entityRows}</tbody></table></div>
+        <div class="card"><div class="card-title">风险整改效率排名</div><table class="data-table"><thead><tr><th>排名</th><th>法人</th><th>闭环率</th><th>已关闭/总数</th></tr></thead><tbody>${rectRows}</tbody></table></div>
+      </div>`;
   },
 
   rerenderPublicPage(pageId) {
@@ -634,7 +972,10 @@ Object.assign(App, {
       'platform-operations': 'renderPlatformOperations',
       'data-governance': 'renderDataGovernance',
       'cross-border-compliance': 'renderCrossBorderCompliance',
-      'cross-domain-risks': 'renderCrossDomainRisks'
+      'cross-domain-risks': 'renderCrossDomainRisks',
+      'regulatory-events': 'renderRegulatoryEvents',
+      'rectification-operations': 'renderRectificationOperations',
+      'regulatory-evaluation': 'renderRegulatoryEvaluation'
     }[routeId];
     if (fn && this[fn]) this[fn]();
   }

@@ -36,11 +36,11 @@ function resolve(id, arr, key, label) {
   return found;
 }
 
-// --- 页面目录（11个）---
+// --- 页面目录（14个）---
 const expectedPages = [
   'global-group-overview', 'global-legal-entities', 'global-regions', 'coverage-gaps',
   'platform-operations', 'data-governance', 'cross-border-compliance', 'cross-domain-risks',
-  'warnings', 'rectification', 'major'
+  'warnings', 'rectification', 'regulatory-events', 'rectification-operations', 'regulatory-evaluation', 'major'
 ];
 expectedPages.forEach(pid => {
   if (!pubJs.includes(`pageId: '${pid}'`)) errors.push(`公共页面清单缺失: ${pid}`);
@@ -56,7 +56,9 @@ const components = [
   'renderPublicRelationCard', 'renderPublicRelationRow', 'renderPublicRelationLink',
   'renderLineageNode', 'renderLineageArrow', 'renderLineagePath',
   'renderPublicEmptyState', 'renderPublicErrorState', 'renderPublicFilterBar',
-  'renderPublicNotFoundPanel', 'showPublicDetailOrNotFound', 'resolvePublicRouteId'
+  'renderPublicNotFoundPanel', 'showPublicDetailOrNotFound', 'resolvePublicRouteId',
+  'renderPublicTimeline', 'renderPublicTrendChart', 'renderPublicHealthBadge',
+  'renderPublicKpiCard', 'renderPublicEventTypeBadge', 'showRegulatoryEventDetail'
 ];
 components.forEach(fn => {
   if (!pubJs.includes(fn)) errors.push(`公共组件缺失: ${fn}`);
@@ -184,9 +186,24 @@ const summaryFields = ['projectCount', 'sourceCount', 'warningCount', 'highRiskM
 summaryFields.forEach(f => {
   if (s[f] === undefined || s[f] === null) errors.push(`publicRegulatorySummary 缺失字段: ${f}`);
 });
-const groupHelpers = ['computeGroupOverviewMetrics', 'renderGroupOverviewFilterBar', 'renderGroupOverviewRegulatoryChain', 'renderGroupOverviewObjectTree', 'renderGroupOverviewCoverageSummary', 'renderGroupOverviewRiskSummary', 'renderGroupOverviewRectificationSummary', 'renderGroupOverviewPageCatalog', 'getGroupOverviewFilter'];
+const groupHelpers = ['computeGroupOverviewMetrics', 'renderGroupOverviewFilterBar', 'renderGroupOverviewRegulatoryChain', 'renderGroupOverviewObjectTree', 'renderGroupOverviewCoverageSummary', 'renderGroupOverviewRiskSummary', 'renderGroupOverviewRectificationSummary', 'renderGroupOverviewPageCatalog', 'renderGroupOverviewHealthSummary', 'getGroupOverviewFilter', 'getRectificationClosureRate', 'getRectificationOverdueRate', 'renderRegulatoryEvents', 'renderRectificationOperations', 'renderRegulatoryEvaluation'];
 groupHelpers.forEach(fn => {
-  if (!pubJs.includes(fn)) errors.push(`集团总览组件缺失: ${fn}`);
+  if (!pubJs.includes(fn)) errors.push(`集团运营组件缺失: ${fn}`);
+});
+if (!D.regulatoryEvents || !D.regulatoryEvents.length) errors.push('regulatoryEvents 未生成');
+if (!D.regulatoryEventMetrics) errors.push('regulatoryEventMetrics 未生成');
+if (!D.regulatoryHealthScores) errors.push('regulatoryHealthScores 未生成');
+(D.regulatoryEvents || []).forEach(ev => {
+  req(ev.eventId, 'eventId');
+  if (ev.entityId) resolve(ev.entityId, D.globalLegalEntities, 'entityId', 'event.entityId');
+  if (ev.projectId) resolve(ev.projectId, D.globalProjects, 'projectId', 'event.projectId');
+  if (ev.kriId) resolve(ev.kriId, D.groupKris, 'id', 'event.kriId');
+  if (ev.riskMatterId) {
+    const w = D.warnings.find(x => x.id === ev.riskMatterId);
+    const m = D.crossDomainRiskMatters.find(x => x.riskMatterId === ev.riskMatterId);
+    if (!w && !m) errors.push(`无法解析: event.riskMatterId=${ev.riskMatterId}`);
+  }
+  if (ev.rectificationTaskId) resolve(ev.rectificationTaskId, D.rectificationTasks, 'taskId', 'event.rectificationTaskId');
 });
 if (!pubJs.includes('groupOverviewFilter')) warnings.push('groupOverviewFilter 状态未声明');
 if (!D.platformOperationChain || !D.platformOperationChain.length) errors.push('platformOperationChain 未生成');

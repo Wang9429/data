@@ -1,0 +1,12 @@
+{
+  "name": "cnooc-risk-platform",
+  "version": "1.0.0",
+  "description": "基于风险场景、控制活动与业务流程融合的股权投资穿透监管平台（模拟数据演示版）。",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}

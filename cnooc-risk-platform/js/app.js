@@ -65,12 +65,18 @@ const App = {
     'data-governance': '数据治理与数据血缘',
     'cross-border-compliance': '跨境数据合规',
     'cross-domain-risks': '跨领域风险监管',
-    'global-group-overview': '集团监管总览'
+    'global-group-overview': '集团监管总览',
+    'regulatory-events': '集团监管事件中心',
+    'rectification-operations': '集团整改运营中心',
+    'regulatory-evaluation': '集团监管评价'
   },
 
   init() {
     this.renderNav();
     this.renderGroupOverview();
+    this.renderRegulatoryEvents();
+    this.renderRectificationOperations();
+    this.renderRegulatoryEvaluation();
     this.renderGlobalLegalEntities();
     this.renderGlobalRegions();
     this.renderCoverageGaps();
@@ -138,7 +144,7 @@ const App = {
       this.renderKriDetail(params.kriId, params.scenarioId);
     }
 
-    if (['global-group-overview', 'group', 'global-legal-entities', 'global-regions', 'coverage-gaps', 'platform-operations', 'data-governance', 'cross-border-compliance', 'cross-domain-risks', 'warnings', 'rectification'].includes(pageId) && Object.keys(params).length) {
+    if (['global-group-overview', 'group', 'global-legal-entities', 'global-regions', 'coverage-gaps', 'platform-operations', 'data-governance', 'cross-border-compliance', 'cross-domain-risks', 'warnings', 'rectification', 'regulatory-events', 'rectification-operations', 'regulatory-evaluation'].includes(pageId) && Object.keys(params).length) {
       setTimeout(() => this.applyPublicNavigationContext(pageId, params), 50);
     }
   },
@@ -204,6 +210,7 @@ const App = {
     }
     if (pageId === 'cross-border-compliance' && ctx.activityId) this.showCrossBorderActivityDetail(ctx.activityId);
     if (pageId === 'cross-domain-risks' && ctx.riskMatterId) this.showCrossDomainRiskMatterDetail(ctx.riskMatterId);
+    if (pageId === 'regulatory-events' && ctx.eventId) this.showRegulatoryEventDetail(ctx.eventId);
   },
 
   applyPublicNavigationContext(pageId, params) {
@@ -254,6 +261,7 @@ const App = {
     }
     if (pageId === 'warnings' && (params.riskId || params.riskMatterId)) this.showPublicWarningDetail(params.riskMatterId || params.riskId);
     if (pageId === 'rectification' && (params.taskId || params.rectificationTaskId)) this.showRectificationTaskDetail(params.taskId || params.rectificationTaskId);
+    if (pageId === 'regulatory-events' && params.eventId) { this.regulatoryEventFocusId = params.eventId; this.showRegulatoryEventDetail(params.eventId); }
   },
 
   renderNav() {

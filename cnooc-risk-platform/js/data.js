@@ -694,3 +694,218 @@ Object.assign(APP_DATA, {
     ['整改闭环', metricVal('整改闭环率'), `已关闭${closedRects.length}项`, `未闭环${openRects.length}项`]
   ];
 })();
+
+(function () {
+  const TODAY = '2026-07-22';
+  const events = [];
+  let seq = 1;
+  const mkId = () => 'EVENT' + String(seq++).padStart(3, '0');
+  const mapWarnLevel = w => (w.level === '重大' || w.status === '红色' ? 'HIGH' : w.level === '较大' || w.status === '黄色' ? 'MEDIUM' : 'LOW');
+  const mapAlertLevel = l => (l === '高' ? 'HIGH' : l === '中' ? 'MEDIUM' : 'LOW');
+  const mapCdrLevel = l => (l === '高' ? 'HIGH' : l === '中' ? 'MEDIUM' : 'LOW');
+  const mapCbLevel = s => (s === '高风险' || s === '异常' ? 'HIGH' : s === '关注' ? 'MEDIUM' : 'LOW');
+  const isOverdue = (due, status) => due && due < TODAY && status !== 'CLOSED';
+  const statusFromRect = (rect, fallback) => {
+    if (!rect) return fallback || 'OPEN';
+    if (rect.status === '已关闭' || rect.closedAt) return 'CLOSED';
+    if (rect.status === '整改验证' || rect.verificationStatus === '验证中') return 'VERIFYING';
+    if (rect.status === '整改执行' || rect.status === '整改中' || rect.verificationStatus === '整改中') return 'IN_PROGRESS';
+    if (rect.status === '整改制定' || rect.verificationStatus === '待验证') return 'ACKNOWLEDGED';
+    return fallback || 'OPEN';
+  };
+  const pushEvent = (base) => {
+    const rect = base.rectificationTaskId ? (APP_DATA.rectificationTasks || []).find(t => t.taskId === base.rectificationTaskId) : null;
+    const status = base.status || statusFromRect(rect, 'OPEN');
+    events.push({
+      eventId: mkId(),
+      eventType: base.eventType,
+      sourceObjectType: base.sourceObjectType,
+      sourceObjectId: base.sourceObjectId,
+      entityId: base.entityId || null,
+      projectId: base.projectId || null,
+      regionId: base.regionId || null,
+      countryId: base.countryId || null,
+      domainId: base.domainId || null,
+      riskLevel: base.riskLevel || 'MEDIUM',
+      kriId: base.kriId || null,
+      scenarioId: base.scenarioId || null,
+      riskMatterId: base.riskMatterId || null,
+      rectificationTaskId: base.rectificationTaskId || null,
+      status,
+      responsibleEntity: base.responsibleEntity || base.entityId || null,
+      responsibleDepartment: base.responsibleDepartment || '—',
+      collaboratingDepartments: base.collaboratingDepartments || [],
+      firstDetectedAt: base.firstDetectedAt || '2026-07-01',
+      lastUpdatedAt: base.lastUpdatedAt || '2026-07-21',
+      dueDate: base.dueDate || (rect ? rect.deadline : null),
+      reopened: !!base.reopened,
+      overdue: isOverdue(base.dueDate || (rect ? rect.deadline : null), status)
+    });
+  };
+
+  (APP_DATA.warnings || []).forEach(w => {
+    const rect = w.rectificationTaskId ? APP_DATA.rectificationTasks.find(t => t.taskId === w.rectificationTaskId) : null;
+    pushEvent({
+      eventType: 'RISK_MATTER', sourceObjectType: 'warning', sourceObjectId: w.id,
+      entityId: w.entityId, projectId: w.projectId, regionId: w.regionId, countryId: w.countryId,
+      domainId: w.domainId || 'investment', riskLevel: mapWarnLevel(w), kriId: w.kriId, scenarioId: w.scenarioId,
+      riskMatterId: w.id, rectificationTaskId: w.rectificationTaskId,
+      responsibleEntity: w.entityId, responsibleDepartment: w.responsibleDepartment || '投资管理部',
+      firstDetectedAt: '2026-07-05', lastUpdatedAt: '2026-07-21', dueDate: rect ? rect.deadline : '2026-08-30'
+    });
+  });
+  (APP_DATA.dataQualityIssues || []).forEach(q => {
+    const obj = APP_DATA.dataObjects.find(o => o.objectId === q.objectId);
+    const ent = obj ? APP_DATA.globalLegalEntities.find(e => e.entityId === obj.entityId) : null;
+    const rel = APP_DATA.dataLineageRelations.find(r => r.objectId === q.objectId);
+    const warn = rel && rel.riskMatterId ? APP_DATA.warnings.find(w => w.id === rel.riskMatterId) : null;
+    pushEvent({
+      eventType: 'DATA_QUALITY', sourceObjectType: 'dataQualityIssue', sourceObjectId: q.issueId,
+      entityId: ent ? ent.entityId : null, regionId: ent ? ent.regionId : null, countryId: ent ? ent.countryId : null,
+      domainId: 'investment', riskLevel: q.qualityScore < 80 ? 'HIGH' : q.qualityScore < 90 ? 'MEDIUM' : 'LOW',
+      kriId: q.kriId, scenarioId: q.scenarioId, riskMatterId: warn ? warn.id : null,
+      rectificationTaskId: warn ? warn.rectificationTaskId : null,
+      responsibleEntity: ent ? ent.entityId : null, responsibleDepartment: q.ownerDepartment,
+      firstDetectedAt: '2026-07-10', lastUpdatedAt: obj ? obj.lastUpdateTime.split(' ')[0] : '2026-07-20',
+      dueDate: '2026-08-10'
+    });
+  });
+  (APP_DATA.platformOperationAlerts || []).forEach(a => {
+    pushEvent({
+      eventType: 'PLATFORM_ALERT', sourceObjectType: 'platformOperationAlert', sourceObjectId: a.alertId,
+      entityId: a.entityId, regionId: a.regionId, countryId: a.countryId, domainId: 'investment',
+      riskLevel: mapAlertLevel(a.level), kriId: a.kriId, scenarioId: a.scenarioId,
+      riskMatterId: a.riskMatterId, rectificationTaskId: a.rectificationTaskId,
+      responsibleEntity: a.entityId, responsibleDepartment: a.responsibleDepartment,
+      firstDetectedAt: (a.occurredAt || '').split(' ')[0] || '2026-07-18',
+      lastUpdatedAt: (a.occurredAt || '').split(' ')[0] || '2026-07-20',
+      dueDate: a.deadline, status: a.status === '已关闭' ? 'CLOSED' : a.status === '处理中' ? 'IN_PROGRESS' : 'OPEN'
+    });
+  });
+  (APP_DATA.coverageGaps || []).forEach(g => {
+    pushEvent({
+      eventType: 'COVERAGE_GAP', sourceObjectType: 'coverageGap', sourceObjectId: g.gapId,
+      entityId: g.entityId, projectId: g.projectId, regionId: g.regionId, countryId: g.countryId,
+      domainId: 'investment', riskLevel: g.status === '未覆盖' ? 'HIGH' : 'MEDIUM',
+      kriId: g.kriId, scenarioId: g.scenarioId, rectificationTaskId: g.rectificationTaskId,
+      responsibleEntity: g.entityId, responsibleDepartment: g.responsibleDepartment,
+      firstDetectedAt: '2026-07-08', lastUpdatedAt: '2026-07-19', dueDate: '2026-08-20'
+    });
+  });
+  (APP_DATA.crossDomainRiskMatters || []).forEach(m => {
+    pushEvent({
+      eventType: 'CROSS_DOMAIN', sourceObjectType: 'crossDomainRiskMatter', sourceObjectId: m.riskMatterId,
+      entityId: (m.entityIds || [])[0], projectId: (m.projectIds || [])[0],
+      regionId: (m.regionIds || [])[0], countryId: (m.countryIds || [])[0],
+      domainId: (m.domainIds || [])[0] || 'investment', riskLevel: mapCdrLevel(m.riskLevel),
+      kriId: (m.kriIds || [])[0], scenarioId: (m.scenarioIds || [])[0], riskMatterId: m.riskMatterId,
+      rectificationTaskId: (m.relatedRectificationTaskIds || [])[0],
+      responsibleEntity: (m.entityIds || [])[0], responsibleDepartment: m.primaryResponsibleDepartment,
+      collaboratingDepartments: m.collaboratingDepartments || [],
+      firstDetectedAt: '2026-07-06', lastUpdatedAt: (m.lastUpdateTime || '').split(' ')[0] || '2026-07-21',
+      dueDate: '2026-09-01'
+    });
+  });
+  (APP_DATA.crossBorderDataActivities || []).filter(a => a.complianceStatus === '高风险' || a.complianceStatus === '异常' || a.transferApprovalStatus === '待审批' || a.transferApprovalStatus === '未审批').forEach(a => {
+    pushEvent({
+      eventType: 'CROSS_BORDER', sourceObjectType: 'crossBorderDataActivity', sourceObjectId: a.activityId,
+      entityId: a.entityId, regionId: a.regionId, countryId: a.countryId, domainId: 'overseas',
+      riskLevel: mapCbLevel(a.complianceStatus), kriId: a.kriId, scenarioId: a.riskScenarioId,
+      riskMatterId: a.riskMatterId, rectificationTaskId: a.rectificationTaskId,
+      responsibleEntity: a.entityId, responsibleDepartment: a.responsibleDepartment,
+      firstDetectedAt: '2026-07-12', lastUpdatedAt: a.lastReviewDate || '2026-07-20', dueDate: a.nextReviewDate
+    });
+  });
+  if (events[2]) events[2].reopened = true;
+
+  APP_DATA.regulatoryEvents = events;
+  const highPri = events.filter(e => e.riskLevel === 'HIGH');
+  const periodStart = '2026-07-15';
+  APP_DATA.regulatoryEventMetrics = {
+    totalCount: events.length,
+    highPriorityCount: highPri.length,
+    openCount: events.filter(e => e.status === 'OPEN').length,
+    acknowledgedCount: events.filter(e => e.status === 'ACKNOWLEDGED').length,
+    inProgressCount: events.filter(e => e.status === 'IN_PROGRESS').length,
+    verifyingCount: events.filter(e => e.status === 'VERIFYING').length,
+    closedCount: events.filter(e => e.status === 'CLOSED').length,
+    overdueCount: events.filter(e => e.overdue).length,
+    newInPeriodCount: events.filter(e => e.firstDetectedAt >= periodStart).length,
+    reopenedCount: events.filter(e => e.reopened).length
+  };
+
+  const dayMs = 86400000;
+  const ref = new Date(TODAY);
+  const inWindow = (d, days) => {
+    const dt = new Date(d);
+    return (ref - dt) / dayMs <= days;
+  };
+  const buildTrend = (days) => {
+    const slice = events.filter(e => inWindow(e.firstDetectedAt, days) || inWindow(e.lastUpdatedAt, days));
+    return {
+      periodDays: days,
+      newCount: slice.filter(e => inWindow(e.firstDetectedAt, days)).length,
+      closedCount: slice.filter(e => e.status === 'CLOSED' && inWindow(e.lastUpdatedAt, days)).length,
+      overdueCount: slice.filter(e => e.overdue).length,
+      reopenedCount: slice.filter(e => e.reopened && inWindow(e.lastUpdatedAt, days)).length
+    };
+  };
+  APP_DATA.regulatoryEventTrends = { '7': buildTrend(7), '30': buildTrend(30), '90': buildTrend(90) };
+
+  const scoreDims = (opts) => {
+    const o = opts || {};
+    const cov = o.dataCoverage === '已接入' ? 1 : o.dataCoverage === '部分接入' ? 0.65 : o.dataCoverage === '待完善' ? 0.45 : 0.3;
+    const qual = o.dataQuality === '良好' ? 1 : o.dataQuality === '关注' ? 0.65 : 0.35;
+    const kri = o.kriExceptions === 0 ? 1 : Math.max(0.2, 1 - (o.kriExceptions || 0) * 0.12);
+    const risk = o.riskCount === 0 ? 1 : Math.max(0.2, 1 - (o.highRiskCount || 0) * 0.15 - (o.riskCount || 0) * 0.05);
+    const rect = o.openRects === 0 ? 1 : Math.max(0.25, 1 - (o.openRects || 0) * 0.12);
+    const cb = o.cbStatus === '正常' || o.cbStatus === '不适用' ? 1 : o.cbStatus === '关注' || o.cbStatus === '待复核' ? 0.6 : 0.35;
+    const cdr = o.cdrCount === 0 ? 1 : Math.max(0.3, 1 - (o.cdrCount || 0) * 0.2);
+    const avg = (cov + qual + kri + risk + rect + cb + cdr) / 7;
+    const level = avg >= 0.85 ? 'HEALTHY' : avg >= 0.7 ? 'ATTENTION' : avg >= 0.5 ? 'WARNING' : 'CRITICAL';
+    return { score: Math.round(avg * 100), level, dimensions: { dataCoverage: cov, dataQuality: qual, kriHealth: kri, riskHealth: risk, rectificationHealth: rect, crossBorderHealth: cb, crossDomainHealth: cdr } };
+  };
+
+  const entityHealth = (APP_DATA.globalLegalEntities || []).map(e => {
+    const cdr = (APP_DATA.crossDomainRiskMatters || []).filter(m => (m.entityIds || []).includes(e.entityId)).length;
+    const h = scoreDims({ dataCoverage: e.dataCoverageStatus || e.dataAccessStatus, dataQuality: e.dataQualityStatus, kriExceptions: e.kriExceptionCount, riskCount: e.riskCount, highRiskCount: e.highRiskCount, openRects: e.openRectificationCount || e.rectificationCount, cbStatus: e.crossBorderComplianceStatus, cdrCount: cdr });
+    return { objectType: 'entity', objectId: e.entityId, objectName: e.entityName, regionId: e.regionId, countryId: e.countryId, ...h };
+  });
+  const regionHealth = (APP_DATA.globalRegions || []).map(r => {
+    const ents = (APP_DATA.globalLegalEntities || []).filter(e => e.regionId === r.regionId);
+    const avg = ents.length ? Math.round(ents.reduce((s, e) => s + (entityHealth.find(h => h.objectId === e.entityId) || { score: 50 }).score, 0) / ents.length) : 50;
+    const level = avg >= 85 ? 'HEALTHY' : avg >= 70 ? 'ATTENTION' : avg >= 50 ? 'WARNING' : 'CRITICAL';
+    return { objectType: 'region', objectId: r.regionId, objectName: r.regionName, score: avg, level, riskCount: r.riskCount, highRiskCount: r.highRiskCount };
+  });
+  const countryHealth = (APP_DATA.globalCountries || []).map(c => {
+    const ents = (APP_DATA.globalLegalEntities || []).filter(e => e.countryId === c.countryId);
+    const avg = ents.length ? Math.round(ents.reduce((s, e) => s + (entityHealth.find(h => h.objectId === e.entityId) || { score: 50 }).score, 0) / ents.length) : 50;
+    const level = avg >= 85 ? 'HEALTHY' : avg >= 70 ? 'ATTENTION' : avg >= 50 ? 'WARNING' : 'CRITICAL';
+    return { objectType: 'country', objectId: c.countryId, objectName: c.countryName, regionId: c.regionId, score: avg, level };
+  });
+  const projectHealth = (APP_DATA.globalProjects || []).map(p => {
+    const ent = APP_DATA.globalLegalEntities.find(e => e.entityId === p.entityId);
+    const h = scoreDims({ dataCoverage: p.dataCoverageStatus || p.dataAccessStatus, dataQuality: p.dataQualityStatus, kriExceptions: p.kriExceptionCount, riskCount: p.riskCount, highRiskCount: p.highRiskCount, openRects: p.openRectificationCount || p.rectificationCount, cbStatus: ent ? ent.crossBorderComplianceStatus : '关注', cdrCount: 0 });
+    return { objectType: 'project', objectId: p.projectId, objectName: p.projectName, entityId: p.entityId, regionId: p.regionId, countryId: p.countryId, ...h };
+  });
+  APP_DATA.regulatoryHealthScores = { entities: entityHealth, regions: regionHealth, countries: countryHealth, projects: projectHealth };
+
+  const rank = (items, scoreKey) => [...items].sort((a, b) => (b[scoreKey] || b.score || 0) - (a[scoreKey] || a.score || 0));
+  const rects = APP_DATA.rectificationTasks || [];
+  const closedRects = rects.filter(t => t.status === '已关闭' || t.closedAt);
+  const entityRectEff = (APP_DATA.globalLegalEntities || []).map(e => {
+    const tasks = rects.filter(t => t.entityId === e.entityId);
+    const closed = tasks.filter(t => t.status === '已关闭' || t.closedAt).length;
+    const rate = tasks.length ? Math.round(closed / tasks.length * 100) : 100;
+    return { objectId: e.entityId, objectName: e.entityName, score: rate, taskCount: tasks.length, closedCount: closed };
+  });
+  APP_DATA.regulatoryEvaluation = {
+    regionRankings: rank(regionHealth, 'score').map((r, i) => ({ rank: i + 1, objectId: r.objectId, objectName: r.objectName, score: r.score, level: r.level })),
+    entityRankings: rank(entityHealth, 'score').map((e, i) => ({ rank: i + 1, objectId: e.objectId, objectName: e.objectName, score: e.score, level: e.level })),
+    rectificationEfficiencyRankings: rank(entityRectEff, 'score').map((e, i) => ({ rank: i + 1, objectId: e.objectId, objectName: e.objectName, score: e.score, closedCount: e.closedCount, taskCount: e.taskCount })),
+    dataGovernanceMaturity: Math.round((APP_DATA.dataSourceRegistry || []).filter(s => (s.qualityScore || 0) >= 90).length / Math.max(1, (APP_DATA.dataSourceRegistry || []).length) * 100),
+    crossBorderComplianceMaturity: parseFloat((APP_DATA.crossBorderComplianceMetrics || {}).crossBorderComplianceRate) || 0,
+    crossDomainRiskMaturity: Math.round((1 - (APP_DATA.crossDomainRiskMetrics || {}).highRiskMatterCount / Math.max(1, (APP_DATA.crossDomainRiskMetrics || {}).crossDomainMatterCount)) * 100),
+    overallRectificationClosureRate: Math.round(closedRects.length / Math.max(1, rects.length) * 100)
+  };
+})();
