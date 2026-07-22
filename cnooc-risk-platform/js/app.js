@@ -47,10 +47,23 @@ const App = {
     const sidebarTitle = document.querySelector('.sidebar-title');
     if (sidebarTitle) sidebarTitle.textContent = systemName;
     document.querySelectorAll('.sidebar-subtitle').forEach((node) => node.remove());
-    const pageTitle = document.getElementById('pageTitle');
-    if (pageTitle) pageTitle.textContent = systemName;
     const gatewayTitle = document.querySelector('.gateway-header h1');
     if (gatewayTitle) gatewayTitle.textContent = systemName;
+  },
+
+  syncPageTitle(pageId = this.currentPage) {
+    const pageTitle = document.getElementById('pageTitle');
+    if (!pageTitle) return;
+    const domainLabel = this.getDomainPageLabel(this.currentDomain, pageId);
+    if (domainLabel) {
+      pageTitle.textContent = domainLabel;
+      return;
+    }
+    if (pageId === 'penetration') {
+      pageTitle.textContent = '风险监测投资穿透分析';
+      return;
+    }
+    pageTitle.textContent = this.pageTitles[pageId] || pageId;
   },
 
   getRenderedSystemBrandSnapshot() {
@@ -64,13 +77,20 @@ const App = {
       const nameIdx = sidebarHeaderText.indexOf(systemName);
       return nameIdx === -1 || Math.abs(idx - nameIdx) < 40;
     });
+    const sidebarBrand = (sidebarTitle && sidebarTitle.textContent.trim()) || '';
+    const businessTitle = (pageTitle && pageTitle.textContent.trim()) || '';
     return {
-      actualRenderedSystemName: (sidebarTitle && sidebarTitle.textContent.trim()) || '',
-      pageHeaderSystemName: (pageTitle && pageTitle.textContent.trim()) || '',
+      actualRenderedSystemBrand: sidebarBrand,
+      actualRenderedSystemName: sidebarBrand,
+      actualBusinessPageTitle: businessTitle,
+      pageHeaderBusinessTitle: businessTitle,
       documentTitle: document.title.trim(),
+      noDomainLabelBesideSystemBrand: !forbiddenBesideBrand
+        && sidebarBrand === systemName
+        && !this.FORBIDDEN_BRAND_LABELS.some((label) => sidebarBrand.includes(label)),
       noDomainLabelBesideRenderedSystemName: !forbiddenBesideBrand
-        && !(sidebarTitle && this.FORBIDDEN_BRAND_LABELS.some((label) => sidebarTitle.textContent.includes(label)))
-        && !(pageTitle && this.FORBIDDEN_BRAND_LABELS.some((label) => pageTitle.textContent.includes(label)))
+        && sidebarBrand === systemName
+        && !this.FORBIDDEN_BRAND_LABELS.some((label) => sidebarBrand.includes(label))
     };
   },
 
@@ -405,6 +425,7 @@ const App = {
     this.renderRectKanban();
     this.renderPortfolio();
     this.syncSystemBrand();
+    this.syncPageTitle('dashboard');
   },
 
   navigate(pageId, params = {}) {
@@ -452,6 +473,7 @@ const App = {
       setTimeout(() => this.applyPublicNavigationContext(pageId, params), 50);
     }
 
+    this.syncPageTitle(pageId);
     this.syncSystemBrand();
   },
 
@@ -2085,7 +2107,6 @@ const App = {
     if (domainId === 'investment') this.restoreInvestmentPages();
     if (fromGateway) document.getElementById('domainGateway').style.display = 'none';
     this.navigate('dashboard');
-    this.syncSystemBrand();
   },
 
   restoreInvestmentPages() {

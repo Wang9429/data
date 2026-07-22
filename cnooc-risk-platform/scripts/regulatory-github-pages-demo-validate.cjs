@@ -45,7 +45,7 @@ const topHeaderHtml = (html.match(/<header class="top-header">[\s\S]*?<\/header>
 check(!html.includes('集团监管平台 Demo Final'), 'noInconsistentSystemName');
 check(sidebarBrandHtml.includes('集团穿透式监管平台') && !/<div class="sidebar-subtitle">/.test(sidebarBrandHtml)
   && !/(投资管理领域|投资管理专题监管|集团监管平台 Demo|集团穿透式监管 Demo)/.test(sidebarBrandHtml), 'noForbiddenDomainBesideSidebarBrand');
-check(topHeaderHtml.includes('id="pageTitle">集团穿透式监管平台</div>') && !/(投资管理领域|投资管理专题监管)/.test(topHeaderHtml), 'pageHeaderUsesSystemName');
+check(topHeaderHtml.includes('id="pageTitle">投资管理驾驶舱</div>') && !/(投资管理领域|投资管理专题监管)/.test(topHeaderHtml), 'pageHeaderUsesBusinessTitle');
 
 const scriptBlocks = [...html.matchAll(/<script[^>]*data-inline-from="([^"]+)"[^>]*>([\s\S]*?)<\/script>/gi)];
 check(scriptBlocks.length === 3, `inlineScripts=${scriptBlocks.length}`);
@@ -99,9 +99,10 @@ const originalVisualStructurePreserved = html.includes('sidebar-title')
   && html.includes('domain-tabs-bar');
 const noDomainLabelBesideSystemName = html.includes('<title>集团穿透式监管平台</title>')
   && appJsSource.includes('syncSystemBrand')
+  && appJsSource.includes('syncPageTitle')
   && appJsSource.includes('getRenderedSystemBrandSnapshot')
   && !html.includes('<div class="sidebar-subtitle">')
-  && html.includes('id="pageTitle">集团穿透式监管平台</div>');
+  && html.includes('id="pageTitle">投资管理驾驶舱</div>');
 const strategicDirectionAnalysisNoNavigation = (() => {
   const pub = byFile['js/public-regulatory.js'] || '';
   const block = pub.match(/\{ title: '战略方向匹配分析'[\s\S]*?\}/);
@@ -279,10 +280,13 @@ try {
 }
 check(runtimeUiE2e.skipped !== true, 'runtimeUiE2ePlaywrightAvailable');
 check(runtimeUiE2e.allPass === true, 'runtimeUiE2eAllPass');
-check(runtimeUiE2e.actualRenderedSystemName === '集团穿透式监管平台', 'actualRenderedSystemName');
-check(runtimeUiE2e.noDomainLabelBesideRenderedSystemName === true, 'noDomainLabelBesideRenderedSystemName');
+check(runtimeUiE2e.offlineDemoContainsLatestRuntimeFix === true, 'offlineDemoContainsLatestRuntimeFix');
+check(runtimeUiE2e.actualRenderedSystemBrand === '集团穿透式监管平台', 'actualRenderedSystemBrand');
+check(runtimeUiE2e.actualBusinessPageTitle === '投资管理驾驶舱', 'actualBusinessPageTitle');
+check(runtimeUiE2e.noDomainLabelBesideSystemBrand === true, 'noDomainLabelBesideSystemBrand');
 check(runtimeUiE2e.strategicDirectionAnalysisPageBefore === runtimeUiE2e.strategicDirectionAnalysisPageAfter, 'strategicDirectionAnalysisPageStable');
 check(runtimeUiE2e.strategicDirectionAnalysisNoNavigation === true, 'runtimeStrategicDirectionAnalysisNoNavigation');
+check(runtimeUiE2e.navigateCallsDuringStrategicClick === 0, 'navigateCallsDuringStrategicClick');
 
 const result = {
   phase: 'Phase 37 — GitHub Pages 在线 Demo',
@@ -351,8 +355,10 @@ const result = {
   demoPaths,
   deployNote: '推送至 master 或触发 deploy-pages workflow 后，约 1-3 分钟可访问线上链接',
   runtimeUiE2e,
-  actualRenderedSystemName: runtimeUiE2e.actualRenderedSystemName,
-  noDomainLabelBesideRenderedSystemName: runtimeUiE2e.noDomainLabelBesideRenderedSystemName,
+  offlineDemoContainsLatestRuntimeFix: runtimeUiE2e.offlineDemoContainsLatestRuntimeFix,
+  actualRenderedSystemBrand: runtimeUiE2e.actualRenderedSystemBrand,
+  actualBusinessPageTitle: runtimeUiE2e.actualBusinessPageTitle,
+  noDomainLabelBesideSystemBrand: runtimeUiE2e.noDomainLabelBesideSystemBrand,
   strategicDirectionAnalysisPageBefore: runtimeUiE2e.strategicDirectionAnalysisPageBefore,
   strategicDirectionAnalysisPageAfter: runtimeUiE2e.strategicDirectionAnalysisPageAfter,
   allPass: fails.length === 0,
