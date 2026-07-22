@@ -132,6 +132,7 @@ const App = {
     if (this.initializeDataAdaptation) this.initializeDataAdaptation();
     if (this.initializeBatchAdaptation) this.initializeBatchAdaptation();
     if (this.initializeDomainClosure) this.initializeDomainClosure();
+    if (this.initializeClosureVerification) this.initializeClosureVerification();
     this.renderNav();
     this.renderGroupOverview();
     this.renderRegulatoryEvents();
@@ -1845,7 +1846,8 @@ const App = {
         ]) },
         { title: '二、组织关系', content: `${entity ? this.renderPublicLinkButton(entity.entityName, `App.navigatePublic('global-legal-entities',{entityId:'${entity.entityId}'})`) : ''}${project ? this.renderPublicLinkButton(project.projectName, `App.navigatePublic('global-regions',{projectId:'${project.projectId}'})`) : ''}` || this.renderPublicEmptyState('暂无关联组织') },
         { title: '四、风险与预警', content: risk ? this.renderPublicLinkButton(risk.name, `App.navigatePublic('warnings',{riskMatterId:'${risk.id}'})`) : this.renderPublicEmptyState('暂无关联风险') },
-        { title: '五、责任与整改', content: `<p class="insight-note">${task.measure || '—'}</p>` }
+        { title: '五、责任与整改', content: `<p class="insight-note">${task.measure || '—'}</p>` },
+        { title: '六、整改验证证据', content: (this.renderClosureVerificationEvidenceSection ? this.renderClosureVerificationEvidenceSection(task.taskId) : '—') }
       ]
     });
     node.scrollIntoView({ behavior: 'smooth', block: 'nearest' });

@@ -6264,3 +6264,31 @@ Object.assign(APP_DATA, {
   APP_DATA.regulatoryDomainClosurePlans = APP_DATA.regulatoryDomainClosurePlans || [];
   APP_DATA.regulatoryDomainClosureMetrics = APP_DATA.regulatoryDomainClosureMetrics || {};
 })();
+
+(function () {
+  APP_DATA.regulatoryClosureVerificationScenarios = [
+    { scenarioId: 'CV-01', name: '财务整改验证缺口识别', roleType: 'GROUP_REGULATORY', startPage: 'regulatory-data-governance', pagePath: ['regulatory-data-governance', 'rectification'], steps: ['财务领域闭环状态', '识别 NO_VERIFICATION_CHAIN', '查看整改任务 RECT-202601001'], expectedResult: '阻断原因明确为验证链缺失', dataChain: 'finance → gaps → rectificationTasks' },
+    { scenarioId: 'CV-02', name: '验证证据提交', roleType: 'DOMAIN_REGULATOR', startPage: 'rectification', pagePath: ['rectification', 'regulatory-workbench'], steps: ['选择整改任务', '提交验证证据', '审计日志'], expectedResult: '证据状态 SUBMITTED，闭环仍为 PARTIAL', dataChain: 'rectificationTasks → regulatoryClosureVerificationEvidence → audit' },
+    { scenarioId: 'CV-03', name: '验证证据人工审核', roleType: 'GROUP_REGULATORY', startPage: 'regulatory-workbench', pagePath: ['regulatory-workbench', 'rectification'], steps: ['待人工验证队列', '审核证据', '记录验证人'], expectedResult: 'UNDER_REVIEW → VERIFIED/REJECTED', dataChain: 'evidence → verifyClosureEvidence → rectificationTasks' },
+    { scenarioId: 'CV-04', name: '验证拒绝后重新整改', roleType: 'GROUP_REGULATORY', startPage: 'regulatory-improvement-center', pagePath: ['regulatory-improvement-center', 'rectification'], steps: ['验证拒绝', '生成补充要求', '重新提交证据'], expectedResult: '保持 PARTIAL_CLOSED_LOOP', dataChain: 'REJECTED → supplementaryRequirement → improvement' },
+    { scenarioId: 'CV-05', name: '验证通过后完整闭环', roleType: 'GROUP_LEADER', startPage: 'regulatory-data-governance', pagePath: ['regulatory-data-governance', 'regulatory-performance', 'regulatory-improvement-center'], steps: ['VERIFIED', '领域成熟度重算', 'FULL_CLOSED_LOOP'], expectedResult: '验证通过且条件满足时动态升级闭环', dataChain: 'verifiedCount → closedLoopStatus → maturity' },
+    { scenarioId: 'CV-06', name: '闭环状态重新计算', roleType: 'GROUP_REGULATORY', startPage: 'regulatory-analysis-center', pagePath: ['regulatory-analysis-center', 'regulatory-data-governance'], steps: ['快照对比', '缺口关闭', '绩效重算'], expectedResult: '状态转换可追溯不伪造', dataChain: 'regulatoryDomainClosureSnapshots → metrics' }
+  ];
+  APP_DATA.regulatoryClosureVerificationEvidence = APP_DATA.regulatoryClosureVerificationEvidence || [];
+  APP_DATA.regulatoryDomainClosureSnapshots = APP_DATA.regulatoryDomainClosureSnapshots || [];
+  APP_DATA.regulatoryFinanceClosureVerificationIndex = APP_DATA.regulatoryFinanceClosureVerificationIndex || {
+    domainId: 'finance',
+    primaryRectificationTaskId: 'RECT-202601001',
+    chainTrace: ['risk-2', 'kri-capex', 'regulatoryWarnings', 'regulatoryActions', 'RECT-202601001'],
+    lastUpdatedAt: null
+  };
+  APP_DATA.regulatoryPermissionSets = [...(APP_DATA.regulatoryPermissionSets || []), 
+    { permissionSetId: 'PS-CV-01', permissionCode: 'RECTIFICATION_SUBMIT', resourceType: 'rectificationTasks', action: 'SUBMIT', riskLevel: 'MEDIUM' },
+    { permissionSetId: 'PS-CV-02', permissionCode: 'RECTIFICATION_VERIFY', resourceType: 'rectificationTasks', action: 'VERIFY', riskLevel: 'HIGH' }
+  ];
+  const rpmCv = APP_DATA.regulatoryRolePermissionMap || {};
+  rpmCv['ROLE-GROUP-REG'] = [...new Set([...(rpmCv['ROLE-GROUP-REG'] || []), 'RECTIFICATION_SUBMIT', 'RECTIFICATION_VERIFY'])];
+  rpmCv['ROLE-DOMAIN-REG'] = [...new Set([...(rpmCv['ROLE-DOMAIN-REG'] || []), 'RECTIFICATION_SUBMIT'])];
+  rpmCv['ROLE-GROUP-LEADER'] = [...new Set([...(rpmCv['ROLE-GROUP-LEADER'] || []), 'RECTIFICATION_VERIFY'])];
+  APP_DATA.regulatoryRolePermissionMap = rpmCv;
+})();

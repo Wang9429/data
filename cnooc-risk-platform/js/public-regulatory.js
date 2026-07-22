@@ -1222,6 +1222,397 @@ Object.assign(App, {
     return APP_DATA.regulatoryDomainClosureMetrics;
   },
 
+  initializeClosureVerification() {
+    APP_DATA.regulatoryClosureVerificationEvidence = APP_DATA.regulatoryClosureVerificationEvidence || [];
+    APP_DATA.regulatoryDomainClosureSnapshots = APP_DATA.regulatoryDomainClosureSnapshots || [];
+    this.refreshFinanceClosureVerificationIndex();
+    this.takeDomainClosureSnapshot('finance', 'INIT');
+    return { evidenceCount: (APP_DATA.regulatoryClosureVerificationEvidence || []).length };
+  },
+
+  _cvNow() { return '2026-07-22 12:00:00'; },
+
+  _cvSeq() {
+    const n = ((APP_DATA.regulatoryClosureVerificationEvidence || []).length + 1);
+    return 'CVE-' + String(n).padStart(4, '0');
+  },
+
+  getDomainRectificationTasks(domainId) {
+    const r = this.getDomainAdaptationResult(domainId) || this.buildDomainAdaptationResult(domainId);
+    if (!r) return [];
+    const config = this.getDomainConfiguration(domainId);
+    const dataSetIds = r.dataSetIds || config?.linkedDataSetIds || [];
+    const q = this._domainQualityStatus(dataSetIds);
+    const kriIds = r.kriIds || [];
+    const warnings = (APP_DATA.regulatoryWarnings || []).filter(w => kriIds.includes(w.kriId));
+    const actions = (APP_DATA.regulatoryActions || []).filter(a => (a.sourceKriIds || []).some(id => kriIds.includes(id)) || (r.sourceIds || []).some(sid => (a.sourceDataSetIds || []).some(ds => dataSetIds.includes(ds))));
+    return (APP_DATA.rectificationTasks || []).filter(t =>
+      q.issues.some(i => i.relatedRectificationTaskId === t.taskId) ||
+      actions.some(a => (a.relatedRectificationTaskIds || []).includes(t.taskId)) ||
+      (t.riskMatterId && warnings.some(w => w.riskMatterId === t.riskMatterId))
+    );
+  },
+
+  getFinanceRectificationChain() {
+    const taskId = 'RECT-202601001';
+    const task = (APP_DATA.rectificationTasks || []).find(t => t.taskId === taskId);
+    const risk = (APP_DATA.warnings || []).find(w => w.id === (task?.riskMatterId || 'risk-2'));
+    const kriId = risk?.kriId || 'kri-capex';
+    const warnings = (APP_DATA.regulatoryWarnings || []).filter(w => w.kriId === kriId || w.riskMatterId === (task?.riskMatterId || 'risk-2'));
+    const actions = (APP_DATA.regulatoryActions || []).filter(a => (a.sourceKriIds || []).includes(kriId) || warnings.some(w => (a.sourceWarningIds || []).includes(w.regulatoryWarningId)));
+    const qualityIssue = (APP_DATA.regulatoryDataQualityIssues || []).find(i => i.relatedRectificationTaskId === taskId);
+    return { taskId, task, risk, kriId, warnings, actions, qualityIssue };
+  },
+
+  refreshFinanceClosureVerificationIndex() {
+    const chain = this.getFinanceRectificationChain();
+    const evidence = this.getClosureVerificationEvidence(chain.taskId);
+    APP_DATA.regulatoryFinanceClosureVerificationIndex = {
+      domainId: 'finance',
+      primaryRectificationTaskId: chain.taskId,
+      chainTrace: [
+        chain.risk?.id || 'risk-2',
+        chain.kriId,
+        ...(chain.warnings || []).slice(0, 2).map(w => w.regulatoryWarningId),
+        ...(chain.actions || []).slice(0, 2).map(a => a.actionId),
+        chain.taskId
+      ],
+      evidenceStatus: evidence.evidenceStatus,
+      verificationStatus: evidence.verificationStatus,
+      blocker: this.getFinanceDomainClosureBlocker(),
+      lastUpdatedAt: this._cvNow()
+    };
+    return APP_DATA.regulatoryFinanceClosureVerificationIndex;
+  },
+
+  getClosureVerificationEvidence(rectificationTaskId) {
+    const list = (APP_DATA.regulatoryClosureVerificationEvidence || []).filter(e => e.rectificationTaskId === rectificationTaskId);
+    if (!list.length) {
+      const chain = rectificationTaskId === 'RECT-202601001' ? this.getFinanceRectificationChain() : null;
+      return {
+        evidenceId: null,
+        rectificationTaskId,
+        domainId: 'finance',
+        evidenceType: null,
+        evidenceSource: null,
+        evidenceStatus: 'MISSING',
+        submittedAt: null,
+        submittedBy: null,
+        verificationStatus: 'MISSING',
+        verifiedBy: null,
+        verifiedAt: null,
+        sourceTraceability: chain ? { riskMatterId: chain.risk?.id, kriId: chain.kriId, actionIds: (chain.actions || []).map(a => a.actionId) } : null
+      };
+    }
+    const latest = list.slice().sort((a, b) => {
+      const na = parseInt(String(a.evidenceId || '').replace(/\D/g, ''), 10) || 0;
+      const nb = parseInt(String(b.evidenceId || '').replace(/\D/g, ''), 10) || 0;
+      if (nb !== na) return nb - na;
+      return String(b.submittedAt || '').localeCompare(String(a.submittedAt || ''));
+    })[0];
+    return latest;
+  },
+
+  getFinanceDomainClosureBlocker() {
+    const gaps = this.getDomainDataGaps('finance').length ? this.getDomainDataGaps('finance') : this.analyzeDomainDataGaps('finance');
+    const verifyGap = gaps.find(g => g.gapType === 'NO_VERIFICATION_CHAIN' && g.gapStatus === 'OPEN');
+    if (verifyGap) return 'NO_VERIFICATION_CHAIN';
+    const r = this.getDomainAdaptationResult('finance') || this.buildDomainAdaptationResult('finance');
+    if (r?.linkedRectificationCount && !r?.verifiedCount) return 'NO_VERIFICATION_CHAIN';
+    return null;
+  },
+
+  buildFinanceClosureChainSteps() {
+    const r = this.getDomainAdaptationResult('finance') || this.buildDomainAdaptationResult('finance');
+    const evidence = this.getClosureVerificationEvidence('RECT-202601001');
+    const verified = r?.verifiedCount > 0 || evidence.verificationStatus === 'VERIFIED';
+    const steps = [
+      { label: '数据源', ok: !!(r?.sourceIds || []).length },
+      { label: '数据质量', ok: r?.qualityStatus !== 'QUALITY_FAILED' },
+      { label: '业务对象映射', ok: (r?.mappedObjectCount || 0) > 0 },
+      { label: '指标计算', ok: ['COMPLETED', 'PARTIAL'].includes(r?.metricCalculationStatus) },
+      { label: 'KRI', ok: (r?.calculatedKriCount || 0) > 0 },
+      { label: '预警', ok: (r?.generatedWarningCount || 0) > 0 },
+      { label: '监管行动', ok: (r?.linkedActionCount || 0) > 0 },
+      { label: '整改任务', ok: (r?.linkedRectificationCount || 0) > 0 },
+      { label: '整改验证', ok: verified, pending: !verified, detail: verified ? '已通过' : (evidence.evidenceStatus === 'MISSING' ? '待完成' : evidence.verificationStatus) }
+    ];
+    return steps;
+  },
+
+  getClosureVerificationQueueCounts() {
+    const financeTasks = this.getDomainRectificationTasks('finance');
+    const taskIds = financeTasks.map(t => t.taskId);
+    const evidence = (APP_DATA.regulatoryClosureVerificationEvidence || []).filter(e => e.domainId === 'finance' || taskIds.includes(e.rectificationTaskId));
+    const latestByTask = {};
+    taskIds.forEach(tid => { latestByTask[tid] = this.getClosureVerificationEvidence(tid); });
+    const vals = Object.values(latestByTask);
+    return {
+      pendingSubmit: vals.filter(e => e.evidenceStatus === 'MISSING').length,
+      pendingReview: vals.filter(e => e.evidenceStatus === 'SUBMITTED' || e.evidenceStatus === 'UNDER_REVIEW').length,
+      rejected: evidence.filter(e => e.verificationStatus === 'REJECTED' && e.evidenceStatus !== 'VERIFIED').length,
+      verifiedClosed: vals.filter(e => e.verificationStatus === 'VERIFIED').length
+    };
+  },
+
+  submitClosureVerificationEvidence(opts) {
+    const o = opts || {};
+    const rectificationTaskId = o.rectificationTaskId;
+    const task = (APP_DATA.rectificationTasks || []).find(t => t.taskId === rectificationTaskId);
+    if (!task) return { success: false, message: '整改任务不存在' };
+    const domainId = o.domainId || (rectificationTaskId === 'RECT-202601001' ? 'finance' : null) || 'finance';
+    const access = this.canRegulatoryAccess(this.getCurrentRegulatoryUser()?.userId, 'rectificationTasks', rectificationTaskId, 'SUBMIT');
+    if (!access.allowed) {
+      this.createRegulatoryAuditLog({ actionType: 'OVERRIDE_DENIED', objectType: 'rectificationTasks', objectId: rectificationTaskId, reason: access.reason });
+      return { success: false, denied: true, message: access.reason };
+    }
+    const chain = rectificationTaskId === 'RECT-202601001' ? this.getFinanceRectificationChain() : null;
+    const evidence = {
+      evidenceId: this._cvSeq(),
+      rectificationTaskId,
+      domainId,
+      evidenceType: o.evidenceType || '整改执行报告',
+      evidenceSource: o.evidenceSource || task.responsibleDepartment || task.owner,
+      evidenceStatus: 'SUBMITTED',
+      submittedAt: this._cvNow(),
+      submittedBy: o.submittedBy || this.getCurrentRegulatoryUser()?.userId,
+      verificationStatus: 'SUBMITTED',
+      verifiedBy: null,
+      verifiedAt: null,
+      rejectReason: null,
+      supplementaryRequirement: null,
+      sourceTraceability: chain ? { riskMatterId: chain.risk?.id, kriId: chain.kriId, actionIds: (chain.actions || []).map(a => a.actionId), qualityIssueId: chain.qualityIssue?.qualityIssueId } : { rectificationTaskId }
+    };
+    APP_DATA.regulatoryClosureVerificationEvidence = APP_DATA.regulatoryClosureVerificationEvidence || [];
+    APP_DATA.regulatoryClosureVerificationEvidence.push(evidence);
+    this.createRegulatoryAuditLog({
+      actionType: 'SUBMIT',
+      objectType: 'regulatoryClosureVerificationEvidence',
+      objectId: evidence.evidenceId,
+      afterState: { evidenceStatus: evidence.evidenceStatus, verificationStatus: evidence.verificationStatus },
+      reason: o.reason || '提交整改验证证据'
+    });
+    this.recalculateFinanceDomainClosure('EVIDENCE_SUBMITTED');
+    return { success: true, evidence, closedLoopStatus: (this.getDomainAdaptationResult('finance') || {}).closedLoopStatus };
+  },
+
+  _markEvidenceUnderReview(evidenceId) {
+    const ev = (APP_DATA.regulatoryClosureVerificationEvidence || []).find(e => e.evidenceId === evidenceId);
+    if (!ev || ev.evidenceStatus === 'VERIFIED') return ev;
+    ev.evidenceStatus = 'UNDER_REVIEW';
+    ev.verificationStatus = 'UNDER_REVIEW';
+    return ev;
+  },
+
+  verifyClosureEvidence(evidenceId, opts) {
+    const o = opts || {};
+    const ev = (APP_DATA.regulatoryClosureVerificationEvidence || []).find(e => e.evidenceId === evidenceId);
+    if (!ev) return { success: false, message: '验证证据不存在' };
+    const access = this.canRegulatoryAccess(this.getCurrentRegulatoryUser()?.userId, 'rectificationTasks', ev.rectificationTaskId, 'VERIFY');
+    if (!access.allowed) {
+      this.createRegulatoryAuditLog({ actionType: 'OVERRIDE_DENIED', objectType: 'rectificationTasks', objectId: ev.rectificationTaskId, reason: access.reason });
+      return { success: false, denied: true, message: access.reason };
+    }
+    if (!ev.evidenceType || !ev.evidenceSource) return { success: false, message: '验证证据不完整' };
+    if (ev.evidenceStatus === 'MISSING') return { success: false, message: '证据尚未提交' };
+    const before = { evidenceStatus: ev.evidenceStatus, verificationStatus: ev.verificationStatus };
+    const task = (APP_DATA.rectificationTasks || []).find(t => t.taskId === ev.rectificationTaskId);
+    if (!task) return { success: false, message: '关联整改任务不存在' };
+    ev.evidenceStatus = 'UNDER_REVIEW';
+    ev.verificationStatus = 'UNDER_REVIEW';
+    if (o.approved) {
+      ev.evidenceStatus = 'VERIFIED';
+      ev.verificationStatus = 'VERIFIED';
+      ev.verifiedBy = o.verifiedBy || this.getCurrentRegulatoryUser()?.userId;
+      ev.verifiedAt = this._cvNow();
+      const taskBefore = { status: task.status, verificationStatus: task.verificationStatus, closedAt: task.closedAt };
+      task.verificationStatus = '已验证';
+      task.status = '已关闭';
+      task.closedAt = task.closedAt || this._cvNow().slice(0, 10);
+      task.progress = 100;
+      this.createRegulatoryAuditLog({
+        actionType: 'APPROVE',
+        objectType: 'regulatoryClosureVerificationEvidence',
+        objectId: evidenceId,
+        beforeState: before,
+        afterState: { evidenceStatus: ev.evidenceStatus, verificationStatus: ev.verificationStatus },
+        reason: o.reason || '整改验证通过'
+      });
+      this.createRegulatoryAuditLog({
+        actionType: 'CLOSE',
+        objectType: 'rectificationTasks',
+        objectId: task.taskId,
+        beforeState: taskBefore,
+        afterState: { status: task.status, verificationStatus: task.verificationStatus, closedAt: task.closedAt },
+        reason: '整改验证通过关闭'
+      });
+    } else {
+      ev.evidenceStatus = 'REJECTED';
+      ev.verificationStatus = 'REJECTED';
+      ev.verifiedBy = o.verifiedBy || this.getCurrentRegulatoryUser()?.userId;
+      ev.verifiedAt = this._cvNow();
+      ev.rejectReason = o.reason || '验证未通过';
+      ev.supplementaryRequirement = '请补充整改执行证据：' + (o.reason || '措施落实不充分，需重新提交验证材料');
+      task.verificationStatus = '待验证';
+      this._generateClosureSupplementaryImprovement(ev);
+      this.createRegulatoryAuditLog({
+        actionType: 'REJECT',
+        objectType: 'regulatoryClosureVerificationEvidence',
+        objectId: evidenceId,
+        beforeState: before,
+        afterState: { evidenceStatus: ev.evidenceStatus, verificationStatus: ev.verificationStatus },
+        reason: ev.rejectReason
+      });
+    }
+    const closure = this.recalculateFinanceDomainClosure(o.approved ? 'VERIFICATION_PASSED' : 'VERIFICATION_REJECTED');
+    return { success: true, evidence: ev, closedLoopStatus: closure.closedLoopStatus, blocker: closure.blocker };
+  },
+
+  _generateClosureSupplementaryImprovement(evidence) {
+    APP_DATA.regulatoryImprovementOpportunities = APP_DATA.regulatoryImprovementOpportunities || [];
+    const oppId = 'OPP-CV-' + evidence.rectificationTaskId.replace(/[^A-Z0-9]/gi, '');
+    if (APP_DATA.regulatoryImprovementOpportunities.some(o => o.opportunityId === oppId)) return;
+    APP_DATA.regulatoryImprovementOpportunities.push({
+      opportunityId: oppId,
+      sourceCategory: '整改验证拒绝',
+      title: '整改验证补充 · ' + evidence.rectificationTaskId,
+      sourceType: 'rectificationTasks',
+      sourceId: evidence.rectificationTaskId,
+      relatedRectificationTaskIds: [evidence.rectificationTaskId],
+      domainId: evidence.domainId,
+      problemManifestation: evidence.supplementaryRequirement || evidence.rejectReason,
+      impactScope: evidence.domainId || 'finance',
+      suggestedDirection: 'RECTIFICATION_VERIFICATION',
+      priority: 'HIGH',
+      status: 'OPEN',
+      requiresHumanDecision: true
+    });
+  },
+
+  reassessImprovementAfterClosureVerification(domainId) {
+    const opps = this.identifyImprovementOpportunities();
+    const domainOpps = opps.filter(o => o.impactScope === domainId || o.domainId === domainId || (o.relatedRectificationTaskIds || []).length);
+    const r = this.getDomainAdaptationResult(domainId);
+    if (r?.closedLoopStatus === 'FULL_CLOSED_LOOP') {
+      domainOpps.forEach(o => {
+        const full = (APP_DATA.regulatoryImprovementOpportunities || []).find(x => x.opportunityId === o.opportunityId);
+        if (full && full.sourceCategory === '整改验证拒绝' && full.status === 'OPEN') full.status = 'RESOLVED';
+      });
+    }
+    return { opportunityCount: domainOpps.length, closedLoopStatus: r?.closedLoopStatus };
+  },
+
+  refreshRegulatoryPerformanceFromClosureVerification() {
+    const rects = APP_DATA.rectificationTasks || [];
+    const closed = rects.filter(t => t.status === '已关闭' || t.verificationStatus === '已验证').length;
+    const rate = rects.length ? Math.round(closed / rects.length * 1000) / 1000 : 0;
+    APP_DATA.regulatoryPerformanceSummary = APP_DATA.regulatoryPerformanceSummary || {};
+    APP_DATA.regulatoryPerformanceSummary.rectificationClosureRate = rate;
+    const financePerf = (APP_DATA.regulatoryPerformanceMetrics || []).find(p => p.scopeType === 'DOMAIN' && p.scopeId === 'finance');
+    if (financePerf) {
+      financePerf.rectificationClosureRate = rate;
+      const r = this.getDomainAdaptationResult('finance');
+      if (r?.closedLoopStatus === 'FULL_CLOSED_LOOP') financePerf.actionVerificationRate = Math.min(1, (financePerf.actionVerificationRate || 0) + 0.05);
+    }
+    const groupPerf = (APP_DATA.regulatoryPerformanceMetrics || []).find(p => p.scopeType === 'GROUP');
+    if (groupPerf) groupPerf.rectificationClosureRate = rate;
+    return APP_DATA.regulatoryPerformanceSummary;
+  },
+
+  takeDomainClosureSnapshot(domainId, trigger) {
+    const r = this.getDomainAdaptationResult(domainId) || this.buildDomainAdaptationResult(domainId);
+    const readiness = this.calculateDomainClosureReadiness(domainId);
+    const blocker = domainId === 'finance' ? this.getFinanceDomainClosureBlocker() : (this.getDomainDataGaps(domainId).find(g => g.gapStatus === 'OPEN') || {}).gapType;
+    const snap = {
+      snapshotId: 'DCS-' + domainId + '-' + Date.now(),
+      domainId,
+      trigger: trigger || 'MANUAL',
+      closedLoopStatus: r?.closedLoopStatus,
+      maturityLevel: r?.maturityLevel,
+      domainClosureReadiness: readiness.domainClosureReadiness,
+      verifiedCount: r?.verifiedCount,
+      linkedRectificationCount: r?.linkedRectificationCount,
+      primaryBlocker: blocker || null,
+      capturedAt: this._cvNow()
+    };
+    APP_DATA.regulatoryDomainClosureSnapshots = APP_DATA.regulatoryDomainClosureSnapshots || [];
+    APP_DATA.regulatoryDomainClosureSnapshots.unshift(snap);
+    if (APP_DATA.regulatoryDomainClosureSnapshots.length > 50) APP_DATA.regulatoryDomainClosureSnapshots = APP_DATA.regulatoryDomainClosureSnapshots.slice(0, 50);
+    return snap;
+  },
+
+  recalculateFinanceDomainClosure(trigger) {
+    this.refreshDomainAdaptationResults();
+    this.refreshDomainDataGaps();
+    this.refreshDomainClosurePlans();
+    this.computeDomainClosureMetrics();
+    if (this.computeBatchAdaptationCoverage) this.computeBatchAdaptationCoverage();
+    this.refreshFinanceClosureVerificationIndex();
+    this.refreshRegulatoryPerformanceFromClosureVerification();
+    this.reassessImprovementAfterClosureVerification('finance');
+    const snap = this.takeDomainClosureSnapshot('finance', trigger || 'RECALCULATE');
+    const r = this.getDomainAdaptationResult('finance');
+    return { closedLoopStatus: r?.closedLoopStatus, blocker: this.getFinanceDomainClosureBlocker(), snapshotId: snap.snapshotId };
+  },
+
+  renderFinanceClosureChainPanel() {
+    const r = this.getDomainAdaptationResult('finance') || this.buildDomainAdaptationResult('finance');
+    const blocker = this.getFinanceDomainClosureBlocker();
+    const steps = this.buildFinanceClosureChainSteps();
+    const chainHtml = steps.map(s => `<p class="insight-note">${s.ok ? '✓' : '?'} ${s.label}${s.label === '整改验证' ? '：' + (s.detail || '待完成') : ''}</p>`).join('');
+    return `<div class="card"><div class="card-title">财务领域闭环链路 · ${this.renderPublicUnifiedStatusBadge(r?.closedLoopStatus || 'PARTIAL_CLOSED_LOOP')}</div>
+      ${blocker ? `<p class="insight-note"><b>当前阻断：</b>${this.renderPublicUnifiedStatusBadge(blocker)} — 整改验证链未完成，不能判定闭环完成</p>` : ''}
+      ${chainHtml}
+      <p>${this.renderPublicLinkButton('查看整改任务 RECT-202601001', `App.navigatePublic('rectification',{rectificationTaskId:'RECT-202601001'})`)}</p>
+    </div>`;
+  },
+
+  renderFinanceClosureVerificationPanel() {
+    const taskId = 'RECT-202601001';
+    const ev = this.getClosureVerificationEvidence(taskId);
+    const task = (APP_DATA.rectificationTasks || []).find(t => t.taskId === taskId);
+    const missing = ev.evidenceStatus === 'MISSING';
+    const rows = missing ? '' : `<table class="data-table"><thead><tr><th>整改任务</th><th>证据类型</th><th>证据来源</th><th>提交状态</th><th>验证状态</th><th>验证人</th><th>验证时间</th></tr></thead><tbody>
+      <tr><td>${taskId}</td><td>${ev.evidenceType || '—'}</td><td>${ev.evidenceSource || '—'}</td><td>${this.renderPublicUnifiedStatusBadge(ev.evidenceStatus)}</td><td>${this.renderPublicUnifiedStatusBadge(ev.verificationStatus)}</td><td>${ev.verifiedBy || '—'}</td><td>${ev.verifiedAt || '—'}</td></tr>
+    </tbody></table>`;
+    const canSubmit = this.canRegulatoryAccess(this.getCurrentRegulatoryUser()?.userId, 'rectificationTasks', taskId, 'SUBMIT').allowed;
+    const canVerify = this.canRegulatoryAccess(this.getCurrentRegulatoryUser()?.userId, 'rectificationTasks', taskId, 'VERIFY').allowed;
+    const actions = missing && canSubmit ? `<button class="btn btn-outline" onclick="App.submitClosureVerificationEvidence({rectificationTaskId:'${taskId}',evidenceType:'月度经营监测报告',evidenceSource:'${task?.responsibleDepartment || '财务资金部'}'});App.renderRegulatoryDataGovernance()">提交验证证据</button>` : '';
+    const verifyBtn = !missing && ['SUBMITTED', 'UNDER_REVIEW'].includes(ev.evidenceStatus) && canVerify && ev.evidenceId ? `<button class="btn" onclick="App.verifyClosureEvidence('${ev.evidenceId}',{approved:true,reason:'人工确认整改措施已落实'});App.renderRegulatoryDataGovernance()">确认验证通过</button> <button class="btn btn-outline" onclick="App.verifyClosureEvidence('${ev.evidenceId}',{approved:false,reason:'证据不充分'});App.renderRegulatoryDataGovernance()">拒绝验证</button>` : '';
+    return `<div class="card"><div class="card-title">财务领域整改验证</div>
+      ${missing ? `<p class="insight-note"><b>当前暂无足够验证证据，不能判定整改闭环完成。</b> 证据状态：${this.renderPublicUnifiedStatusBadge('MISSING')}</p>` : rows}
+      ${ev.supplementaryRequirement ? `<p class="insight-note"><b>补充要求：</b>${this.escHtml(ev.supplementaryRequirement)}</p>` : ''}
+      <p>${actions}${verifyBtn}${this.renderPublicLinkButton('整改任务详情', `App.navigatePublic('rectification',{rectificationTaskId:'${taskId}'})`)}</p>
+    </div>`;
+  },
+
+  renderClosureVerificationEvidenceSection(rectificationTaskId) {
+    const ev = this.getClosureVerificationEvidence(rectificationTaskId);
+    if (ev.evidenceStatus === 'MISSING') {
+      return `<div class="card"><div class="card-title">整改验证证据</div><p class="insight-note">证据状态 ${this.renderPublicUnifiedStatusBadge('MISSING')} — 当前暂无足够验证证据，不能判定整改闭环完成。</p></div>`;
+    }
+    return `<div class="card"><div class="card-title">整改验证证据 · ${ev.evidenceId}</div>
+      <p class="insight-note">类型 ${ev.evidenceType} · 来源 ${ev.evidenceSource} · 提交 ${this.renderPublicUnifiedStatusBadge(ev.evidenceStatus)} · 验证 ${this.renderPublicUnifiedStatusBadge(ev.verificationStatus)}</p>
+      ${ev.verifiedBy ? `<p class="insight-note">验证人 ${ev.verifiedBy} · ${ev.verifiedAt || '—'}</p>` : ''}
+    </div>`;
+  },
+
+  renderClosureVerificationWorkbenchPanel() {
+    const q = this.getClosureVerificationQueueCounts();
+    const blocker = this.getFinanceDomainClosureBlocker();
+    const r = this.getDomainAdaptationResult('finance');
+    return `<div class="card"><div class="card-title">财务领域闭环验证</div>
+      <p class="insight-note">闭环状态 ${this.renderPublicUnifiedStatusBadge(r?.closedLoopStatus || 'PARTIAL_CLOSED_LOOP')}${blocker ? ' · 阻断 ' + this.renderPublicUnifiedStatusBadge(blocker) : ''}</p>
+      <div class="group-metrics">${[
+        [q.pendingSubmit, '待提交验证证据', `App.navigatePublic('rectification',{rectificationTaskId:'RECT-202601001'})`],
+        [q.pendingReview, '待人工验证', `App.navigatePublic('regulatory-workbench')`],
+        [q.rejected, '验证被拒绝', `App.navigatePublic('regulatory-improvement-center')`],
+        [q.verifiedClosed, '已验证关闭', `App.navigatePublic('regulatory-data-governance')`]
+      ].map(([v, l, n]) => this.renderPublicKpiCard(l, v, n)).join('')}</div>
+      <p>${this.renderPublicLinkButton('财务闭环看板', `App.navigatePublic('regulatory-data-governance')`)}</p>
+    </div>`;
+  },
+
   renderDomainClosureDashboardPanel() {
     const m = APP_DATA.regulatoryDomainClosureMetrics || {};
     const results = APP_DATA.regulatoryDomainAdaptationResults || [];
@@ -1780,6 +2171,7 @@ Object.assign(App, {
   _resolvePermissionCode(resourceType, action) {
     const map = {
       'rectificationTasks:CLOSE': 'RECTIFICATION_CLOSE', 'rectificationTasks:DEFER': 'RECTIFICATION_DEFER',
+      'rectificationTasks:SUBMIT': 'RECTIFICATION_SUBMIT', 'rectificationTasks:VERIFY': 'RECTIFICATION_VERIFY',
       'regulatoryActions:VIEW': 'ACTION_VIEW', 'regulatoryActions:ASSIGN': 'ACTION_ASSIGN', 'regulatoryActions:APPROVE': 'ACTION_APPROVE', 'regulatoryActions:CLOSE': 'ACTION_CLOSE',
       'regulatoryRules:SIMULATE': 'RULE_SIMULATE', 'regulatoryRuleChangeRequests:APPROVE': 'RULE_APPROVE',
       'regulatoryRuleDeployments:PUBLISH': 'RULE_PUBLISH', 'regulatoryRuleDeployments:ROLLBACK': 'RULE_ROLLBACK',
@@ -6036,6 +6428,7 @@ Object.assign(App, {
         </div>
       </div>
       ${this.renderBatchAdaptationWorkbenchPanel()}
+      ${this.renderClosureVerificationWorkbenchPanel()}
       ${this.renderDomainClosureDashboardPanel()}
       ${this.renderPlatformHealthPanel()}
       ${this.renderCapabilityMapOverview()}
@@ -6687,6 +7080,8 @@ Object.assign(App, {
     node.innerHTML = `${this.renderPublicBackButton('regulatory-data-governance')}
       <div class="group-hero"><div><span>数据运行</span><h2>集团监管数据治理中心</h2><p>质量问题 → 确认 → 责任主体 → 治理任务 → 整改 → 复核 → 关闭</p></div><div>任务 <b>${tasks.length}</b></div></div>
       ${this.renderDomainClosureDashboardPanel()}
+      ${this.renderFinanceClosureChainPanel()}
+      ${this.renderFinanceClosureVerificationPanel()}
       ${this.renderBatchAdaptationCoveragePanel()}
       ${this.renderRegulatoryDomainConfigPanel()}
       ${this.renderDomainAdaptationMaturityPanel()}
@@ -7098,7 +7493,7 @@ Object.assign(App, {
       <div class="group-hero"><div><span>持续改进</span><h2>集团监管持续改进中心</h2><p>发现问题 → 分析原因 → 形成改进方案 → 人工决策 → 实施优化 → 验证效果</p></div></div>
       <div class="group-metrics">${[[cm.pendingOpportunityCount,'待分析机会'],[cm.highPriorityOpportunityCount,'高优先级'],[cm.pendingPlanDecisionCount,'待决策方案'],[cm.implementingCount,'实施中'],[cm.pendingValidationCount,'待验证'],[cm.validatedEffectiveCount,'已验证有效'],[cm.improvementClosureRate!=null?cm.improvementClosureRate+'%':'—','闭环率'],[cm.improvementEffectivenessRate!=null?cm.improvementEffectivenessRate+'%':'—','效果达成率']].map(([v,l])=>this.renderPublicKpiCard(l,v,`App.navigatePublic('regulatory-improvement-center')`)).join('')}</div>
       ${this.renderDomainClosurePlansPanel()}
-      ${this.renderDomainDataGapsPanel()}
+      ${this.renderFinanceClosureVerificationPanel()}
       <div class="filter-bar" style="margin-bottom:12px"><select onchange="App.regulatoryImprovementCenterFilter={...(App.regulatoryImprovementCenterFilter||{}),sourceCategory:this.value||null};App.renderRegulatoryImprovementCenter()"><option value="">全部来源</option>${cats.map(c=>`<option value="${c}" ${f.sourceCategory===c?'selected':''}>${c}</option>`).join('')}</select></div>
       <div class="card"><div class="card-title">改进机会清单</div>${rows ? `<table class="data-table"><thead><tr><th>ID</th><th>来源</th><th>标题</th><th>优先级</th><th>状态</th><th>问题表现</th></tr></thead><tbody>${rows}</tbody></table>` : this.renderPublicEmptyState('暂无')}</div>
       <div id="regulatoryOpportunityDetail"></div>`;
