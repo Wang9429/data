@@ -612,18 +612,40 @@ Object.assign(APP_DATA, {
   const highRiskEntities = entities.filter(e => (e.highRiskCount || 0) > 0);
   const openRects = (APP_DATA.rectificationTasks || []).filter(t => t.status !== '已关闭' && !t.closedAt);
   const connected = entities.filter(e => (e.dataCoverageStatus || e.dataAccessStatus) === '已接入');
+  const sources = APP_DATA.dataSourceRegistry || [];
+  const connectedSrc = sources.filter(s => s.coverageStatus === '已接入');
+  const warnings = APP_DATA.warnings || [];
+  const highRiskWarnings = warnings.filter(w => w.level === '重大' || w.status === '红色');
+  const allRects = APP_DATA.rectificationTasks || [];
+  const overdueRects = allRects.filter(t => t.status === '逾期' || (t.deadline && t.deadline < '2026-07-22' && t.status !== '已关闭' && !t.closedAt));
+  const cbActs = APP_DATA.crossBorderDataActivities || [];
+  const cbHighRisk = cbActs.filter(a => a.complianceStatus === '高风险' || a.complianceStatus === '异常');
+  const cbMetrics = APP_DATA.crossBorderComplianceMetrics || {};
   APP_DATA.publicRegulatorySummary = {
     entityCount: entities.length,
     overseasEntityCount: overseas.length,
     highRiskEntityCount: highRiskEntities.length,
     countryCount: (APP_DATA.globalCountries || []).length,
     regionCount: (APP_DATA.globalRegions || []).length,
+    projectCount: (APP_DATA.globalProjects || []).length,
+    sourceCount: sources.length,
+    connectedSourceCount: connectedSrc.length,
     coverageGapCount: gaps.length,
     platformAlertCount: alerts.length,
     qualityIssueCount: quality.length,
+    warningCount: warnings.length,
+    highRiskMatterCount: highRiskWarnings.length,
+    rectificationTaskCount: allRects.length,
     openRectificationCount: openRects.length,
+    overdueRectificationCount: overdueRects.length,
+    rectificationPendingCount: allRects.filter(t => t.status === '整改制定' || t.verificationStatus === '待验证').length,
+    rectificationInProgressCount: allRects.filter(t => t.status === '整改中' || t.status === '整改执行' || t.verificationStatus === '整改中').length,
+    rectificationVerifyingCount: allRects.filter(t => t.status === '整改验证' || t.verificationStatus === '验证中').length,
+    rectificationClosedCount: allRects.filter(t => t.status === '已关闭' || t.closedAt).length,
     crossDomainMatterCount: (APP_DATA.crossDomainRiskMetrics || {}).crossDomainMatterCount || (APP_DATA.crossDomainRiskMatters || []).length,
-    crossBorderActivityCount: (APP_DATA.crossBorderComplianceMetrics || {}).crossBorderDataActivityCount || (APP_DATA.crossBorderDataActivities || []).length,
+    crossBorderActivityCount: cbMetrics.crossBorderDataActivityCount || cbActs.length,
+    crossBorderRiskCount: cbHighRisk.length + (cbMetrics.unauthorizedTransferCount || 0),
+    crossBorderComplianceRiskCount: cbHighRisk.length,
     dataCoverageRate: entities.length ? (connected.length / entities.length * 100).toFixed(1) + '%' : '—',
     laggingEntityCount: entities.filter(e => e.dataQualityStatus === '关注' || e.dataQualityStatus === '待提升').length
   };
@@ -654,12 +676,9 @@ Object.assign(APP_DATA, {
   (APP_DATA.rectificationTasks || []).forEach(t => {
     if (!t.lastDataUpdateTime) t.lastDataUpdateTime = t.closedAt || t.deadline || '2026-07-22 08:00';
   });
-  const sources = APP_DATA.dataSourceRegistry || [];
-  const connectedSrc = sources.filter(s => s.coverageStatus === '已接入');
   const metrics = APP_DATA.platformOperationMetrics || [];
   const metricVal = (label) => (metrics.find(m => m[0] === label) || [])[1] || '—';
   const openAlerts = alerts.filter(a => a.status !== '已关闭');
-  const allRects = APP_DATA.rectificationTasks || [];
   const closedRects = allRects.filter(t => t.status === '已关闭' || t.closedAt);
   const kris = APP_DATA.groupKris || [];
   const kriOk = kris.filter(k => k.status === '正常' || k.status === '良好');

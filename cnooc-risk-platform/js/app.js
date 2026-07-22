@@ -340,27 +340,6 @@ const App = {
     `;
   },
 
-  renderGroupOverview() {
-    const node=document.getElementById('groupOverview'); if(!node)return;
-    const fields=APP_DATA.regulationDomains.slice(0,8);
-    const s=APP_DATA.publicRegulatorySummary||{};
-    const pubPages=(App.publicRegulatoryPages||[]).filter(p=>p.entryFromGroupOverview);
-    const entities=APP_DATA.globalLegalEntities||[];
-    const levelRows=[['集团总部','集团'],['一级子企业','一级'],['二级子企业','二级'],['三级子企业','三级'],['四级及以下企业','四级']].map(([label,levelKey])=>{
-      const list=entities.filter(e=>levelKey==='四级'?['四级','五级','项目公司'].some(x=>(e.entityLevel||'').includes(x)): (e.entityLevel||'').includes(levelKey));
-      const risks=list.reduce((n,e)=>n+(e.riskCount||0),0);
-      const rects=list.reduce((n,e)=>n+(e.openRectificationCount||e.rectificationCount||0),0);
-      const matters=list.reduce((n,e)=>n+(e.majorMatterCount||0),0);
-      return `<tr><td>${label}</td><td>${list.length}</td><td>${risks}</td><td>${risks}</td><td>${matters}</td><td>0</td><td>${rects}</td></tr>`;
-    }).join('');
-    node.innerHTML=`<div class="group-hero"><div><span>集团总部监管视角</span><h2>集团监管总览</h2><p>聚焦重点领域、重点法人、重大事项、重大风险和集团督办事项。</p></div><div>数据覆盖率 <b>${s.dataCoverageRate||'—'}</b></div></div>
-    <div class="group-metrics">${[[s.entityCount,'纳入监管法人'],[fields.length,'纳入监管领域'],[APP_DATA.globalProjects.length,'重点监管项目'],[APP_DATA.warnings.filter(w=>w.level==='重大').length,'当前重大风险'],[APP_DATA.warnings.length,'当前重点预警'],[s.openRectificationCount,'整改未闭环'],[s.highRiskEntityCount,'高风险法人'],[s.dataCoverageRate,'数据覆盖率']].map(x=>`<button class="metric-card" onclick="App.navigate('dashboard')"><div class="value">${x[0]}</div><div class="label">${x[1]}</div></button>`).join('')}</div>
-    <div class="card"><div class="card-title">公共监管底座入口</div><div class="field-status-grid">${pubPages.map(p=>{ const em={ 'global-legal-entities':`高风险法人${s.highRiskEntityCount}家`, 'global-regions':`覆盖${s.countryCount}个国家/地区`, 'coverage-gaps':`覆盖盲区${s.coverageGapCount}项`, 'platform-operations':`运行告警${s.platformAlertCount}项`, 'data-governance':`质量异常${s.qualityIssueCount}项`, 'cross-domain-risks':`风险事项${s.crossDomainMatterCount}项`, 'cross-border-compliance':`数据活动${s.crossBorderActivityCount}项` }; const desc={ 'global-legal-entities':'全级次法人、项目公司、海外法人', 'global-regions':'区域、国家/地区、项目和风险', 'coverage-gaps':'法人、系统、数据、KRI、规则覆盖', 'platform-operations':'数据接入、质量、KRI、规则、预警与闭环', 'data-governance':'数据源、标准、指标、KRI血缘与质量影响', 'cross-domain-risks':'跨领域风险关联、KRI联动与协同整改', 'cross-border-compliance':'跨境传输、分类分级、审批与敏感访问' }; const nav=p.supportsPublicNavigation?`App.navigatePublic('${p.pageId}')`:`App.navigate('${p.pageId}')`; return `<button onclick="${nav}"><b>${p.label}</b><span>${desc[p.pageId]||''}</span><em>${em[p.pageId]||''}</em></button>`; }).join('')}</div></div>
-    <div class="card"><div class="card-title">分领域监管态势</div><div class="field-status-grid">${fields.map(f=>{ const wc=(APP_DATA.warnings||[]).filter(w=>(w.domainId||'investment')===f.id); const rc=(APP_DATA.rectificationTasks||[]).filter(t=>(t.domainId||'investment')===f.id&&t.status!=='已关闭'); const hr=wc.filter(w=>w.level==='重大'||w.status==='红色'); return `<button onclick="App.selectRegulationDomain('${f.id}')"><b>${f.name}</b><span>重点事项：${wc.length}项</span><em>重大风险：${hr.length}项</em><small>整改中：${rc.length}项</small></button>`; }).join('')}</div></div>
-    <div class="group-three"><div class="card"><div class="card-title">重点法人监管画像</div><table class="data-table"><thead><tr><th>法人</th><th>高风险领域</th><th>综合关注度</th></tr></thead><tbody>${entities.filter(e=>e.entityId!=='G001').slice(0,3).map(e=>`<tr><td>${e.entityName}</td><td>${e.businessDomains}</td><td><span class="badge ${e.highRiskCount>2?'badge-danger':'badge-warning'}">${e.highRiskCount>2?'高':'较高'}</span></td></tr>`).join('')}</tbody></table></div><div class="card"><div class="card-title">集团重点督办事项</div><div class="supervision-list">${(APP_DATA.warnings||[]).filter(w=>w.level==='重大').slice(0,3).map((w,i)=>`<p><b>0${i+1}</b> ${w.name} <span class="badge badge-danger">${w.level}</span></p>`).join('')||'<p>暂无重点督办事项</p>'}</div></div></div>
-    <div class="card"><div class="card-title">全级次法人监管态势</div><table class="data-table"><thead><tr><th>法人层级</th><th>法人数量</th><th>重大风险</th><th>重点预警</th><th>重大事项</th><th>控制规则异常</th><th>整改未闭环</th></tr></thead><tbody>${levelRows}</tbody></table></div>
-    <div class="group-three"><div class="card"><div class="card-title">跨领域风险与重点区域</div><table class="data-table"><thead><tr><th>风险</th><th>涉及领域</th><th>区域 / 法人</th><th>趋势</th></tr></thead><tbody><tr><td>境外投资收益偏离</td><td>投资、财务、境外</td><td>中东 / B公司</td><td><span class="badge badge-danger">上升</span></td></tr><tr><td>重大合同履约延期</td><td>合同、供应链、工程</td><td>境内 / A公司</td><td><span class="badge badge-warning">关注</span></td></tr></tbody></table></div><div class="card"><div class="card-title">监管覆盖与盲区</div><div class="supervision-list"><p><b>${s.dataCoverageRate||"—"}</b> 法人已完成数据接入</p><p><b>${s.laggingEntityCount||0}</b> 家法人存在数据更新滞后</p><p><b>${APP_DATA.dataQualityIssues.length}</b> 项数据质量异常待处理</p><p><b>${s.openRectificationCount||0}</b> 项整改待集团验证</p></div></div></div>`;
-  },
 
   renderGlobalLegalEntities() {
     const node=document.getElementById('globalLegalEntities'); if(!node)return;

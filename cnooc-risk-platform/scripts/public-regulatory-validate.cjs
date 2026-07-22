@@ -180,6 +180,15 @@ const s = D.publicRegulatorySummary || {};
 if (!s.entityCount || s.entityCount !== (D.globalLegalEntities || []).length) {
   errors.push(`publicRegulatorySummary.entityCount 不一致: ${s.entityCount} vs ${(D.globalLegalEntities || []).length}`);
 }
+const summaryFields = ['projectCount', 'sourceCount', 'warningCount', 'highRiskMatterCount', 'rectificationTaskCount', 'overdueRectificationCount', 'crossBorderRiskCount'];
+summaryFields.forEach(f => {
+  if (s[f] === undefined || s[f] === null) errors.push(`publicRegulatorySummary 缺失字段: ${f}`);
+});
+const groupHelpers = ['computeGroupOverviewMetrics', 'renderGroupOverviewFilterBar', 'renderGroupOverviewRegulatoryChain', 'renderGroupOverviewObjectTree', 'renderGroupOverviewCoverageSummary', 'renderGroupOverviewRiskSummary', 'renderGroupOverviewRectificationSummary', 'renderGroupOverviewPageCatalog', 'getGroupOverviewFilter'];
+groupHelpers.forEach(fn => {
+  if (!pubJs.includes(fn)) errors.push(`集团总览组件缺失: ${fn}`);
+});
+if (!pubJs.includes('groupOverviewFilter')) warnings.push('groupOverviewFilter 状态未声明');
 if (!D.platformOperationChain || !D.platformOperationChain.length) errors.push('platformOperationChain 未生成');
 
 // --- 投资管理冻结 ---
