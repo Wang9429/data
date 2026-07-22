@@ -242,6 +242,27 @@ const APP_DATA = {
 };
 
 Object.assign(APP_DATA, {
+  globalRegions: [
+    { regionId:'CN', regionName:'境内', regionType:'domestic', countryCount:1, legalEntityCount:86, projectCount:926, riskCount:32, highRiskCount:5, rectificationCount:14, dataCoverageRate:'98.6%', complianceStatus:'正常' },
+    { regionId:'ME', regionName:'中东', regionType:'overseas', countryCount:4, legalEntityCount:12, projectCount:126, riskCount:18, highRiskCount:6, rectificationCount:8, dataCoverageRate:'92.1%', complianceStatus:'关注' },
+    { regionId:'AS', regionName:'亚洲', regionType:'overseas', countryCount:6, legalEntityCount:10, projectCount:98, riskCount:12, highRiskCount:3, rectificationCount:5, dataCoverageRate:'94.8%', complianceStatus:'正常' },
+    { regionId:'AF', regionName:'非洲', regionType:'overseas', countryCount:5, legalEntityCount:8, projectCount:76, riskCount:9, highRiskCount:2, rectificationCount:4, dataCoverageRate:'88.5%', complianceStatus:'关注' },
+    { regionId:'EU', regionName:'欧洲及拉美', regionType:'overseas', countryCount:8, legalEntityCount:10, projectCount:60, riskCount:7, highRiskCount:1, rectificationCount:3, dataCoverageRate:'91.2%', complianceStatus:'正常' }
+  ],
+  globalCountries: [
+    { countryId:'CN-CN', countryName:'中国', regionId:'CN', regionName:'境内', countryRiskLevel:'低', legalEntityCount:86, projectCount:926, businessDomains:'投资、财务、合同、工程', investmentAmount:'6,302亿元', riskCount:32, highRiskCount:5, kriExceptionCount:18, majorMatterCount:86, rectificationCount:14, dataCoverageRate:'98.6%', dataQualityStatus:'良好', crossBorderComplianceStatus:'不适用' },
+    { countryId:'ME-A', countryName:'中东某国', regionId:'ME', regionName:'中东', countryRiskLevel:'高', legalEntityCount:6, projectCount:68, businessDomains:'境外、投资、工程', investmentAmount:'628亿元', riskCount:11, highRiskCount:4, kriExceptionCount:9, majorMatterCount:18, rectificationCount:5, dataCoverageRate:'91.4%', dataQualityStatus:'关注', crossBorderComplianceStatus:'待复核' },
+    { countryId:'AS-A', countryName:'东南亚某国', regionId:'AS', regionName:'亚洲', countryRiskLevel:'中', legalEntityCount:5, projectCount:42, businessDomains:'投资、供应链、合同', investmentAmount:'386亿元', riskCount:6, highRiskCount:1, kriExceptionCount:4, majorMatterCount:9, rectificationCount:2, dataCoverageRate:'95.2%', dataQualityStatus:'良好', crossBorderComplianceStatus:'正常' }
+  ],
+  globalLegalEntities: [
+    { entityId:'G001', entityName:'集团总部', parentEntityId:null, parentEntityName:'—', entityLevel:'集团', entityType:'总部', regionId:'CN', regionName:'境内', countryId:'CN-CN', countryName:'中国', city:'北京', businessDomains:'集团监管', projectCount:0, projectSiteCount:0, siteCount:0, riskCount:0, highRiskCount:0, kriExceptionCount:0, majorMatterCount:18, rectificationCount:6, openRectificationCount:6, dataAccessStatus:'已接入', dataQualityStatus:'良好', lastDataUpdateTime:'2026-07-22 08:00', responsibleDepartment:'集团数据治理部', crossBorderComplianceStatus:'统筹监管' },
+    { entityId:'A001', entityName:'A公司', parentEntityId:'G001', entityLevel:'一级', entityType:'一级子企业', regionId:'CN', countryId:'CN-CN', city:'北京', businessDomains:'工程、装备、投资', projectCount:286, projectSiteCount:18, riskCount:20, highRiskCount:5, kriExceptionCount:12, rectificationCount:8, dataAccessStatus:'已接入', dataQualityStatus:'良好', crossBorderComplianceStatus:'不适用' },
+    { entityId:'B001', entityName:'B公司', parentEntityId:'A001', entityLevel:'二级', entityType:'二级子企业', regionId:'ME', countryId:'ME-A', city:'某海外城市', businessDomains:'境外、清洁能源、投资', projectCount:186, projectSiteCount:12, riskCount:14, highRiskCount:4, kriExceptionCount:9, rectificationCount:6, dataAccessStatus:'部分接入', dataQualityStatus:'关注', crossBorderComplianceStatus:'待复核' },
+    { entityId:'C001', entityName:'C项目公司', parentEntityId:'B001', entityLevel:'三级', entityType:'项目公司', regionId:'ME', countryId:'ME-A', city:'项目现场', businessDomains:'境外工程项目', projectCount:42, projectSiteCount:4, riskCount:6, highRiskCount:2, kriExceptionCount:4, rectificationCount:3, dataAccessStatus:'待完善', dataQualityStatus:'待提升', crossBorderComplianceStatus:'关注' }
+  ],
+  globalProjects: [
+    { projectId:'GP001', projectName:'某境外能源项目', entityId:'C001', regionId:'ME', countryId:'ME-A', city:'项目现场', businessDomain:'投资管理', projectType:'境外投资', projectStatus:'投后运营', investmentAmount:'30亿元', riskCount:3, highRiskCount:1, kriExceptionCount:2, rectificationCount:1, dataAccessStatus:'部分接入' }
+  ],
   groupKris: [
     { id:'kri-approval', category:'合规准入类', name:'未批先实施暴露金额', value:'1.2亿元', status:'重大预警', scenario:'未按规定履行决策审批程序', formula:'有效投资批复完成前发生的采购、签约、付款、开工金额', threshold:'> 0 元', source:'投资管理、采购、合同、资金、项目系统', control:'阻断合同、付款或开工；升级审批', entities:'A公司、C公司' },
     { id:'kri-authority', category:'授权合规类', name:'授权边界超限金额', value:'0.36亿元', status:'较大预警', scenario:'超越授权审批', formula:'事项金额或累计金额 − 对应审批层级授权上限', threshold:'> 0 元', source:'授权矩阵、投资、合同、资金系统', control:'系统阻断并要求升级审批', entities:'B公司' },
