@@ -129,6 +129,7 @@ const App = {
 
   init() {
     if (this.finalizeRegulatoryPlatform) this.finalizeRegulatoryPlatform();
+    if (this.initializeDataAdaptation) this.initializeDataAdaptation();
     this.renderNav();
     this.renderGroupOverview();
     this.renderRegulatoryEvents();

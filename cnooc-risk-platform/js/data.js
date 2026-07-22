@@ -6077,3 +6077,161 @@ Object.assign(APP_DATA, {
     { scenarioId: 'BS-08', name: '高风险操作权限控制', roleType: 'GROUP_REGULATORY', pagePath: ['regulatory-access-control', 'regulatory-role-workbench', 'regulatory-authorization', 'regulatory-audit-trail'] }
   ];
 })();
+
+(function () {
+  const TODAY = '2026-07-22';
+  const domains = APP_DATA.regulationDomains || [];
+  const sources = APP_DATA.regulatoryDataSources || [];
+  const dataSets = APP_DATA.regulatoryDataSets || [];
+  const kris = APP_DATA.groupKris || [];
+  const rules = APP_DATA.regulatoryRules || [];
+  const lineage = APP_DATA.regulatoryDataLineage || [];
+  const registry = APP_DATA.dataSourceRegistry || [];
+  const objects = APP_DATA.dataObjects || [];
+  const fields = APP_DATA.dataFields || [];
+  const indicators = APP_DATA.dataIndicators || [];
+
+  const domainSourceMap = {
+    investment: ['SRC001'], finance: ['SRC002', 'SRC005'], contract: ['SRC003'],
+    supply: ['SRC004'], overseas: ['SRC007'], engineering: ['SRC006']
+  };
+
+  APP_DATA.regulatoryDomainConfigurations = domains.map(dom => {
+    const linkedSources = sources.filter(s => (s.businessDomains || []).some(bd => {
+      const m = { '投资管理': 'investment', '财务': 'finance', '合同': 'contract', '工程': 'engineering', '供应链': 'supply', '境外': 'overseas' };
+      return m[bd] === dom.id || bd === dom.name;
+    }) || (domainSourceMap[dom.id] || []).includes(s.sourceId));
+    const linkedKris = kris.filter(k => (k.domain || k.businessDomain || '').includes(dom.id) || (k.name || '').includes(dom.name.slice(0, 2)));
+    const linkedRules = rules.filter(r => (r.domainId || r.businessDomain) === dom.id).slice(0, 5);
+    const dsIds = linkedSources.flatMap(s => dataSets.filter(d => d.sourceId === s.sourceId).map(d => d.dataSetId));
+    const openIssues = (APP_DATA.regulatoryDataQualityIssues || []).filter(i => dsIds.includes(i.dataSetId) && i.status !== 'CLOSED').length;
+    return {
+      domainId: dom.id,
+      domainName: dom.name,
+      description: dom.desc,
+      status: dom.active !== false ? 'ACTIVE' : 'INACTIVE',
+      linkedSourceIds: linkedSources.map(s => s.sourceId),
+      linkedDataSetIds: dsIds,
+      linkedKriIds: linkedKris.map(k => k.id),
+      linkedRuleIds: linkedRules.map(r => r.ruleId),
+      responsibleOrganizationId: linkedSources[0]?.ownerOrganizationId || 'G001',
+      openQualityIssueCount: openIssues,
+      adaptationStatus: openIssues > 0 ? 'ATTENTION' : linkedSources.some(s => s.connectionStatus !== 'ONLINE') ? 'DEGRADED' : 'HEALTHY',
+      requiresHumanDecision: false
+    };
+  });
+
+  const regulatoryBusinessObjectMappings = [];
+  let mapSeq = 1;
+  registry.forEach(src => {
+    const objList = objects.filter(o => o.sourceId === src.sourceId);
+    objList.forEach(obj => {
+      regulatoryBusinessObjectMappings.push({
+        mappingId: 'MAP-' + String(mapSeq++).padStart(4, '0'),
+        sourceId: src.sourceId,
+        sourceSystem: src.systemName,
+        sourceObjectType: 'dataObjects',
+        sourceObjectId: obj.objectId,
+        targetObjectType: 'regulatoryDataSets',
+        targetObjectId: obj.objectId,
+        domainId: { '投资管理': 'investment', '财务管理': 'finance', '合同管理': 'contract', '工程项目': 'engineering', '供应链管理': 'supply', '境外业务': 'overseas' }[obj.businessDomain] || obj.businessDomain,
+        entityId: obj.entityId,
+        fieldMappings: fields.filter(f => f.objectId === obj.objectId).slice(0, 6).map(f => ({
+          sourceFieldId: f.fieldId,
+          sourceFieldName: f.fieldName,
+          targetFieldId: f.fieldId,
+          standardCode: f.standardCode || f.fieldName,
+          transformRule: 'DIRECT_MAP'
+        })),
+        mappingStatus: 'ACTIVE',
+        legacyRef: obj.objectId
+      });
+    });
+  });
+
+  indicators.slice(0, 20).forEach(ind => {
+    const rel = lineage.find(l => l.targetId === ind.indicatorId || l.sourceId === ind.sourceObject);
+    regulatoryBusinessObjectMappings.push({
+      mappingId: 'MAP-' + String(mapSeq++).padStart(4, '0'),
+      sourceId: rel ? rel.sourceId : null,
+      sourceObjectType: 'dataIndicators',
+      sourceObjectId: ind.indicatorId,
+      targetObjectType: 'regulatoryMetrics',
+      targetObjectId: ind.indicatorId,
+      domainId: ind.businessDomain,
+      entityId: ind.entityId,
+      fieldMappings: [{ sourceFieldName: ind.indicatorName, targetFieldId: 'metricValue', transformRule: 'METRIC_AGGREGATE' }],
+      mappingStatus: 'ACTIVE',
+      legacyRef: ind.indicatorId
+    });
+  });
+
+  const regulatoryDataAdaptationRuns = sources.map(src => {
+    const jobs = (APP_DATA.regulatoryDataIntegrationJobs || []).filter(j => j.sourceId === src.sourceId);
+    const mappings = regulatoryBusinessObjectMappings.filter(m => m.sourceId === src.sourceId);
+    const impact = { kri: 0, warning: 0, action: 0, rect: 0 };
+    const dsIds = dataSets.filter(d => d.sourceId === src.sourceId).map(d => d.dataSetId);
+    const issues = (APP_DATA.regulatoryDataQualityIssues || []).filter(i => dsIds.includes(i.dataSetId));
+    const kriIds = [...new Set(issues.map(i => i.kriId).filter(Boolean))];
+    impact.kri = kriIds.length;
+    impact.warning = (APP_DATA.regulatoryWarnings || []).filter(w => kriIds.includes(w.kriId)).length;
+    impact.action = (APP_DATA.regulatoryActions || []).filter(a => (a.sourceKriIds || []).some(id => kriIds.includes(id))).length;
+    impact.rect = (APP_DATA.rectificationTasks || []).filter(t => issues.some(i => i.relatedRectificationTaskId === t.taskId || t.riskMatterId)).length;
+    const pipelineSteps = [
+      { step: 'SOURCE_ADAPT', status: 'COMPLETED', objectRef: src.sourceId },
+      { step: 'INTEGRATION', status: jobs.every(j => j.status === 'SUCCESS') ? 'COMPLETED' : jobs.some(j => j.status === 'FAILED') ? 'FAILED' : 'PARTIAL', objectRef: jobs[0]?.integrationJobId },
+      { step: 'QUALITY_VALIDATE', status: issues.length ? (issues.some(i => i.severity === 'HIGH') ? 'ATTENTION' : 'COMPLETED') : 'COMPLETED', objectRef: issues[0]?.qualityIssueId },
+      { step: 'STANDARDIZE', status: mappings.length ? 'COMPLETED' : 'PENDING', objectRef: mappings[0]?.mappingId },
+      { step: 'OBJECT_MAP', status: mappings.length ? 'COMPLETED' : 'PENDING', objectRef: mappings[0]?.mappingId },
+      { step: 'KRI_COMPUTE', status: kriIds.length ? 'COMPLETED' : 'INSUFFICIENT_DATA', objectRef: kriIds[0] },
+      { step: 'WARNING_IDENTIFY', status: impact.warning ? 'COMPLETED' : 'INSUFFICIENT_DATA', objectRef: null },
+      { step: 'RISK_ASSESS', status: (APP_DATA.warnings || []).some(w => kriIds.some(k => w.kriId === k)) ? 'COMPLETED' : 'INSUFFICIENT_DATA', objectRef: null },
+      { step: 'ACTION_LINK', status: impact.action ? 'COMPLETED' : 'PENDING', objectRef: null },
+      { step: 'RECTIFICATION_LINK', status: impact.rect ? 'COMPLETED' : 'PENDING', objectRef: null },
+      { step: 'VERIFICATION', status: (APP_DATA.regulatoryActions || []).some(a => a.status === 'VERIFIED') ? 'COMPLETED' : 'PENDING', objectRef: null },
+      { step: 'PERFORMANCE', status: (APP_DATA.regulatoryPerformanceMetrics || []).length ? 'COMPLETED' : 'INSUFFICIENT_HISTORY', objectRef: null },
+      { step: 'IMPROVEMENT', status: (APP_DATA.regulatoryImprovementOpportunities || []).some(o => o.sourceType === 'regulatoryDataQualityIssues') ? 'COMPLETED' : 'PENDING', objectRef: null }
+    ];
+    const completed = pipelineSteps.filter(s => s.status === 'COMPLETED').length;
+    return {
+      adaptationRunId: 'ADAPT-' + src.sourceId,
+      sourceId: src.sourceId,
+      domainIds: [...new Set(mappings.map(m => m.domainId).filter(Boolean))],
+      pipelineSteps,
+      closureRate: Math.round(completed / pipelineSteps.length * 1000) / 10,
+      drivesClosedLoop: completed >= 8,
+      impactedKriCount: impact.kri,
+      impactedWarningCount: impact.warning,
+      impactedActionCount: impact.action,
+      impactedRectificationCount: impact.rect,
+      dataStatus: pipelineSteps.some(s => s.status === 'INSUFFICIENT_DATA' || s.status === 'INSUFFICIENT_HISTORY') ? 'INSUFFICIENT_HISTORY' : 'OK',
+      lastAdaptedAt: TODAY + ' 09:00:00'
+    };
+  });
+
+  APP_DATA.regulatoryBusinessObjectMappings = regulatoryBusinessObjectMappings;
+  APP_DATA.regulatoryDataAdaptationRuns = regulatoryDataAdaptationRuns;
+  APP_DATA.regulatoryDataAdaptationMetrics = {
+    configuredDomainCount: APP_DATA.regulatoryDomainConfigurations.length,
+    activeMappingCount: regulatoryBusinessObjectMappings.filter(m => m.mappingStatus === 'ACTIVE').length,
+    adaptationRunCount: regulatoryDataAdaptationRuns.length,
+    closedLoopSourceCount: regulatoryDataAdaptationRuns.filter(r => r.drivesClosedLoop).length,
+    avgClosureRate: regulatoryDataAdaptationRuns.length ? Math.round(regulatoryDataAdaptationRuns.reduce((s, r) => s + r.closureRate, 0) / regulatoryDataAdaptationRuns.length * 10) / 10 : null,
+    insufficientHistoryCount: regulatoryDataAdaptationRuns.filter(r => r.dataStatus === 'INSUFFICIENT_HISTORY').length,
+    trendDataStatus: 'INSUFFICIENT_HISTORY'
+  };
+
+  let srSeq3 = (APP_DATA.regulatorySearchIndex || []).length + 1;
+  APP_DATA.regulatoryDomainConfigurations.slice(0, 9).forEach(c => {
+    (APP_DATA.regulatorySearchIndex = APP_DATA.regulatorySearchIndex || []).push({
+      resultId: 'SR-' + String(srSeq3++).padStart(4, '0'),
+      objectType: 'DOMAIN_CONFIG',
+      objectId: c.domainId,
+      title: '监管领域 · ' + c.domainName,
+      subtitle: c.adaptationStatus,
+      targetPageId: 'regulatory-data-governance',
+      targetParams: { domainId: c.domainId },
+      category: '数据适配'
+    });
+  });
+})();

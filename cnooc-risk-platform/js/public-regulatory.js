@@ -393,6 +393,182 @@ Object.assign(App, {
     </div>`;
   },
 
+  initializeDataAdaptation() {
+    return APP_DATA.regulatoryDataAdaptationMetrics || {};
+  },
+
+  getAdaptationRun(sourceId) {
+    return (APP_DATA.regulatoryDataAdaptationRuns || []).find(r => r.sourceId === sourceId);
+  },
+
+  getDomainConfiguration(domainId) {
+    return (APP_DATA.regulatoryDomainConfigurations || []).find(c => c.domainId === domainId);
+  },
+
+  adaptRealBusinessData(sourceId) {
+    const access = this.canRegulatoryAccess(this.getCurrentRegulatoryUser()?.userId, 'regulatoryDataSources', sourceId, 'VIEW');
+    if (!access.allowed) return { success: false, denied: true, message: access.reason };
+    const src = (APP_DATA.regulatoryDataSources || []).find(s => s.sourceId === sourceId);
+    if (!src) return { success: false, message: '数据源不存在' };
+    let run = this.getAdaptationRun(sourceId);
+    if (!run) return { success: false, message: '适配运行记录不存在' };
+    const job = (APP_DATA.regulatoryDataIntegrationJobs || []).find(j => j.sourceId === sourceId);
+    if (job && job.status === 'FAILED') {
+      const retry = this.retryDataIntegrationJob(job.integrationJobId);
+      if (!retry.success) return retry;
+    }
+    const quality = this.runDataQualityValidationOnAdaptation(sourceId);
+    const mapped = this.mapBusinessObjects(sourceId);
+    const kri = this.computeKriFromAdaptedData(sourceId);
+    const warns = this.identifyWarningsFromAdaptedData(sourceId);
+    const loop = this.evaluateAdaptationClosedLoop(sourceId);
+    this.createRegulatoryAuditLog({ actionType: 'ADAPT', objectType: 'regulatoryDataSources', objectId: sourceId, reason: '真实业务数据适配', afterState: { closureRate: loop.closureRate } });
+    return { success: true, sourceId, quality, mapped, kri, warns, closedLoop: loop };
+  },
+
+  validateDataSourceAdaptation(sourceId) {
+    const run = this.getAdaptationRun(sourceId);
+    const mappings = (APP_DATA.regulatoryBusinessObjectMappings || []).filter(m => m.sourceId === sourceId);
+    const jobs = (APP_DATA.regulatoryDataIntegrationJobs || []).filter(j => j.sourceId === sourceId);
+    return {
+      sourceId,
+      valid: !!(run && mappings.length && jobs.length),
+      mappingCount: mappings.length,
+      jobCount: jobs.length,
+      pipelineComplete: run?.drivesClosedLoop || false,
+      dataStatus: run?.dataStatus || 'UNKNOWN'
+    };
+  },
+
+  standardizeIncomingData(jobId) {
+    const job = (APP_DATA.regulatoryDataIntegrationJobs || []).find(j => j.integrationJobId === jobId);
+    if (!job) return { success: false, message: '接入任务不存在' };
+    const ds = (APP_DATA.regulatoryDataSets || []).find(d => d.dataSetId === job.dataSetId);
+    if (!ds || ds.dataStatus === 'INSUFFICIENT_DATA') return { success: false, dataStatus: 'INSUFFICIENT_DATA', message: '数据不足，无法标准化' };
+    const mappings = (APP_DATA.regulatoryBusinessObjectMappings || []).filter(m => m.sourceId === job.sourceId);
+    return { success: true, jobId, standardizedRecords: job.successCount, mappingCount: mappings.length, dataStatus: 'OK' };
+  },
+
+  mapBusinessObjects(sourceId) {
+    const mappings = (APP_DATA.regulatoryBusinessObjectMappings || []).filter(m => m.sourceId === sourceId && m.mappingStatus === 'ACTIVE');
+    const linked = {
+      dataSets: mappings.filter(m => m.targetObjectType === 'regulatoryDataSets').map(m => m.targetObjectId),
+      metrics: mappings.filter(m => m.targetObjectType === 'regulatoryMetrics').map(m => m.targetObjectId),
+      entities: [...new Set(mappings.map(m => m.entityId).filter(Boolean))]
+    };
+    return { sourceId, mappingCount: mappings.length, linked, valid: mappings.length > 0 };
+  },
+
+  runDataQualityValidationOnAdaptation(sourceId) {
+    const dsIds = (APP_DATA.regulatoryDataSets || []).filter(d => d.sourceId === sourceId).map(d => d.dataSetId);
+    const issues = (APP_DATA.regulatoryDataQualityIssues || []).filter(i => dsIds.includes(i.dataSetId));
+    const open = issues.filter(i => i.status !== 'CLOSED');
+    return {
+      sourceId,
+      issueCount: issues.length,
+      openIssueCount: open.length,
+      severeCount: open.filter(i => i.severity === 'HIGH').length,
+      dataStatus: issues.length ? 'OK' : 'INSUFFICIENT_DATA',
+      requiresReview: open.some(i => i.severity === 'HIGH')
+    };
+  },
+
+  computeKriFromAdaptedData(sourceId) {
+    const impact = this.getDataSourceImpactAnalysis(sourceId);
+    const runtime = (APP_DATA.regulatoryKriRuntime || []).filter(k => impact.affectedKris.includes(k.kriId));
+    const insufficient = runtime.filter(k => k.dataStatus === 'INSUFFICIENT_DATA' || k.credibilityScore == null);
+    return {
+      sourceId,
+      kriCount: impact.affectedKris.length,
+      runtimeCount: runtime.length,
+      insufficientCount: insufficient.length,
+      dataStatus: runtime.length && !insufficient.length ? 'OK' : insufficient.length === runtime.length ? 'INSUFFICIENT_DATA' : 'PARTIAL',
+      kriIds: impact.affectedKris
+    };
+  },
+
+  identifyWarningsFromAdaptedData(sourceId) {
+    const kri = this.computeKriFromAdaptedData(sourceId);
+    const warnings = (APP_DATA.regulatoryWarnings || []).filter(w => kri.kriIds.includes(w.kriId));
+    const regWarnings = (APP_DATA.regulatoryWarnings || []).filter(w => {
+      const k = (APP_DATA.regulatoryKriRuntime || []).find(r => r.kriRuntimeId === w.kriRuntimeId);
+      return k && (APP_DATA.regulatoryDataSets || []).some(d => d.sourceId === sourceId);
+    });
+    return {
+      sourceId,
+      warningCount: warnings.length + regWarnings.length,
+      pendingReview: regWarnings.filter(w => w.status === 'PENDING_REVIEW').length,
+      dataStatus: warnings.length || regWarnings.length ? 'OK' : 'INSUFFICIENT_DATA'
+    };
+  },
+
+  evaluateAdaptationClosedLoop(sourceId) {
+    const run = this.getAdaptationRun(sourceId);
+    const impact = this.getDataSourceImpactAnalysis(sourceId);
+    const steps = (run?.pipelineSteps || []).map(s => ({
+      step: s.step,
+      status: s.status,
+      objectRef: s.objectRef,
+      pageId: this._adaptationStepPageId(s.step)
+    }));
+    return {
+      sourceId,
+      closureRate: run?.closureRate,
+      drivesClosedLoop: run?.drivesClosedLoop,
+      dataStatus: run?.dataStatus,
+      chain: {
+        source: sourceId,
+        dataSets: impact.affectedDataSets,
+        kris: impact.affectedKris,
+        warnings: impact.affectedRisks,
+        actions: impact.affectedActions,
+        entities: impact.affectedEntities
+      },
+      steps
+    };
+  },
+
+  _adaptationStepPageId(step) {
+    const map = {
+      SOURCE_ADAPT: 'regulatory-data-sources', INTEGRATION: 'regulatory-data-integration',
+      QUALITY_VALIDATE: 'regulatory-data-quality', STANDARDIZE: 'regulatory-data-integration',
+      OBJECT_MAP: 'regulatory-data-governance', KRI_COMPUTE: 'regulatory-kri-monitoring',
+      WARNING_IDENTIFY: 'regulatory-warning-center', RISK_ASSESS: 'warnings',
+      ACTION_LINK: 'regulatory-actions', RECTIFICATION_LINK: 'rectification',
+      VERIFICATION: 'regulatory-action-execution', PERFORMANCE: 'regulatory-performance',
+      IMPROVEMENT: 'regulatory-improvement-center'
+    };
+    return map[step] || 'regulatory-data-sources';
+  },
+
+  renderDataAdaptationPipelinePanel(sourceId) {
+    const loop = this.evaluateAdaptationClosedLoop(sourceId);
+    const stepLabels = {
+      SOURCE_ADAPT: '数据源适配', INTEGRATION: '数据接入', QUALITY_VALIDATE: '质量校验',
+      STANDARDIZE: '数据标准化', OBJECT_MAP: '业务对象映射', KRI_COMPUTE: 'KRI计算',
+      WARNING_IDENTIFY: '预警识别', RISK_ASSESS: '风险研判', ACTION_LINK: '监管行动',
+      RECTIFICATION_LINK: '整改任务', VERIFICATION: '整改验证', PERFORMANCE: '监管绩效', IMPROVEMENT: '持续改进'
+    };
+    const steps = (loop.steps || []).map(s => {
+      const nav = s.pageId ? `App.navigatePublic('${s.pageId}'${s.objectRef ? `,{sourceId:'${sourceId}'}` : ''})` : '';
+      return `${stepLabels[s.step] || s.step}: ${this.renderPublicUnifiedStatusBadge(s.status)} ${nav ? this.renderPublicLinkButton('查看', nav) : ''}`;
+    }).join('<br>');
+    return `<div class="card"><div class="card-title">真实业务数据适配闭环 ${loop.dataStatus === 'INSUFFICIENT_HISTORY' ? this.renderPublicUnifiedStatusBadge('INSUFFICIENT_HISTORY') : ''}</div>
+      <p class="insight-note">闭环率 ${loop.closureRate ?? '—'}% · 驱动闭环 ${loop.drivesClosedLoop ? '是' : '否'}</p>
+      <p class="insight-note">${steps}</p>
+      <p>${this.renderPublicLinkButton('执行适配', `App.adaptRealBusinessData('${sourceId}');App.renderRegulatoryDataSources()`)} ${this.renderPublicLinkButton('查看血缘', `App.navigatePublic('regulatory-data-lineage',{sourceId:'${sourceId}'})`)}</p>
+    </div>`;
+  },
+
+  renderRegulatoryDomainConfigPanel() {
+    const configs = APP_DATA.regulatoryDomainConfigurations || [];
+    const rows = configs.map(c => `<tr class="clickable" onclick="App.navigatePublic('regulatory-data-sources')"><td>${c.domainName}</td><td>${c.linkedSourceIds.length}</td><td>${c.linkedKriIds.length}</td><td>${c.linkedRuleIds.length}</td><td>${c.openQualityIssueCount}</td><td>${this.renderPublicUnifiedStatusBadge(c.adaptationStatus)}</td><td>${c.responsibleOrganizationId}</td></tr>`).join('');
+    return `<div class="card"><div class="card-title">监管领域配置</div>
+      <p class="insight-note">领域配置索引关联数据源、KRI、规则与责任组织，不复制业务对象。</p>
+      ${rows ? `<table class="data-table"><thead><tr><th>领域</th><th>数据源</th><th>KRI</th><th>规则</th><th>开放质量问题</th><th>适配状态</th><th>责任组织</th></tr></thead><tbody>${rows}</tbody></table>` : this.renderPublicEmptyState('暂无领域配置')}
+    </div>`;
+  },
+
   renderPlatformHealthPanel() {
     const ph = this.computePlatformHealth();
     const dims = ph.dimensions || {};
@@ -5620,7 +5796,8 @@ Object.assign(App, {
     if (f.sourceType) sources = sources.filter(s => s.sourceType === f.sourceType);
     if (f.connectionStatus) sources = sources.filter(s => s.connectionStatus === f.connectionStatus);
     const dm = APP_DATA.regulatoryDataGovernanceMetrics || {};
-    const kpi = [[dm.sourceCount, '数据源总数'], [dm.onlineSourceCount, '在线数据源'], [dm.offlineSourceCount, '异常数据源'], [sources.filter(s => s.lastSyncAt && s.lastSyncAt < '2026-07-22').length, '近24h未同步'], [dm.sourceCount ? Math.round(dm.onlineSourceCount / dm.sourceCount * 100) + '%' : '—', '数据覆盖率'], [dm.severeIssueCount, '质量异常']];
+    const am = APP_DATA.regulatoryDataAdaptationMetrics || {};
+    const kpi = [[dm.sourceCount, '数据源总数'], [dm.onlineSourceCount, '在线数据源'], [am.closedLoopSourceCount ?? '—', '闭环驱动源'], [am.avgClosureRate != null ? am.avgClosureRate + '%' : '—', '平均闭环率'], [am.activeMappingCount ?? '—', '活跃映射'], [am.insufficientHistoryCount ?? '—', '历史不足源']];
     const typeOpts = [...new Set((APP_DATA.regulatoryDataSources || []).map(s => s.sourceType))];
     const rows = sources.map(s => {
       const canView = this.canRegulatoryAccess(this.getCurrentRegulatoryUser()?.userId, 'regulatoryDataSources', s.sourceId, 'VIEW').allowed;
@@ -5651,9 +5828,10 @@ Object.assign(App, {
         sections: [
           { title: '一、数据源信息', content: this.renderPublicMetaGrid([this.renderPublicIdField(src.sourceId, '数据源 ID'), { label: '类型', value: src.sourceType }, { label: '责任组织', value: src.ownerOrganizationName }, { label: '连接状态', html: this.renderPublicStatusBadge(src.connectionStatus === 'ONLINE' ? '正常' : '异常') }, { label: '最后同步', value: src.lastSyncAt }]) },
           { title: '二、数据集', content: dataSets.map(d => this.renderPublicLinkButton(d.dataSetName, `App.navigatePublic('regulatory-data-integration',{dataSetId:'${d.dataSetId}'})`)).join('') || this.renderPublicEmptyState('暂无') },
-          { title: '三、血缘影响', content: `<p>受影响 KRI: ${impact.affectedKris.length} · 受影响风险: ${impact.affectedRisks.length} · 受影响行动: ${impact.affectedActions.length}</p>${this.renderPublicLinkButton('查看血缘影响', `App.navigatePublic('regulatory-data-lineage',{sourceId:'${sourceId}'})`)}` }
+          { title: '三、血缘影响', content: `<p>受影响 KRI: ${impact.affectedKris.length} · 受影响风险: ${impact.affectedRisks.length} · 受影响行动: ${impact.affectedActions.length}</p>${this.renderPublicLinkButton('查看血缘影响', `App.navigatePublic('regulatory-data-lineage',{sourceId:'${sourceId}'})`)}` },
+          { title: '四、真实业务数据适配闭环', content: this.renderDataAdaptationPipelinePanel(sourceId) }
         ],
-        footer: `${this.renderPublicLinkButton('数据接入', `App.navigatePublic('regulatory-data-integration',{sourceId:'${sourceId}'})`)} ${this.renderPublicLinkButton('数据血缘', `App.navigatePublic('regulatory-data-lineage',{sourceId:'${sourceId}'})`)}`
+        footer: `${this.renderPublicLinkButton('执行适配', `App.adaptRealBusinessData('${sourceId}');App.showRegulatoryDataSourceDetail('${sourceId}')`)} ${this.renderPublicLinkButton('数据接入', `App.navigatePublic('regulatory-data-integration',{sourceId:'${sourceId}'})`)} ${this.renderPublicLinkButton('数据血缘', `App.navigatePublic('regulatory-data-lineage',{sourceId:'${sourceId}'})`)}`
       });
     }, '数据源');
   },
@@ -5668,7 +5846,8 @@ Object.assign(App, {
     if (f.status) jobs = jobs.filter(j => j.status === f.status);
     const todayJobs = jobs.length;
     const successRate = jobs.length ? Math.round(jobs.filter(j => j.status === 'SUCCESS').length / jobs.length * 1000) / 10 : 0;
-    const kpi = [[todayJobs, '今日接入任务'], [successRate + '%', '成功率'], [jobs.filter(j => j.status === 'FAILED').length, '失败任务'], [jobs.filter(j => j.status === 'PARTIAL_SUCCESS').length, '部分成功'], [jobs.filter(j => j.retryCount > 0 && j.status === 'FAILED').length, '待重试'], [APP_DATA.regulatoryDataGovernanceMetrics?.dataDelayHours + 'h' || '—', '数据延迟']];
+    const focusRun = f.sourceId ? this.getAdaptationRun(f.sourceId) : null;
+    const kpi = [[todayJobs, '今日接入任务'], [successRate + '%', '成功率'], [jobs.filter(j => j.status === 'FAILED').length, '失败任务'], [focusRun?.closureRate != null ? focusRun.closureRate + '%' : '—', '适配闭环率'], [focusRun?.drivesClosedLoop ? '是' : focusRun ? '否' : '—', '驱动闭环'], [APP_DATA.regulatoryDataGovernanceMetrics?.dataDelayHours + 'h' || '—', '数据延迟']];
     const rows = jobs.map(j => {
       const src = (APP_DATA.regulatoryDataSources || []).find(s => s.sourceId === j.sourceId);
       const ds = (APP_DATA.regulatoryDataSets || []).find(d => d.dataSetId === j.dataSetId);
@@ -5678,6 +5857,7 @@ Object.assign(App, {
       <div class="group-hero"><div><span>数据运行</span><h2>集团监管数据接入中心</h2><p>数据源 → 接入任务 → 数据集 → 记录 → 质量校验</p></div></div>
       <div class="group-metrics">${kpi.map(([v, l]) => this.renderPublicKpiCard(l, v, `App.navigatePublic('regulatory-data-integration')`)).join('')}</div>
       <div class="card"><div class="card-title">接入任务</div>${rows ? `<table class="data-table"><thead><tr><th>数据源</th><th>任务</th><th>数据集</th><th>状态</th><th>记录数</th><th>成功/失败</th><th>重试</th><th>完成</th></tr></thead><tbody>${rows}</tbody></table>` : this.renderPublicEmptyState('暂无')}</div>
+      ${f.sourceId ? this.renderDataAdaptationPipelinePanel(f.sourceId) : ''}
       <div id="regulatoryDataIntegrationDetail"></div>`;
     if (this.regulatoryDataIntegrationFocusId) setTimeout(() => this.showRegulatoryDataIntegrationDetail(this.regulatoryDataIntegrationFocusId), 0);
   },
@@ -5753,6 +5933,7 @@ Object.assign(App, {
     }).join('');
     node.innerHTML = `${this.renderPublicBackButton('regulatory-data-governance')}
       <div class="group-hero"><div><span>数据运行</span><h2>集团监管数据治理中心</h2><p>质量问题 → 确认 → 责任主体 → 治理任务 → 整改 → 复核 → 关闭</p></div><div>任务 <b>${tasks.length}</b></div></div>
+      ${this.renderRegulatoryDomainConfigPanel()}
       <div class="card"><div class="card-title">治理任务</div>${rows ? `<table class="data-table"><thead><tr><th>任务ID</th><th>质量问题</th><th>责任主体</th><th>状态</th><th>截止</th><th>验证</th><th>关联整改</th></tr></thead><tbody>${rows}</tbody></table>` : this.renderPublicEmptyState('暂无')}</div>
       <div id="regulatoryDataGovernanceDetail"></div>`;
     if (this.regulatoryDataGovernanceFocusId) setTimeout(() => this.showRegulatoryDataGovernanceDetail(this.regulatoryDataGovernanceFocusId), 0);
