@@ -5,6 +5,7 @@
 Object.assign(App, {
 
   publicRegulatoryPages: [
+    { pageId: 'global-group-overview', routeId: 'group', label: '集团监管总览', category: '监管总览', entryFromGroupOverview: false, supportsPublicNavigation: true, supportsBackNavigation: true },
     { pageId: 'global-legal-entities', label: '全球法人监管', category: '监管对象', entryFromGroupOverview: true, supportsPublicNavigation: true, supportsBackNavigation: true },
     { pageId: 'global-regions', label: '全球区域/国别监管', category: '监管对象', entryFromGroupOverview: true, supportsPublicNavigation: true, supportsBackNavigation: true },
     { pageId: 'coverage-gaps', label: '监管对象覆盖与盲区', category: '监管覆盖', entryFromGroupOverview: true, supportsPublicNavigation: true, supportsBackNavigation: true },
@@ -27,6 +28,15 @@ Object.assign(App, {
     '严重': 'badge-danger', '高风险': 'badge-danger', '重大预警': 'badge-danger', '异常': 'badge-danger',
     '未覆盖': 'badge-danger', '数据异常': 'badge-danger', '未接入': 'badge-danger', '逾期': 'badge-danger',
     '红色': 'badge-danger', '重大': 'badge-danger', '处理中': 'badge-info', '监测中': 'badge-info'
+  },
+
+  resolvePublicRouteId(pageId) {
+    const page = (this.publicRegulatoryPages || []).find(p => p.pageId === pageId);
+    return (page && page.routeId) || pageId;
+  },
+
+  getPublicRegulatoryPageIds() {
+    return (this.publicRegulatoryPages || []).map(p => p.pageId);
   },
 
   normalizePublicNavParams(params) {
@@ -95,6 +105,30 @@ Object.assign(App, {
 
   renderPublicErrorState(message) {
     return `<p class="insight-note public-error-state" style="color:var(--danger)">${this.escHtml(message || '数据异常，请检查数据源')}</p>`;
+  },
+
+  renderPublicNotFoundPanel(objectType) {
+    return this.buildPublicDetailPanel({
+      objectType: objectType || '监管对象',
+      objectName: '对象不存在',
+      status: '异常',
+      sections: [{ title: '一、对象基本信息', content: this.renderPublicErrorState('对象已不存在或无法解析') }]
+    });
+  },
+
+  renderPublicNoFilterResults() {
+    return `<div class="card" style="padding:16px;margin-bottom:12px">${this.renderPublicEmptyState('暂无符合条件的数据')}</div>`;
+  },
+
+  showPublicDetailOrNotFound(node, found, renderFn, objectType) {
+    if (!node) return false;
+    if (!found) {
+      node.innerHTML = this.renderPublicNotFoundPanel(objectType);
+      node.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      return false;
+    }
+    renderFn();
+    return true;
   },
 
   renderPublicBackButton() {
@@ -260,7 +294,9 @@ Object.assign(App, {
   },
 
   rerenderPublicPage(pageId) {
+    const routeId = this.resolvePublicRouteId(pageId);
     const fn = {
+      group: 'renderGroupOverview',
       'global-legal-entities': 'renderGlobalLegalEntities',
       'global-regions': 'renderGlobalRegions',
       'coverage-gaps': 'renderCoverageGaps',
@@ -268,7 +304,7 @@ Object.assign(App, {
       'data-governance': 'renderDataGovernance',
       'cross-border-compliance': 'renderCrossBorderCompliance',
       'cross-domain-risks': 'renderCrossDomainRisks'
-    }[pageId];
+    }[routeId];
     if (fn && this[fn]) this[fn]();
   }
 

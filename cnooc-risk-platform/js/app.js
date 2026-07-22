@@ -64,7 +64,8 @@ const App = {
     'platform-operations': '监管运行监测',
     'data-governance': '数据治理与数据血缘',
     'cross-border-compliance': '跨境数据合规',
-    'cross-domain-risks': '跨领域风险监管'
+    'cross-domain-risks': '跨领域风险监管',
+    'global-group-overview': '集团监管总览'
   },
 
   init() {
@@ -137,13 +138,14 @@ const App = {
       this.renderKriDetail(params.kriId, params.scenarioId);
     }
 
-    if (['global-legal-entities', 'global-regions', 'coverage-gaps', 'platform-operations', 'data-governance', 'cross-border-compliance', 'cross-domain-risks', 'warnings', 'rectification'].includes(pageId) && Object.keys(params).length) {
+    if (['global-group-overview', 'group', 'global-legal-entities', 'global-regions', 'coverage-gaps', 'platform-operations', 'data-governance', 'cross-border-compliance', 'cross-domain-risks', 'warnings', 'rectification'].includes(pageId) && Object.keys(params).length) {
       setTimeout(() => this.applyPublicNavigationContext(pageId, params), 50);
     }
   },
 
   navigatePublic(pageId, params = {}) {
     const normalized = this.normalizePublicNavParams(params);
+    const routeId = this.resolvePublicRouteId(pageId);
     const fromPage = this.currentPage;
     const fromParams = { ...(this.publicNavigationContext || {}) };
     ['currentPage', 'sourcePage', 'sourceParams', 'fromPage', 'fromParams', 'toPage', 'toParams'].forEach(k => delete fromParams[k]);
@@ -161,7 +163,7 @@ const App = {
       });
     }
     this.publicNavigationContext = { ...normalized, fromPage, fromParams, toPage: pageId, toParams: normalized, currentPage: pageId };
-    this.navigate(pageId, normalized);
+    this.navigate(routeId, normalized);
   },
 
   goBackPublic() {
@@ -343,12 +345,20 @@ const App = {
     const fields=APP_DATA.regulationDomains.slice(0,8);
     const s=APP_DATA.publicRegulatorySummary||{};
     const pubPages=(App.publicRegulatoryPages||[]).filter(p=>p.entryFromGroupOverview);
+    const entities=APP_DATA.globalLegalEntities||[];
+    const levelRows=[['集团总部','集团'],['一级子企业','一级'],['二级子企业','二级'],['三级子企业','三级'],['四级及以下企业','四级']].map(([label,levelKey])=>{
+      const list=entities.filter(e=>levelKey==='四级'?['四级','五级','项目公司'].some(x=>(e.entityLevel||'').includes(x)): (e.entityLevel||'').includes(levelKey));
+      const risks=list.reduce((n,e)=>n+(e.riskCount||0),0);
+      const rects=list.reduce((n,e)=>n+(e.openRectificationCount||e.rectificationCount||0),0);
+      const matters=list.reduce((n,e)=>n+(e.majorMatterCount||0),0);
+      return `<tr><td>${label}</td><td>${list.length}</td><td>${risks}</td><td>${risks}</td><td>${matters}</td><td>0</td><td>${rects}</td></tr>`;
+    }).join('');
     node.innerHTML=`<div class="group-hero"><div><span>集团总部监管视角</span><h2>集团监管总览</h2><p>聚焦重点领域、重点法人、重大事项、重大风险和集团督办事项。</p></div><div>数据覆盖率 <b>${s.dataCoverageRate||'—'}</b></div></div>
     <div class="group-metrics">${[[s.entityCount,'纳入监管法人'],[fields.length,'纳入监管领域'],[APP_DATA.globalProjects.length,'重点监管项目'],[APP_DATA.warnings.filter(w=>w.level==='重大').length,'当前重大风险'],[APP_DATA.warnings.length,'当前重点预警'],[s.openRectificationCount,'整改未闭环'],[s.highRiskEntityCount,'高风险法人'],[s.dataCoverageRate,'数据覆盖率']].map(x=>`<button class="metric-card" onclick="App.navigate('dashboard')"><div class="value">${x[0]}</div><div class="label">${x[1]}</div></button>`).join('')}</div>
     <div class="card"><div class="card-title">公共监管底座入口</div><div class="field-status-grid">${pubPages.map(p=>{ const em={ 'global-legal-entities':`高风险法人${s.highRiskEntityCount}家`, 'global-regions':`覆盖${s.countryCount}个国家/地区`, 'coverage-gaps':`覆盖盲区${s.coverageGapCount}项`, 'platform-operations':`运行告警${s.platformAlertCount}项`, 'data-governance':`质量异常${s.qualityIssueCount}项`, 'cross-domain-risks':`风险事项${s.crossDomainMatterCount}项`, 'cross-border-compliance':`数据活动${s.crossBorderActivityCount}项` }; const desc={ 'global-legal-entities':'全级次法人、项目公司、海外法人', 'global-regions':'区域、国家/地区、项目和风险', 'coverage-gaps':'法人、系统、数据、KRI、规则覆盖', 'platform-operations':'数据接入、质量、KRI、规则、预警与闭环', 'data-governance':'数据源、标准、指标、KRI血缘与质量影响', 'cross-domain-risks':'跨领域风险关联、KRI联动与协同整改', 'cross-border-compliance':'跨境传输、分类分级、审批与敏感访问' }; const nav=p.supportsPublicNavigation?`App.navigatePublic('${p.pageId}')`:`App.navigate('${p.pageId}')`; return `<button onclick="${nav}"><b>${p.label}</b><span>${desc[p.pageId]||''}</span><em>${em[p.pageId]||''}</em></button>`; }).join('')}</div></div>
-    <div class="card"><div class="card-title">分领域监管态势</div><div class="field-status-grid">${fields.map((f,i)=>`<button onclick="App.selectRegulationDomain('${f.id}')"><b>${f.name}</b><span>重点事项：${[1286,486,238,426,512,186,328,412][i]}项</span><em>重大风险：${[12,3,2,4,5,2,6,4][i]}项</em><small>整改中：${[18,6,4,8,9,3,11,7][i]}项</small></button>`).join('')}</div></div>
-    <div class="group-three"><div class="card"><div class="card-title">重点法人监管画像</div><table class="data-table"><thead><tr><th>法人</th><th>高风险领域</th><th>综合关注度</th></tr></thead><tbody><tr><td>A公司</td><td>投资、境外、合同</td><td><span class="badge badge-danger">高</span></td></tr><tr><td>B公司</td><td>投资、财务</td><td><span class="badge badge-warning">较高</span></td></tr><tr><td>D公司</td><td>境外、供应链</td><td><span class="badge badge-warning">较高</span></td></tr></tbody></table></div><div class="card"><div class="card-title">集团重点督办事项</div><div class="supervision-list"><p><b>01</b> 某境外投资项目收益持续偏离 <span class="badge badge-danger">L4</span></p><p><b>02</b> 固定资产项目追加投资接近审批边界 <span class="badge badge-warning">L3</span></p><p><b>03</b> 重大合同履约延期事项 <span class="badge badge-warning">L3</span></p></div></div></div>
-    <div class="card"><div class="card-title">全级次法人监管态势</div><table class="data-table"><thead><tr><th>法人层级</th><th>法人数量</th><th>重大风险</th><th>重点预警</th><th>重大事项</th><th>控制规则异常</th><th>整改未闭环</th></tr></thead><tbody><tr><td>集团总部</td><td>1</td><td>0</td><td>0</td><td>18</td><td>0</td><td>6</td></tr><tr><td>一级子企业</td><td>12</td><td>8</td><td>32</td><td>86</td><td>4</td><td>15</td></tr><tr><td>二级子企业</td><td>38</td><td>12</td><td>58</td><td>164</td><td>7</td><td>18</td></tr><tr><td>三级子企业</td><td>52</td><td>6</td><td>29</td><td>73</td><td>3</td><td>4</td></tr><tr><td>四级及以下企业</td><td>23</td><td>2</td><td>7</td><td>21</td><td>1</td><td>0</td></tr></tbody></table></div>
+    <div class="card"><div class="card-title">分领域监管态势</div><div class="field-status-grid">${fields.map(f=>{ const wc=(APP_DATA.warnings||[]).filter(w=>(w.domainId||'investment')===f.id); const rc=(APP_DATA.rectificationTasks||[]).filter(t=>(t.domainId||'investment')===f.id&&t.status!=='已关闭'); const hr=wc.filter(w=>w.level==='重大'||w.status==='红色'); return `<button onclick="App.selectRegulationDomain('${f.id}')"><b>${f.name}</b><span>重点事项：${wc.length}项</span><em>重大风险：${hr.length}项</em><small>整改中：${rc.length}项</small></button>`; }).join('')}</div></div>
+    <div class="group-three"><div class="card"><div class="card-title">重点法人监管画像</div><table class="data-table"><thead><tr><th>法人</th><th>高风险领域</th><th>综合关注度</th></tr></thead><tbody>${entities.filter(e=>e.entityId!=='G001').slice(0,3).map(e=>`<tr><td>${e.entityName}</td><td>${e.businessDomains}</td><td><span class="badge ${e.highRiskCount>2?'badge-danger':'badge-warning'}">${e.highRiskCount>2?'高':'较高'}</span></td></tr>`).join('')}</tbody></table></div><div class="card"><div class="card-title">集团重点督办事项</div><div class="supervision-list">${(APP_DATA.warnings||[]).filter(w=>w.level==='重大').slice(0,3).map((w,i)=>`<p><b>0${i+1}</b> ${w.name} <span class="badge badge-danger">${w.level}</span></p>`).join('')||'<p>暂无重点督办事项</p>'}</div></div></div>
+    <div class="card"><div class="card-title">全级次法人监管态势</div><table class="data-table"><thead><tr><th>法人层级</th><th>法人数量</th><th>重大风险</th><th>重点预警</th><th>重大事项</th><th>控制规则异常</th><th>整改未闭环</th></tr></thead><tbody>${levelRows}</tbody></table></div>
     <div class="group-three"><div class="card"><div class="card-title">跨领域风险与重点区域</div><table class="data-table"><thead><tr><th>风险</th><th>涉及领域</th><th>区域 / 法人</th><th>趋势</th></tr></thead><tbody><tr><td>境外投资收益偏离</td><td>投资、财务、境外</td><td>中东 / B公司</td><td><span class="badge badge-danger">上升</span></td></tr><tr><td>重大合同履约延期</td><td>合同、供应链、工程</td><td>境内 / A公司</td><td><span class="badge badge-warning">关注</span></td></tr></tbody></table></div><div class="card"><div class="card-title">监管覆盖与盲区</div><div class="supervision-list"><p><b>${s.dataCoverageRate||"—"}</b> 法人已完成数据接入</p><p><b>${s.laggingEntityCount||0}</b> 家法人存在数据更新滞后</p><p><b>${APP_DATA.dataQualityIssues.length}</b> 项数据质量异常待处理</p><p><b>${s.openRectificationCount||0}</b> 项整改待集团验证</p></div></div></div>`;
   },
 
@@ -367,7 +377,7 @@ const App = {
 
   showGlobalEntityDetail(entityId) {
     const entity=APP_DATA.globalLegalEntities.find(e=>e.entityId===entityId); const node=document.getElementById('globalEntityDetail');
-    if(!entity||!node)return;
+    this.showPublicDetailOrNotFound(node, entity, () => {
     const parent=entity.parentEntityId?APP_DATA.globalLegalEntities.find(e=>e.entityId===entity.parentEntityId):null;
     const country=APP_DATA.globalCountries.find(c=>c.countryId===entity.countryId);
     const region=APP_DATA.globalRegions.find(r=>r.regionId===entity.regionId);
@@ -409,32 +419,47 @@ const App = {
       footer: `${cbStats.count ? this.renderPublicLinkButton('查看跨境数据活动', `App.navigatePublic('cross-border-compliance',{entityId:'${entity.entityId}'})`) : ''}${sources[0] ? this.renderPublicLinkButton('查看运行监测', `App.navigatePublic('platform-operations',{sourceId:'${sources[0].sourceId}'})`) : ''}${this.renderPublicLinkButton('查看覆盖盲区', `App.navigatePublic('coverage-gaps',{gapId:'GAP001'})`)}`
     });
     node.scrollIntoView({ behavior:'smooth', block:'nearest' });
+    }, '法人监管对象');
   },
 
   showGlobalProjectDetail(projectId) {
     const project=APP_DATA.globalProjects.find(p=>p.projectId===projectId);
     const node=document.getElementById('globalRegionDetail')||document.getElementById('globalEntityDetail');
-    if(!project||!node)return;
+    this.showPublicDetailOrNotFound(node, project, () => {
     const entity=APP_DATA.globalLegalEntities.find(e=>e.entityId===project.entityId);
     const country=APP_DATA.globalCountries.find(c=>c.countryId===project.countryId);
     const risks=APP_DATA.warnings.filter(w=>w.projectId===projectId);
     const rects=APP_DATA.rectificationTasks.filter(t=>t.projectId===projectId);
-    node.innerHTML=`${this.renderPublicBackButton()}<div class="card"><div class="card-title">${project.projectName} · 项目监管画像</div>
-      <div class="info-grid"><div class="info-item"><div class="info-label">所属法人</div><div class="info-value"><button class="btn btn-outline" onclick="App.navigatePublic('global-legal-entities',{entityId:'${project.entityId}'})">${entity?entity.entityName:project.entityId}</button></div></div>
-      <div class="info-item"><div class="info-label">区域/国家</div><div class="info-value">${project.regionId} / ${country?country.countryName:project.countryId}</div></div>
-      <div class="info-item"><div class="info-label">投资与状态</div><div class="info-value">${project.investmentAmount} · ${project.projectStatus} · ${project.businessDomain}</div></div>
-      <div class="info-item"><div class="info-label">监管指标</div><div class="info-value">风险${project.riskMatterCount||project.riskCount}项 · 高风险${project.highRiskMatterCount||project.highRiskCount}项 · 整改未闭环${project.openRectificationCount||project.rectificationCount}项</div></div>
-      <div class="info-item full"><div class="info-label">数据覆盖</div><div class="info-value">接入：${project.dataCoverageStatus||project.dataAccessStatus}；质量：${project.dataQualityStatus||'—'}；最近更新：${project.lastDataUpdateTime||'—'}；责任部门：${project.responsibleDepartment||'—'}</div></div></div>
-      <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;">
-        ${risks[0]?`<button class="btn btn-outline" onclick="App.navigatePublic('warnings',{riskId:'${risks[0].id}'})">查看风险事项</button>`:''}
-        ${rects[0]?`<button class="btn btn-outline" onclick="App.navigatePublic('rectification',{taskId:'${rects[0].taskId}'})">查看整改任务</button>`:''}
-        <button class="btn btn-outline" onclick="App.navigatePublic('coverage-gaps',{gapId:'GAP001'})">查看覆盖盲区</button>
-      </div></div>`;
+    node.innerHTML = this.buildPublicDetailPanel({
+      objectType: '项目监管对象',
+      objectName: project.projectName,
+      objectId: project.projectId,
+      status: project.projectStatus,
+      updatedAt: project.lastDataUpdateTime,
+      sections: [
+        { title: '一、对象基本信息', content: this.renderPublicMetaGrid([
+          { label: '项目名称', value: project.projectName },
+          this.renderPublicIdField(project.projectId, '项目 ID'),
+          { label: '所属法人', value: entity ? entity.entityName : project.entityId },
+          { label: '区域/国家', value: `${project.regionId} / ${country ? country.countryName : project.countryId}` },
+          { label: '责任部门', value: project.responsibleDepartment || '—' },
+          { label: '当前状态', html: this.renderPublicStatusBadge(project.dataCoverageStatus || project.dataAccessStatus) },
+          { label: '最后更新时间', value: project.lastDataUpdateTime || '—' }
+        ]) },
+        { title: '二、组织关系', content: entity ? this.renderPublicLinkButton(entity.entityName, `App.navigatePublic('global-legal-entities',{entityId:'${entity.entityId}'})`) : this.renderPublicEmptyState('暂无关联法人') },
+        { title: '三、数据与指标', content: `<p class="insight-note">投资金额 ${project.investmentAmount} · 业务领域 ${project.businessDomain}</p>` },
+        { title: '四、风险与预警', content: risks.length ? risks.map(w => this.renderPublicLinkButton(w.name, `App.navigatePublic('warnings',{riskMatterId:'${w.id}'})`)).join('') : this.renderPublicEmptyState('暂无关联风险') },
+        { title: '五、责任与整改', content: rects.length ? rects.map(t => this.renderPublicLinkButton(t.title, `App.navigatePublic('rectification',{rectificationTaskId:'${t.taskId}'})`)).join('') : this.renderPublicEmptyState('暂无关联整改') }
+      ],
+      footer: `${risks[0] ? this.renderPublicLinkButton('查看风险事项', `App.navigatePublic('warnings',{riskMatterId:'${risks[0].id}'})`) : ''}${rects[0] ? this.renderPublicLinkButton('查看整改任务', `App.navigatePublic('rectification',{rectificationTaskId:'${rects[0].taskId}'})`) : ''}${this.renderPublicLinkButton('查看覆盖盲区', `App.navigatePublic('coverage-gaps',{gapId:'GAP001'})`)}`
+    });
+    node.scrollIntoView({ behavior:'smooth', block:'nearest' });
+    }, '项目监管对象');
   },
 
   showGlobalRegionDetail(regionId, countryId) {
     const region=APP_DATA.globalRegions.find(r=>r.regionId===regionId); const node=document.getElementById('globalRegionDetail')||document.getElementById('globalEntityDetail');
-    if(!region||!node)return;
+    this.showPublicDetailOrNotFound(node, region, () => {
     const countries=APP_DATA.globalCountries.filter(c=>c.regionId===regionId);
     const entities=APP_DATA.globalLegalEntities.filter(e=>e.regionId===regionId && (!countryId||e.countryId===countryId));
     const projects=APP_DATA.globalProjects.filter(p=>p.regionId===regionId && (!countryId||p.countryId===countryId));
@@ -469,6 +494,7 @@ const App = {
       footer: `${this.renderPublicLinkButton('查看跨境数据合规', `App.navigatePublic('cross-border-compliance',{regionId:'${regionId}'${countryId ? `,countryId:'${countryId}'` : ''}})`)}${this.renderPublicLinkButton('查看跨领域风险', `App.navigatePublic('cross-domain-risks',{regionId:'${regionId}'${countryId ? `,countryId:'${countryId}'` : ''}})`)}`
     });
     node.scrollIntoView({ behavior:'smooth', block:'nearest' });
+    }, countryId ? '国家/地区监管对象' : '区域监管对象');
   },
 
   renderCoverageGaps() {
@@ -490,7 +516,7 @@ const App = {
   showCoverageObjectDetail(cellId) {
     const cell=(APP_DATA.coverageMatrixCells||[]).find(c=>c.cellId===cellId);
     const node=document.getElementById('coverageObjectDetail');
-    if(!cell||!node)return;
+    this.showPublicDetailOrNotFound(node, cell, () => {
     const entity=cell.entityId?APP_DATA.globalLegalEntities.find(e=>e.entityId===cell.entityId):null;
     const project=cell.projectId?APP_DATA.globalProjects.find(p=>p.projectId===cell.projectId):null;
     const region=cell.regionId?APP_DATA.globalRegions.find(r=>r.regionId===cell.regionId):null;
@@ -523,12 +549,13 @@ const App = {
       ${gap?`<p class="insight-note">覆盖盲区：<button class="btn btn-outline" onclick="App.showCoverageGapDetail('${gap.gapId}')">${gap.name}</button> · ${gap.gaps}</p>`:'<p class="insight-note">当前覆盖状态正常，无关联盲区。</p>'}
       </div>`;
     node.scrollIntoView({ behavior:'smooth', block:'nearest' });
+    }, '覆盖矩阵对象');
   },
 
   showCoverageGapDetail(gapId) {
     const gap=APP_DATA.coverageGaps.find(g=>g.gapId===gapId);
     const node=document.getElementById('coverageGapDetail');
-    if(!gap||!node)return;
+    this.showPublicDetailOrNotFound(node, gap, () => {
     const entity=gap.entityId?APP_DATA.globalLegalEntities.find(e=>e.entityId===gap.entityId):null;
     const project=gap.projectId?APP_DATA.globalProjects.find(p=>p.projectId===gap.projectId):null;
     const source=gap.sourceId?APP_DATA.dataSourceRegistry.find(s=>s.sourceId===gap.sourceId):null;
@@ -554,6 +581,8 @@ const App = {
       ${gap.gapType==='跨境数据合规'?`<button class="btn btn-outline" onclick="App.navigatePublic('cross-border-compliance',{entityId:'${gap.entityId}'})">查看跨境数据合规</button>`:''}
       </div>
     </div>`;
+    node.scrollIntoView({ behavior:'smooth', block:'nearest' });
+    }, '覆盖盲区');
   },
 
   renderPlatformOperations() {
@@ -566,7 +595,7 @@ const App = {
   showPlatformAlertDetail(alertId) {
     const alert=APP_DATA.platformOperationAlerts.find(a=>a.alertId===alertId);
     const node=document.getElementById('platformAlertDetail');
-    if(!alert||!node)return;
+    this.showPublicDetailOrNotFound(node, alert, () => {
     const source=APP_DATA.dataSourceRegistry.find(s=>s.sourceId===alert.sourceId);
     const entity=APP_DATA.globalLegalEntities.find(e=>e.entityId===alert.entityId);
     const obj=alert.objectId?APP_DATA.dataObjects.find(o=>o.objectId===alert.objectId):null;
@@ -613,6 +642,7 @@ const App = {
       footer: `${quality ? this.renderPublicLinkButton('查看数据质量异常', `App.navigatePublic('data-governance',{qualityIssueId:'${quality.issueId}'})`) : ''}${kri ? this.renderPublicLinkButton('查看 KRI', `App.navigatePublic('data-governance',{relationId:'${rel?rel.relationId:'LIN001}'})`) : ''}${risk ? this.renderPublicLinkButton('查看风险事项', `App.navigatePublic('warnings',{riskMatterId:'${risk.id}'})`) : ''}${rect ? this.renderPublicLinkButton('查看整改任务', `App.navigatePublic('rectification',{rectificationTaskId:'${rect.taskId}'})`) : ''}${entity ? this.renderPublicLinkButton('查看法人', `App.navigatePublic('global-legal-entities',{entityId:'${entity.entityId}'})`) : ''}`
     });
     node.scrollIntoView({ behavior:'smooth', block:'nearest' });
+    }, '运行异常');
   },
 
   showPlatformSourceDetail(sourceId) {
@@ -686,8 +716,11 @@ const App = {
     const classified = acts.filter(a => a.dataClassification && a.dataClassification !== '未分级');
     const sensitive = acts.filter(a => a.sensitivityLevel === '高');
     const cbRects = APP_DATA.rectificationTasks.filter(t => (t.taskId || '').startsWith('RECT-CB'));
+    const hasCbFilter = Object.values(f).some(v => v);
+    const cbEmptyMsg = !acts.length && hasCbFilter ? this.renderPublicNoFilterResults() : '';
     node.innerHTML = `<div class="group-hero"><div><span>集团级公共监管底座</span><h2>跨境数据合规</h2><p>境外法人 / 区域 / 国家 → 数据源 → 数据对象 → 分类分级 → 存储位置 → 传输路径 → 跨境访问主体 → 审批 / 合规状态 → 风险场景 → KRI → 整改闭环</p></div><div>数据活动 <b>${m.crossBorderDataActivityCount}项</b></div></div>
     ${this.renderPublicBackButton()}${this.renderPublicFilterBar('cross-border-compliance', ['regionId', 'countryId', 'entityId', 'projectId'])}
+    ${cbEmptyMsg}
     <div class="group-metrics">${[
       [m.crossBorderDataActivityCount, '跨境数据活动'],
       [m.crossBorderEntityCount, '涉及境外法人'],
@@ -740,7 +773,7 @@ const App = {
   showCrossBorderActivityDetail(activityId) {
     const a = APP_DATA.crossBorderDataActivities.find(x => x.activityId === activityId);
     const node = document.getElementById('crossBorderActivityDetail');
-    if (!a || !node) return;
+    this.showPublicDetailOrNotFound(node, a, () => {
     this.cbFocusActivityId = activityId;
     const src = APP_DATA.dataSourceRegistry.find(s => s.sourceId === a.sourceId);
     const obj = APP_DATA.dataObjects.find(o => o.objectId === a.dataObjectId);
@@ -780,6 +813,7 @@ const App = {
         <button class="btn btn-outline" onclick="App.navigatePublic('data-governance',{sourceId:'${a.sourceId}',objectId:'${a.dataObjectId}'})">进入数据治理</button>
       </div></div>`;
     node.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }, '跨境数据活动');
   },
 
 
@@ -907,8 +941,11 @@ const App = {
       const abnormal = kris.filter(k => k.status && !['正常','关注'].includes(k.status));
       return { matter: m, kris, abnormal, isMulti: abnormal.length >= 2 };
     }).filter(r => r.abnormal.length > 0);
+    const hasCdrFilter = Object.values(f).some(v => v);
+    const cdrEmptyMsg = !matters.length && hasCdrFilter ? this.renderPublicNoFilterResults() : '';
     node.innerHTML = `<div class="group-hero"><div><span>集团级公共监管底座</span><h2>跨领域风险监管</h2><p>业务活动 → 业务领域 → 风险场景 → KRI → 跨领域风险事项 → 责任主体 → 协同整改 → 闭环验证</p></div><div>风险事项 <b>${stats.crossDomainMatterCount}项</b></div></div>
     ${this.renderPublicBackButton()}${this.renderPublicFilterBar('cross-domain-risks', ['regionId', 'countryId', 'entityId', 'projectId', 'domainId'])}
+    ${cdrEmptyMsg}
     <div class="group-metrics">${[
       [stats.crossDomainMatterCount,'跨领域风险事项'],[stats.highRiskMatterCount,'高风险跨领域事项'],[stats.involvedDomainCount,'涉及业务领域'],[stats.involvedEntityCount,'涉及法人'],[stats.involvedProjectCount,'涉及项目'],[stats.relatedKriCount,'关联KRI'],[stats.pendingRectificationCount,'待整改任务'],[stats.collaboratingRectificationCount,'协同整改中'],[stats.crossDomainClosureRate,'跨领域风险闭环率']
     ].map(x => `<div class="metric-card"><div class="value">${x[0]}</div><div class="label">${x[1]}</div></div>`).join('')}</div>
@@ -996,7 +1033,7 @@ const App = {
   showCrossDomainRiskMatterDetail(riskMatterId) {
     const m = (APP_DATA.crossDomainRiskMatters || []).find(x => x.riskMatterId === riskMatterId);
     const node = document.getElementById('crossDomainRiskDetail');
-    if (!m || !node) return;
+    this.showPublicDetailOrNotFound(node, m, () => {
     this.cdrFocusMatterId = riskMatterId;
     const rels = (APP_DATA.crossDomainRiskRelations || []).filter(r => r.riskMatterId === riskMatterId);
     const impacts = this.getCrossDomainImpactObjects(riskMatterId);
@@ -1029,6 +1066,7 @@ const App = {
       footer: `${resp ? this.renderPublicLinkButton('责任协同', `App.showCrossDomainResponsibilityDetail('${resp.responsibilityId}')`) : ''}${cbActs[0] ? this.renderPublicLinkButton('查看跨境合规', `App.navigatePublic('cross-border-compliance',{activityId:'${cbActs[0].activityId}'})`) : ''}`
     });
     node.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }, '跨领域风险事项');
   },
 
   showCrossDomainKriDetail(kriId) {
@@ -1139,9 +1177,12 @@ const App = {
     const lineageSteps = chain ? this.getDataGovLineageSteps(chain) : [];
     const currentStep = this.dataGovLineageStep || 0;
     const stdIssues = APP_DATA.dataStandards.filter(s => s.issueType);
+    const hasFilter = Object.values(f).some(v => v);
+    const emptyFilterMsg = !sources.length && hasFilter ? this.renderPublicNoFilterResults() : '';
     node.innerHTML = `
     <div class="group-hero"><div><span>集团级公共监管底座</span><h2>数据治理与数据血缘</h2><p>面向集团穿透式监管的数据治理与风险监管血缘能力：数据从哪里来、经过什么加工、最终支撑哪个监管指标和风险判断。</p></div><div>质量异常 <b>${APP_DATA.dataQualityIssues.length}项</b></div></div>
     ${this.renderPublicBackButton()}${this.renderPublicFilterBar('data-governance', ['regionId', 'countryId', 'entityId', 'projectId'])}
+    ${emptyFilterMsg}
     <div class="group-metrics">${APP_DATA.dataGovernanceMetrics.map(m => `<div class="metric-card"><div class="value">${m[1]}</div><div class="label">${m[0]}</div><div class="sub-items">较上期 ${m[2]} · <span class="badge ${this.dataGovQualityBadge(m[3])}">${m[3]}</span></div></div>`).join('')}</div>
     <div class="card"><div class="card-title">数据源台账</div>
       <div class="filter-bar" style="margin-bottom:12px;display:flex;flex-wrap:wrap;gap:8px;">
@@ -1150,7 +1191,7 @@ const App = {
         <select onchange="App.dataGovFilter.qualityStatus=this.value||null;App.renderDataGovernance()"><option value="">全部质量状态</option><option value="正常" ${f.qualityStatus==='正常'?'selected':''}>正常</option><option value="关注" ${f.qualityStatus==='关注'?'selected':''}>关注</option><option value="异常" ${f.qualityStatus==='异常'?'selected':''}>异常</option></select>
       </div>
       <table class="data-table"><thead><tr><th>系统</th><th>所属法人</th><th>区域/国家</th><th>业务领域</th><th>接口状态</th><th>最近同步</th><th>完整率</th><th>及时率</th><th>质量评分</th></tr></thead>
-      <tbody>${sources.map(s => `<tr class="clickable" onclick="App.showDataGovSourceDetail('${s.sourceId}')"><td>${s.systemName}<br><small>${s.systemType}</small></td><td>${s.ownerEntity}</td><td>${s.regionName}/${s.countryName}</td><td>${(s.businessDomains||[]).join('、')}</td><td><span class="badge ${this.dataGovQualityBadge(s.interfaceStatus==='正常'?'正常':'异常')}">${s.interfaceStatus}</span></td><td>${s.lastSyncTime}</td><td>${s.dataCompleteness}</td><td>${s.dataTimeliness}</td><td>${s.qualityScore}</td></tr>`).join('')}</tbody></table>
+      <tbody>${sources.length ? sources.map(s => `<tr class="clickable" onclick="App.showDataGovSourceDetail('${s.sourceId}')"><td>${s.systemName}<br><small>${s.systemType}</small></td><td>${s.ownerEntity}</td><td>${s.regionName}/${s.countryName}</td><td>${(s.businessDomains||[]).join('、')}</td><td><span class="badge ${this.dataGovQualityBadge(s.interfaceStatus==='正常'?'正常':'异常')}">${s.interfaceStatus}</span></td><td>${s.lastSyncTime}</td><td>${s.dataCompleteness}</td><td>${s.dataTimeliness}</td><td>${s.qualityScore}</td></tr>`).join('') : `<tr><td colspan="9">${hasFilter ? '暂无符合条件的数据' : '暂无数据'}</td></tr>`}</tbody></table>
     </div>
     <div id="dataGovSourceDetail"></div>
     <div class="card"><div class="card-title">数据质量监管</div>
@@ -1188,7 +1229,7 @@ const App = {
   showDataGovSourceDetail(sourceId) {
     const src = APP_DATA.dataSourceRegistry.find(s => s.sourceId === sourceId);
     const node = document.getElementById('dataGovSourceDetail');
-    if (!src || !node) return;
+    this.showPublicDetailOrNotFound(node, src, () => {
     const objects = APP_DATA.dataObjects.filter(o => o.sourceId === sourceId);
     const relations = APP_DATA.dataLineageRelations.filter(r => r.sourceId === sourceId);
     const cbActs = APP_DATA.crossBorderDataActivities.filter(a => a.sourceId === sourceId);
@@ -1219,33 +1260,70 @@ const App = {
       ],
       footer: `${cbActs[0] ? this.renderPublicLinkButton('查看跨境数据活动', `App.navigatePublic('cross-border-compliance',{activityId:'${cbActs[0].activityId}'})`) : ''}${entity ? this.renderPublicLinkButton('查看法人', `App.navigatePublic('global-legal-entities',{entityId:'${entity.entityId}'})`) : ''}`
     });
+    node.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }, '数据源');
   },
 
   showDataGovObjectDetail(objectId) {
     const obj = APP_DATA.dataObjects.find(o => o.objectId === objectId);
     const node = document.getElementById('dataGovSourceDetail');
-    if (!obj || !node) return;
+    this.showPublicDetailOrNotFound(node, obj, () => {
     const fields = APP_DATA.dataFields.filter(f => f.objectId === objectId);
     const indicators = APP_DATA.dataIndicators.filter(i => i.sourceObject === objectId);
     const cbActs = APP_DATA.crossBorderDataActivities.filter(a => a.dataObjectId === objectId);
-    node.innerHTML = `${this.renderPublicBackButton()}<div class="card"><div class="card-title">${obj.objectName} · 数据对象详情</div>
-      <div class="info-grid"><div class="info-item"><div class="info-label">所属系统/法人</div><div class="info-value">${obj.systemName} · ${obj.ownerEntity}</div></div>
-      <div class="info-item"><div class="info-label">责任与质量</div><div class="info-value">${obj.dataOwner} · ${obj.qualityStatus} · ${obj.lastUpdateTime}</div></div></div>
-      <p><b>字段：</b>${fields.map(f => `<button class="btn btn-outline" style="margin:2px" onclick="App.showDataGovFieldDetail('${f.fieldId}')">${f.fieldName}</button>`).join('')}</p>
-      <p><b>下游指标：</b>${indicators.map(i => i.indicatorName).join('、') || '—'}</p>
-      <p><b>跨境数据活动：</b>${cbActs.length ? cbActs.map(a => `<button class="btn btn-outline" style="margin:2px" onclick="App.navigatePublic('cross-border-compliance',{activityId:'${a.activityId}'})">${a.activityId} · ${a.transferPath} · ${a.complianceStatus}</button>`).join('') : '暂无关联'}</p></div>`;
+    node.innerHTML = this.buildPublicDetailPanel({
+      objectType: '数据对象',
+      objectName: obj.objectName,
+      objectId: obj.objectId,
+      status: obj.qualityStatus,
+      updatedAt: obj.lastUpdateTime,
+      sections: [
+        { title: '一、对象基本信息', content: this.renderPublicMetaGrid([
+          { label: '对象名称', value: obj.objectName },
+          this.renderPublicIdField(obj.objectId, '对象 ID'),
+          { label: '所属系统', value: obj.systemName },
+          { label: '所属法人', value: obj.ownerEntity },
+          { label: '责任部门', value: obj.dataOwner },
+          { label: '当前状态', html: this.renderPublicStatusBadge(obj.qualityStatus) },
+          { label: '最后更新时间', value: obj.lastUpdateTime || '—' }
+        ]) },
+        { title: '二、组织关系', content: this.renderPublicLinkButton(obj.ownerEntity, `App.navigatePublic('global-legal-entities',{entityId:'${obj.entityId}'})`) },
+        { title: '三、数据与指标', content: `<p class="insight-note"><b>字段：</b>${fields.length ? fields.map(f => this.renderPublicLinkButton(f.fieldName, `App.showDataGovFieldDetail('${f.fieldId}')`)).join('') : this.renderPublicEmptyState('暂无关联字段')}</p><p class="insight-note"><b>下游指标：</b>${indicators.map(i => i.indicatorName).join('、') || '暂无'}</p>` },
+        { title: '四、风险与预警', content: cbActs.length ? cbActs.map(a => this.renderPublicLinkButton(a.activityId, `App.navigatePublic('cross-border-compliance',{activityId:'${a.activityId}'})`)).join('') : this.renderPublicEmptyState('暂无关联跨境活动') },
+        { title: '五、责任与整改', content: this.renderPublicEmptyState('暂无关联整改') }
+      ]
+    });
+    node.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }, '数据对象');
   },
 
   showDataGovFieldDetail(fieldId) {
     const fld = APP_DATA.dataFields.find(f => f.fieldId === fieldId);
     const node = document.getElementById('dataGovSourceDetail');
-    if (!fld || !node) return;
+    this.showPublicDetailOrNotFound(node, fld, () => {
     const std = APP_DATA.dataStandards.find(s => s.standardId === fld.standardId);
     const indicators = APP_DATA.dataIndicators.filter(i => (i.sourceFields || []).includes(fieldId));
-    node.innerHTML = `${this.renderPublicBackButton()}<div class="card"><div class="card-title">${fld.fieldName} · 字段详情</div>
-      <p>编码：${fld.fieldCode} · 类型：${fld.dataType} · 敏感级别：${fld.sensitivityLevel} · 质量：${fld.qualityStatus}</p>
-      <p>统一标准：${std ? std.standardName + '（' + std.standardCode + '）' : '—'}</p>
-      <p>关联指标：${indicators.map(i => i.indicatorName).join('、') || '—'}</p></div>`;
+    node.innerHTML = this.buildPublicDetailPanel({
+      objectType: '数据字段',
+      objectName: fld.fieldName,
+      objectId: fld.fieldId,
+      status: fld.qualityStatus,
+      updatedAt: fld.lastUpdateTime || (APP_DATA.dataObjects.find(o => o.objectId === fld.objectId) || {}).lastUpdateTime || '—',
+      sections: [
+        { title: '一、对象基本信息', content: this.renderPublicMetaGrid([
+          { label: '字段名称', value: fld.fieldName },
+          this.renderPublicIdField(fld.fieldId, '字段 ID'),
+          { label: '字段编码', value: fld.fieldCode },
+          { label: '数据类型', value: fld.dataType },
+          { label: '敏感级别', value: fld.sensitivityLevel },
+          { label: '当前状态', html: this.renderPublicStatusBadge(fld.qualityStatus) },
+          { label: '统一标准', value: std ? `${std.standardName}（${std.standardCode}）` : '—' }
+        ]) },
+        { title: '三、数据与指标', content: indicators.length ? indicators.map(i => i.indicatorName).join('、') : this.renderPublicEmptyState('暂无关联指标') }
+      ]
+    });
+    node.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }, '数据字段');
   },
 
   getDataGovLineageSteps(chain) {
@@ -1267,7 +1345,7 @@ const App = {
   showDataGovQualityImpact(issueId) {
     const issue = APP_DATA.dataQualityIssues.find(q => q.issueId === issueId);
     const node = document.getElementById('dataGovQualityImpact');
-    if (!issue || !node) return;
+    this.showPublicDetailOrNotFound(node, issue, () => {
     const obj = APP_DATA.dataObjects.find(o => o.objectId === issue.objectId);
     const fld = issue.fieldId ? APP_DATA.dataFields.find(f => f.fieldId === issue.fieldId) : null;
     const ind = issue.indicatorId ? APP_DATA.dataIndicators.find(i => i.indicatorId === issue.indicatorId) : null;
@@ -1294,12 +1372,14 @@ const App = {
         ${ind?`<button class="btn btn-outline" onclick="App.navigatePublic('data-governance',{indicatorId:'${ind.indicatorId}'})">查看指标</button>`:''}
         ${kri?`<button class="btn btn-outline" onclick="App.navigatePublic('data-governance',{relationId:'${(APP_DATA.dataLineageRelations.find(r=>r.kriId===kri.id)||{}).relationId||'LIN001}'})">查看 KRI</button>`:''}
         ${scenario?`<button class="btn btn-outline" onclick="App.navigatePublic('cross-domain-risks',{domainId:'investment'})">查看风险场景</button>`:''}
-        ${risk?`<button class="btn btn-outline" onclick="App.navigatePublic('warnings',{riskId:'${risk.id}'})">查看风险事项</button>`:''}
+        ${risk?`<button class="btn btn-outline" onclick="App.navigatePublic('warnings',{riskMatterId:'${risk.id}'})">查看风险事项</button>`:''}
         ${entity?`<button class="btn btn-outline" onclick="App.navigatePublic('global-legal-entities',{entityId:'${entity.entityId}'})">查看责任法人</button>`:''}
-        ${rect?`<button class="btn btn-outline" onclick="App.navigatePublic('rectification',{taskId:'${rect.taskId}'})">查看整改任务</button>`:''}
+        ${rect?`<button class="btn btn-outline" onclick="App.navigatePublic('rectification',{rectificationTaskId:'${rect.taskId}'})">查看整改任务</button>`:''}
         ${cdMatters.map(m => `<button class="btn btn-outline" onclick="App.navigatePublic('cross-domain-risks',{riskMatterId:'${m.riskMatterId}'})">跨领域风险：${m.riskMatterName}</button>`).join('')}
       </div>
       <p class="insight-note">${issue.impactDesc}</p></div>`;
+    node.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }, '数据质量异常');
   },
 
   showDataGovStandardDetail(standardId) {
@@ -1343,20 +1423,34 @@ const App = {
   showRectificationTaskDetail(taskId) {
     const task = APP_DATA.rectificationTasks.find(t => t.taskId === taskId || t.id === taskId);
     const node = document.getElementById('rectificationAnalysis');
-    if (!task || !node) return;
+    this.showPublicDetailOrNotFound(node, task, () => {
     const risk = APP_DATA.warnings.find(w => w.id === task.riskMatterId || w.id === task.riskId);
     const entity = task.entityId ? APP_DATA.globalLegalEntities.find(e => e.entityId === task.entityId) : null;
     const project = task.projectId ? APP_DATA.globalProjects.find(p => p.projectId === task.projectId) : null;
-    node.innerHTML = `${this.renderPublicBackButton()}<div class="card"><div class="card-title">${task.title} · 整改任务穿透</div>
-      <div class="info-grid"><div class="info-item"><div class="info-label">任务编号 / 状态</div><div class="info-value">${task.taskId} · ${task.status} · ${task.verificationStatus || '—'}</div></div>
-      <div class="info-item"><div class="info-label">责任主体</div><div class="info-value">${task.responsibleEntity || task.company} · ${task.responsibleDepartment || task.owner}</div></div>
-      <div class="info-item"><div class="info-label">进度 / 期限</div><div class="info-value">${task.progress}% · 截止${task.deadline}${task.closedAt ? ' · 关闭于' + task.closedAt : ''}</div></div>
-      <div class="info-item full"><div class="info-label">整改措施</div><div class="info-value">${task.measure}</div></div></div>
-      <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;">
-        ${risk?`<button class="btn btn-outline" onclick="App.navigatePublic('warnings',{riskId:'${risk.id}'})">查看关联风险事项</button>`:''}
-        ${entity?`<button class="btn btn-outline" onclick="App.navigatePublic('global-legal-entities',{entityId:'${entity.entityId}'})">查看责任法人</button>`:''}
-        ${project?`<button class="btn btn-outline" onclick="App.navigatePublic('global-regions',{projectId:'${project.projectId}'})">查看关联项目</button>`:''}
-      </div></div>`;
+    node.innerHTML = this.buildPublicDetailPanel({
+      objectType: '整改任务',
+      objectName: task.title,
+      objectId: task.taskId,
+      status: task.status,
+      updatedAt: task.lastDataUpdateTime || task.closedAt || task.deadline,
+      sections: [
+        { title: '一、对象基本信息', content: this.renderPublicMetaGrid([
+          { label: '任务标题', value: task.title },
+          this.renderPublicIdField(task.taskId, '任务 ID'),
+          { label: '责任主体', value: task.responsibleEntity || task.company },
+          { label: '责任部门', value: task.responsibleDepartment || task.owner },
+          { label: '验证状态', html: this.renderPublicStatusBadge(task.verificationStatus || '—') },
+          { label: '当前状态', html: this.renderPublicStatusBadge(task.status) },
+          { label: '进度/期限', value: `${task.progress}% · 截止${task.deadline}` },
+          { label: '最后更新时间', value: task.lastDataUpdateTime || task.closedAt || '—' }
+        ]) },
+        { title: '二、组织关系', content: `${entity ? this.renderPublicLinkButton(entity.entityName, `App.navigatePublic('global-legal-entities',{entityId:'${entity.entityId}'})`) : ''}${project ? this.renderPublicLinkButton(project.projectName, `App.navigatePublic('global-regions',{projectId:'${project.projectId}'})`) : ''}` || this.renderPublicEmptyState('暂无关联组织') },
+        { title: '四、风险与预警', content: risk ? this.renderPublicLinkButton(risk.name, `App.navigatePublic('warnings',{riskMatterId:'${risk.id}'})`) : this.renderPublicEmptyState('暂无关联风险') },
+        { title: '五、责任与整改', content: `<p class="insight-note">${task.measure || '—'}</p>` }
+      ]
+    });
+    node.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }, '整改任务');
   },
 
   renderMajorMatters() {
@@ -1730,24 +1824,36 @@ const App = {
   showPublicWarningDetail(riskId) {
     const w = APP_DATA.warnings.find(x => x.id === riskId);
     const node = document.getElementById('warningCharts');
-    if (!w || !node) return;
+    this.showPublicDetailOrNotFound(node, w, () => {
     const entity = w.entityId ? APP_DATA.globalLegalEntities.find(e => e.entityId === w.entityId) : null;
     const project = w.projectId ? APP_DATA.globalProjects.find(p => p.projectId === w.projectId) : null;
     const kri = w.kriId ? APP_DATA.groupKris.find(k => k.id === w.kriId) : null;
     const rect = w.rectificationTaskId ? APP_DATA.rectificationTasks.find(t => t.taskId === w.rectificationTaskId) : APP_DATA.rectificationTasks.find(t => t.riskMatterId === w.id || t.riskId === w.id);
     const rel = kri ? APP_DATA.dataLineageRelations.find(r => r.kriId === kri.id) : null;
-    node.innerHTML = `${this.renderPublicBackButton()}<div class="card"><div class="card-title">${w.name} · 公共风险事项详情</div>
-      <div class="info-grid"><div class="info-item"><div class="info-label">风险等级/状态</div><div class="info-value">${w.level} · ${w.status}</div></div>
-      <div class="info-item"><div class="info-label">责任法人</div><div class="info-value">${entity ? entity.entityName : w.unit}</div></div>
-      <div class="info-item"><div class="info-label">关联项目</div><div class="info-value">${project ? project.projectName : w.project}</div></div>
-      <div class="info-item"><div class="info-label">KRI/指标</div><div class="info-value">${w.indicator || (kri ? kri.name : '—')}</div></div></div>
-      <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
-        ${entity ? `<button class="btn btn-outline" onclick="App.navigatePublic('global-legal-entities',{entityId:'${entity.entityId}'})">查看法人</button>` : ''}
-        ${project ? `<button class="btn btn-outline" onclick="App.navigatePublic('global-regions',{projectId:'${project.projectId}'})">查看项目</button>` : ''}
-        ${kri ? `<button class="btn btn-outline" onclick="App.navigatePublic('data-governance',{relationId:'${rel ? rel.relationId : 'LIN001}'})">查看 KRI</button>` : ''}
-        ${rect ? `<button class="btn btn-outline" onclick="App.navigatePublic('rectification',{taskId:'${rect.taskId}'})">查看整改任务</button>` : ''}
-      </div></div>`;
+    node.innerHTML = this.buildPublicDetailPanel({
+      objectType: '风险事项',
+      objectName: w.name,
+      objectId: w.id,
+      status: w.status,
+      updatedAt: w.lastUpdateTime || '—',
+      sections: [
+        { title: '一、对象基本信息', content: this.renderPublicMetaGrid([
+          { label: '风险事项名称', value: w.name },
+          this.renderPublicIdField(w.id, '风险事项 ID'),
+          { label: '风险等级', value: w.level },
+          { label: '责任法人', value: entity ? entity.entityName : w.unit },
+          { label: '关联项目', value: project ? project.projectName : w.project },
+          { label: 'KRI/指标', value: w.indicator || (kri ? kri.name : '—') },
+          { label: '当前状态', html: this.renderPublicStatusBadge(w.status) }
+        ]) },
+        { title: '二、组织关系', content: entity ? this.renderPublicLinkButton(entity.entityName, `App.navigatePublic('global-legal-entities',{entityId:'${entity.entityId}'})`) : this.renderPublicEmptyState('暂无关联法人') },
+        { title: '三、数据与指标', content: kri ? this.renderPublicLinkButton(kri.name, `App.navigatePublic('data-governance',{relationId:'${rel ? rel.relationId : 'LIN001}'})`) : this.renderPublicEmptyState('暂无关联 KRI') },
+        { title: '五、责任与整改', content: rect ? this.renderPublicLinkButton(rect.title, `App.navigatePublic('rectification',{rectificationTaskId:'${rect.taskId}'})`) : this.renderPublicEmptyState('暂无关联整改') }
+      ],
+      footer: `${entity ? this.renderPublicLinkButton('查看法人', `App.navigatePublic('global-legal-entities',{entityId:'${entity.entityId}'})`) : ''}${project ? this.renderPublicLinkButton('查看项目', `App.navigatePublic('global-regions',{projectId:'${project.projectId}'})`) : ''}${kri ? this.renderPublicLinkButton('查看 KRI', `App.navigatePublic('data-governance',{relationId:'${rel ? rel.relationId : 'LIN001}'})`) : ''}${rect ? this.renderPublicLinkButton('查看整改任务', `App.navigatePublic('rectification',{rectificationTaskId:'${rect.taskId}'})`) : ''}`
+    });
     node.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }, '风险事项');
   },
 
   showWarningDetail(riskId) {
