@@ -3661,3 +3661,469 @@ Object.assign(APP_DATA, {
     recommendationCount: recommendations.length
   };
 })();
+
+(function () {
+  const TODAY = '2026-07-22';
+  const entities = APP_DATA.globalLegalEntities || [];
+  const regions = APP_DATA.globalRegions || [];
+  const countries = APP_DATA.globalCountries || [];
+  const projects = APP_DATA.globalProjects || [];
+  const domains = APP_DATA.regulationDomains || [];
+  const events = APP_DATA.regulatoryEvents || [];
+  const warnings = APP_DATA.warnings || [];
+  const cdrMatters = APP_DATA.crossDomainRiskMatters || [];
+  const rects = APP_DATA.rectificationTasks || [];
+  const actions = APP_DATA.regulatoryActions || [];
+  const feedbacks = APP_DATA.regulatoryActionFeedbacks || [];
+  const supTasks = APP_DATA.regulatorySupervisionTasks || [];
+  const allocations = APP_DATA.regulatoryResourceAllocations || [];
+  const priorities = APP_DATA.regulatoryPrioritiesRecalculated || APP_DATA.regulatoryPriorities || {};
+  const health = APP_DATA.regulatoryHealthScores || {};
+  const entityHealth = health.entities || [];
+  const strategy = APP_DATA.regulatoryStrategyAnalysis || {};
+  const maturity = APP_DATA.regulatoryMaturity || {};
+  const perfMetrics = APP_DATA.regulatoryPerformanceMetrics || [];
+  const perfSummary = APP_DATA.regulatoryPerformanceSummary || {};
+  const objectives = APP_DATA.regulatoryStrategicObjectives || [];
+  const annualPlans = APP_DATA.regulatoryAnnualPlans || [];
+  const recommendations = APP_DATA.regulatoryNextCycleRecommendations || [];
+  const changeRequests = APP_DATA.regulatoryRuleChangeRequests || [];
+  const approvals = APP_DATA.regulatoryRuleApprovals || [];
+  const anomalies = APP_DATA.regulatoryRuleRuntimeAnomalies || [];
+  const deployments = APP_DATA.regulatoryRuleDeployments || [];
+  const quality = APP_DATA.dataQualityIssues || [];
+  const priorityObjects = APP_DATA.regulatoryPriorityObjects || [];
+  const commandM = APP_DATA.regulatoryCommandCenterMetrics || {};
+
+  const priRank = { CRITICAL: 4, HIGH: 3, MEDIUM: 2, LOW: 1 };
+  const isOverdue = (date, status) => date && date < TODAY && !['COMPLETED', 'VERIFIED', 'CLOSED', '已关闭'].includes(status);
+
+  const buildScopeSummary = (scopeType, scopeId, entityIds) => {
+    const eSet = new Set(entityIds);
+    const entEvents = events.filter(e => eSet.has(e.entityId));
+    const entRects = rects.filter(t => eSet.has(t.entityId));
+    const entActions = actions.filter(a => eSet.has(a.entityId));
+    const entTasks = supTasks.filter(t => eSet.has(t.entityId));
+    const openRects = entRects.filter(t => t.status !== '已关闭' && !t.closedAt);
+    const overdueRects = openRects.filter(t => isOverdue(t.deadline, t.status));
+    const pendingActions = entActions.filter(a => ['RECOMMENDED', 'ASSIGNED', 'IN_PROGRESS', 'WAITING_FEEDBACK', 'OVERDUE'].includes(a.status));
+    const pendingTasks = entTasks.filter(t => ['RECOMMENDED', 'ASSIGNED', 'IN_PROGRESS', 'WAITING_RESULT'].includes(t.taskStatus));
+    const perf = scopeType === 'GROUP'
+      ? perfMetrics.find(p => p.scopeType === 'GROUP')
+      : scopeType === 'REGION'
+        ? perfMetrics.find(p => p.scopeType === 'REGION' && p.scopeId === scopeId)
+        : scopeType === 'ENTITY'
+          ? perfMetrics.find(p => p.scopeType === 'ENTITY' && p.scopeId === scopeId)
+          : null;
+    const highPri = entityIds.filter(id => {
+      const p = priorities[id];
+      return p && (p.priority === 'CRITICAL' || p.priority === 'HIGH');
+    }).length;
+    const strat = scopeType === 'ENTITY' ? (strategy.entities || []).find(s => s.objectId === scopeId) : scopeType === 'REGION' ? (strategy.regions || []).find(s => s.objectId === scopeId) : null;
+    const mat = scopeType === 'ENTITY' ? (maturity.entityMaturity || []).find(m => m.objectId === scopeId) : null;
+    return {
+      prioritySummary: { highPriorityCount: highPri, criticalCount: entityIds.filter(id => priorities[id]?.priority === 'CRITICAL').length },
+      healthSummary: { warningCount: entityIds.filter(id => (entityHealth.find(h => h.objectId === id) || {}).level === 'WARNING' || (entityHealth.find(h => h.objectId === id) || {}).level === 'CRITICAL').length },
+      eventSummary: { total: entEvents.length, highRisk: entEvents.filter(e => e.riskLevel === 'HIGH').length, open: entEvents.filter(e => e.status !== 'CLOSED').length },
+      rectificationSummary: { total: entRects.length, open: openRects.length, overdue: overdueRects.length, closureRate: entRects.length ? +(entRects.filter(t => t.status === '已关闭' || t.closedAt).length / entRects.length).toFixed(2) : 1 },
+      actionSummary: { total: entActions.length, pending: pendingActions.length, overdue: entActions.filter(a => a.status === 'OVERDUE').length },
+      supervisionTaskSummary: { total: entTasks.length, pending: pendingTasks.length, overdue: entTasks.filter(t => t.overdue || isOverdue(t.deadline, t.taskStatus)).length },
+      performanceSummary: perf ? { score: perf.regulatoryEffectivenessScore, closureRate: perf.rectificationClosureRate } : { score: perfSummary.regulatoryEffectivenessScore || 0, closureRate: perfSummary.rectificationClosureRate || 0 },
+      strategySummary: strat ? { level: strat.strategyLevel, label: strat.strategyLabel } : { level: 'OBSERVE', label: '持续观察' },
+      maturitySummary: mat ? { level: mat.level, score: mat.score } : { level: maturity.overallLevel || 'L3', score: maturity.overallScore || 0 },
+      pendingDecisionCount: entEvents.filter(e => e.status === 'OPEN' || e.status === 'ACKNOWLEDGED').length + highPri,
+      pendingActionCount: pendingActions.length,
+      pendingTaskCount: pendingTasks.length,
+      pendingVerificationCount: entActions.filter(a => a.status === 'COMPLETED').length + entRects.filter(t => t.status === '整改验证' || t.verificationStatus === '验证中').length,
+      overdueCount: overdueRects.length + entActions.filter(a => a.status === 'OVERDUE').length + entTasks.filter(t => t.overdue).length
+    };
+  };
+
+  const entityIdsForScope = (scopeType, scopeId) => {
+    if (scopeType === 'GROUP') return entities.filter(e => e.entityId !== 'G001').map(e => e.entityId);
+    if (scopeType === 'REGION') return entities.filter(e => e.regionId === scopeId && e.entityId !== 'G001').map(e => e.entityId);
+    if (scopeType === 'ENTITY') return scopeId ? [scopeId] : [];
+    if (scopeType === 'PROJECT') {
+      const p = projects.find(x => x.projectId === scopeId);
+      return p ? [p.entityId] : [];
+    }
+    if (scopeType === 'DOMAIN') return [...new Set(events.filter(e => e.domainId === scopeId).map(e => e.entityId).filter(Boolean))];
+    return [];
+  };
+
+  const workbenches = [];
+  let wbSeq = 1;
+  const addWorkbench = (scopeType, scopeId) => {
+    const eids = entityIdsForScope(scopeType, scopeId);
+    const s = buildScopeSummary(scopeType, scopeId, eids);
+    const topIssues = [];
+    priorityObjects.filter(o => scopeType === 'GROUP' || (scopeType === 'REGION' && o.regionId === scopeId) || (scopeType === 'ENTITY' && o.objectId === scopeId)).slice(0, 5).forEach(o => {
+      topIssues.push({ issueId: 'ISS-' + o.objectId, title: o.objectName + ' 监管优先级 ' + o.priority, entityId: o.objectId, priority: o.priority, sourceType: 'PRIORITY' });
+    });
+    events.filter(e => e.riskLevel === 'HIGH' && (scopeType === 'GROUP' || eids.includes(e.entityId))).slice(0, 3).forEach(ev => {
+      topIssues.push({ issueId: ev.eventId, title: ev.eventTitle || ev.eventId, entityId: ev.entityId, priority: 'HIGH', sourceType: 'EVENT' });
+    });
+    objectives.filter(o => o.status === 'BEHIND' || o.status === 'AT_RISK').slice(0, 2).forEach(o => {
+      if (scopeType === 'GROUP') topIssues.push({ issueId: o.objectiveId, title: o.objectiveName + ' 战略偏差', priority: 'HIGH', sourceType: 'OBJECTIVE' });
+    });
+    const topRisks = warnings.filter(w => scopeType === 'GROUP' || eids.includes(w.entityId)).filter(w => w.level === '重大').slice(0, 5).map(w => ({ riskMatterId: w.id, name: w.name, entityId: w.entityId, level: w.level }));
+    const topActions = actions.filter(a => scopeType === 'GROUP' || eids.includes(a.entityId)).filter(a => a.priority === 'CRITICAL' || a.priority === 'HIGH').slice(0, 5).map(a => ({ actionId: a.actionId, type: a.actionType, entityId: a.entityId, status: a.status }));
+    workbenches.push({
+      workbenchId: 'WB-' + String(wbSeq++).padStart(3, '0'),
+      scopeType,
+      scopeId: scopeId || 'G001',
+      ...s,
+      topIssues,
+      topRisks,
+      topActions,
+      recommendedNextSteps: [
+        s.pendingDecisionCount ? '进入监管决策工作室处理待决策事项' : null,
+        s.pendingActionCount ? '查看待执行监管行动' : null,
+        s.overdueCount ? '优先处理超期整改与行动' : null,
+        '查看统一监管待办队列'
+      ].filter(Boolean)
+    });
+  };
+
+  addWorkbench('GROUP', 'G001');
+  regions.forEach(r => addWorkbench('REGION', r.regionId));
+  entities.filter(e => e.entityId !== 'G001').slice(0, 8).forEach(e => addWorkbench('ENTITY', e.entityId));
+
+  const groupWb = workbenches.find(w => w.scopeType === 'GROUP');
+
+  const queue = [];
+  let qSeq = 1;
+  const mkQueue = (item) => {
+    const q = {
+      queueItemId: 'QUE-' + String(qSeq++).padStart(3, '0'),
+      queueType: item.queueType,
+      sourceId: item.sourceId,
+      sourceType: item.sourceType,
+      entityId: item.entityId || null,
+      regionId: item.regionId || null,
+      countryId: item.countryId || null,
+      projectId: item.projectId || null,
+      domainId: item.domainId || null,
+      priority: item.priority || 'MEDIUM',
+      status: item.status || 'PENDING',
+      title: item.title,
+      description: item.description || '',
+      dueDate: item.dueDate || null,
+      isOverdue: item.isOverdue || false,
+      owner: item.owner || '—',
+      department: item.department || '—',
+      sourceEventIds: item.sourceEventIds || [],
+      sourceRiskMatterIds: item.sourceRiskMatterIds || [],
+      sourceActionIds: item.sourceActionIds || [],
+      sourceRectificationTaskIds: item.sourceRectificationTaskIds || [],
+      recommendedAction: item.recommendedAction || '查看详情并处理',
+      nextPageId: item.nextPageId || 'regulatory-queue',
+      decisionContextId: item.decisionContextId || null
+    };
+    queue.push(q);
+    return q;
+  };
+
+  events.filter(e => e.status !== 'CLOSED').forEach(ev => {
+    const ent = entities.find(x => x.entityId === ev.entityId);
+    mkQueue({
+      queueType: ev.status === 'OPEN' || ev.status === 'ACKNOWLEDGED' ? 'DECISION' : 'ACTION',
+      sourceId: ev.eventId, sourceType: 'regulatoryEvents',
+      entityId: ev.entityId, regionId: ev.regionId || ent?.regionId, countryId: ev.countryId || ent?.countryId, domainId: ev.domainId,
+      priority: ev.riskLevel === 'HIGH' ? 'HIGH' : 'MEDIUM', status: ev.status,
+      title: ev.eventTitle || ev.eventId, description: ev.description || ev.eventType,
+      dueDate: ev.dueDate, isOverdue: isOverdue(ev.dueDate, ev.status),
+      department: ent?.responsibleDepartment || '集团风险管理部',
+      sourceEventIds: [ev.eventId],
+      sourceRiskMatterIds: ev.riskMatterId ? [ev.riskMatterId] : [],
+      recommendedAction: '进入监管事件中心处理', nextPageId: 'regulatory-events'
+    });
+  });
+
+  rects.filter(t => t.status !== '已关闭' && !t.closedAt).forEach(t => {
+    const ent = entities.find(e => e.entityId === t.entityId);
+    mkQueue({
+      queueType: t.status === '整改验证' || t.verificationStatus === '验证中' ? 'VERIFICATION' : 'ACTION',
+      sourceId: t.taskId, sourceType: 'rectificationTasks',
+      entityId: t.entityId, regionId: t.regionId, countryId: t.countryId, projectId: t.projectId, domainId: t.domainId,
+      priority: t.level === 'L4' ? 'CRITICAL' : 'HIGH', status: t.status,
+      title: t.title, description: t.measure || t.taskType,
+      dueDate: t.deadline, isOverdue: isOverdue(t.deadline, t.status),
+      owner: t.owner, department: t.responsibleDepartment || t.owner,
+      sourceRectificationTaskIds: [t.taskId],
+      sourceRiskMatterIds: t.riskMatterId ? [t.riskMatterId] : [],
+      recommendedAction: '进入整改督办', nextPageId: 'rectification'
+    });
+  });
+
+  actions.filter(a => ['RECOMMENDED', 'ASSIGNED', 'IN_PROGRESS', 'WAITING_FEEDBACK', 'OVERDUE', 'COMPLETED'].includes(a.status)).forEach(act => {
+    const ent = entities.find(e => e.entityId === act.entityId);
+    const qType = act.status === 'COMPLETED' ? 'VERIFICATION' : act.status === 'WAITING_FEEDBACK' ? 'FEEDBACK' : 'ACTION';
+    mkQueue({
+      queueType: qType, sourceId: act.actionId, sourceType: 'regulatoryActions',
+      entityId: act.entityId, regionId: act.regionId || ent?.regionId, domainId: act.domainId,
+      priority: act.priority, status: act.status,
+      title: act.actionId + ' · ' + act.actionType, description: act.triggerReason || act.recommendedAction,
+      dueDate: act.dueDate, isOverdue: act.status === 'OVERDUE' || isOverdue(act.dueDate, act.status),
+      department: act.responsibleDepartment,
+      sourceActionIds: [act.actionId],
+      sourceEventIds: act.sourceEventIds || [],
+      sourceRiskMatterIds: act.sourceRiskMatterIds || [],
+      sourceRectificationTaskIds: act.sourceRectificationTaskIds || [],
+      recommendedAction: act.recommendedAction, nextPageId: 'regulatory-actions'
+    });
+  });
+
+  feedbacks.filter(f => f.feedbackStatus === 'PENDING' || f.feedbackStatus === 'DRAFT').forEach(fb => {
+    const act = actions.find(a => a.actionId === fb.actionId);
+    mkQueue({
+      queueType: 'FEEDBACK', sourceId: fb.feedbackId, sourceType: 'regulatoryActionFeedbacks',
+      entityId: act?.entityId, priority: act?.priority || 'MEDIUM', status: fb.feedbackStatus,
+      title: fb.feedbackId + ' · 行动反馈', description: fb.feedbackType,
+      dueDate: fb.dueDate, isOverdue: isOverdue(fb.dueDate, fb.feedbackStatus),
+      department: act?.responsibleDepartment,
+      sourceActionIds: [fb.actionId],
+      recommendedAction: '提交执行反馈', nextPageId: 'regulatory-action-execution'
+    });
+  });
+
+  supTasks.filter(t => ['RECOMMENDED', 'ASSIGNED', 'IN_PROGRESS', 'WAITING_RESULT'].includes(t.taskStatus)).forEach(task => {
+    const ent = entities.find(e => e.entityId === task.entityId);
+    mkQueue({
+      queueType: 'SUPERVISION_TASK', sourceId: task.supervisionTaskId, sourceType: 'regulatorySupervisionTasks',
+      entityId: task.entityId, regionId: task.regionId || ent?.regionId,
+      priority: task.taskStatus === 'RECOMMENDED' ? 'MEDIUM' : 'HIGH', status: task.taskStatus,
+      title: task.supervisionTaskId + ' · ' + task.outcomeTarget, description: task.taskType,
+      dueDate: task.deadline, isOverdue: task.overdue || isOverdue(task.deadline, task.taskStatus),
+      department: task.responsibleDepartment,
+      sourceActionIds: task.relatedRegulatoryActionIds || [],
+      sourceEventIds: task.sourceEventIds || [],
+      sourceRiskMatterIds: task.sourceRiskMatterIds || [],
+      sourceRectificationTaskIds: task.relatedRectificationTaskIds || [],
+      recommendedAction: '进入监管任务协同', nextPageId: 'regulatory-supervision-tasks'
+    });
+  });
+
+  changeRequests.filter(cr => ['PENDING', 'SUBMITTED', 'IN_REVIEW', 'PENDING_APPROVAL', 'IMPACT_ASSESSED', 'DRAFT'].includes(cr.status)).forEach(cr => {
+    mkQueue({
+      queueType: 'RULE_APPROVAL', sourceId: cr.changeRequestId, sourceType: 'regulatoryRuleChangeRequests',
+      priority: 'HIGH', status: cr.status,
+      title: cr.changeRequestId + ' · ' + (cr.changeTitle || cr.ruleId),
+      description: cr.changeDescription || cr.reason,
+      dueDate: cr.dueDate, isOverdue: isOverdue(cr.dueDate, cr.status),
+      department: cr.submittedBy || '集团监管部',
+      recommendedAction: '进入规则审批中心', nextPageId: 'regulatory-rule-approvals'
+    });
+  });
+
+  approvals.filter(a => ['PENDING', 'IN_REVIEW'].includes(a.approvalStatus)).forEach(apr => {
+    const cr = changeRequests.find(c => c.changeRequestId === apr.changeRequestId);
+    mkQueue({
+      queueType: 'RULE_APPROVAL', sourceId: apr.approvalId, sourceType: 'regulatoryRuleApprovals',
+      priority: 'HIGH', status: apr.approvalStatus,
+      title: apr.approvalId + ' · 规则审批',
+      description: (cr?.changeTitle || cr?.ruleId || apr.changeRequestId) + ' · ' + (apr.approvalStage || ''),
+      dueDate: apr.dueDate, isOverdue: isOverdue(apr.dueDate, apr.approvalStatus),
+      department: apr.approverDepartment || '集团监管部',
+      recommendedAction: '进入规则审批中心', nextPageId: 'regulatory-rule-approvals'
+    });
+  });
+
+  deployments.filter(d => d.deploymentStatus === 'PENDING').forEach(dep => {
+    mkQueue({
+      queueType: 'RULE_DEPLOYMENT', sourceId: dep.deploymentId, sourceType: 'regulatoryRuleDeployments',
+      priority: 'HIGH', status: dep.deploymentStatus,
+      title: dep.deploymentId + ' · 待发布 ' + dep.ruleId,
+      description: dep.deploymentNotes || '规则版本待生效',
+      department: '集团监管部',
+      recommendedAction: '进入规则部署中心', nextPageId: 'regulatory-rule-deployments'
+    });
+  });
+
+  (APP_DATA.regulatoryRuleVersions || []).filter(v => ['PENDING_PUBLISH', 'APPROVED'].includes(v.status)).forEach(ver => {
+    mkQueue({
+      queueType: 'RULE_DEPLOYMENT', sourceId: ver.versionId, sourceType: 'regulatoryRuleVersions',
+      priority: 'HIGH', status: ver.status,
+      title: ver.versionId + ' · 待发布 ' + (ver.ruleName || ver.ruleId),
+      description: ver.changeSummary || '规则版本待发布生效',
+      department: '集团监管部',
+      recommendedAction: '进入规则版本中心', nextPageId: 'regulatory-rule-versions'
+    });
+  });
+
+  anomalies.forEach(a => {
+    const ent = a.entityId ? entities.find(e => e.entityId === a.entityId) : null;
+    mkQueue({
+      queueType: 'RULE_ANOMALY', sourceId: a.anomalyId, sourceType: 'regulatoryRuleRuntimeAnomalies',
+      entityId: a.entityId, regionId: ent?.regionId,
+      priority: a.severity === 'HIGH' ? 'CRITICAL' : 'HIGH', status: 'OPEN',
+      title: a.anomalyId + ' · ' + a.anomalyType,
+      description: a.description,
+      dueDate: TODAY, isOverdue: false,
+      department: '集团监管部',
+      recommendedAction: '查看规则运行异常', nextPageId: 'regulatory-rule-runtime'
+    });
+  });
+
+  objectives.filter(o => o.status === 'BEHIND' || o.status === 'AT_RISK').forEach(obj => {
+    mkQueue({
+      queueType: 'STRATEGIC_REVIEW', sourceId: obj.objectiveId, sourceType: 'regulatoryStrategicObjectives',
+      priority: obj.status === 'BEHIND' ? 'CRITICAL' : 'HIGH', status: obj.status,
+      title: obj.objectiveName + ' 战略偏差',
+      description: `完成率 ${Math.round(obj.completionRate * 100)}%，偏差 ${obj.variance}${obj.unit}`,
+      department: '集团风险管理部',
+      recommendedAction: '进入战略规划中心', nextPageId: 'regulatory-strategy-planning'
+    });
+  });
+
+  annualPlans.filter(p => p.planStatus === 'AT_RISK').forEach(plan => {
+    mkQueue({
+      queueType: 'PLAN_VARIANCE', sourceId: plan.planId, sourceType: 'regulatoryAnnualPlans',
+      priority: 'HIGH', status: plan.planStatus,
+      title: plan.planName + ' 计划偏差',
+      description: `完成率 ${Math.round(plan.completionRate * 100)}%`,
+      dueDate: plan.planYear + '-12-31',
+      department: '集团风险管理部',
+      recommendedAction: '查看年度计划执行', nextPageId: 'regulatory-plan-execution'
+    });
+  });
+
+  recommendations.filter(r => r.status === 'OPEN').forEach(rec => {
+    mkQueue({
+      queueType: 'STRATEGIC_REVIEW', sourceId: rec.recommendationId, sourceType: 'regulatoryNextCycleRecommendations',
+      priority: rec.priority, status: rec.status,
+      title: '下一周期建议 · ' + rec.recommendationType,
+      description: rec.triggerReason,
+      department: '集团风险管理部',
+      focusEntityIds: rec.focusEntityIds,
+      recommendedAction: rec.strategyAdjustment, nextPageId: 'regulatory-strategic-review'
+    });
+  });
+
+  queue.sort((a, b) => (priRank[b.priority] || 0) - (priRank[a.priority] || 0));
+
+  const decisionContexts = [];
+  let dcSeq = 1;
+  const decisionOptionsFor = (ent, pri, h, strat) => {
+    const opts = [];
+    if (pri?.priority === 'CRITICAL' || pri?.priority === 'HIGH') opts.push({ action: 'FOCUS_SUPERVISION', label: '重点监管', basis: '高监管优先级' });
+    if (pri?.priority === 'CRITICAL') opts.push({ action: 'SPECIAL_SUPERVISION', label: '专项监管', basis: 'CRITICAL 优先级' });
+    const overdue = rects.filter(t => t.entityId === ent.entityId && isOverdue(t.deadline, t.status));
+    if (overdue.length) opts.push({ action: 'ESCALATE_RECTIFICATION', label: '升级督办整改', basis: `超期整改 ${overdue.length} 项` });
+    const qual = quality.filter(q => {
+      const obj = (APP_DATA.dataObjects || []).find(o => o.objectId === q.objectId);
+      return obj && obj.entityId === ent.entityId;
+    });
+    if (qual.length) opts.push({ action: 'DATA_QUALITY_REMEDIATION', label: '数据质量专项治理', basis: `数据质量异常 ${qual.length} 项` });
+    if ((ent.kriExceptionCount || 0) > 0) opts.push({ action: 'KRI_MONITORING', label: 'KRI 异常监测', basis: `KRI 异常 ${ent.kriExceptionCount} 项` });
+    const cbEvts = events.filter(e => e.entityId === ent.entityId && e.eventType === 'CROSS_BORDER');
+    if (cbEvts.length) opts.push({ action: 'CROSS_BORDER_REVIEW', label: '跨境合规复核', basis: '跨境合规异常' });
+    const cdr = cdrMatters.filter(m => (m.entityIds || []).includes(ent.entityId));
+    if (cdr.length) opts.push({ action: 'CROSS_DOMAIN_COORDINATION', label: '跨领域协同', basis: '跨领域风险传导' });
+    if (allocations.some(a => a.entityId === ent.entityId && a.allocatedLevel === 'HIGH')) opts.push({ action: 'RESOURCE_REALLOCATION', label: '资源配置调整', basis: '高资源投入对象' });
+    if (!opts.length) opts.push({ action: 'CONTINUE_MONITORING', label: '持续观察', basis: '当前风险可控' });
+    return opts;
+  };
+
+  entities.filter(e => e.entityId !== 'G001').forEach(ent => {
+    const pri = priorities[ent.entityId] || {};
+    const h = entityHealth.find(x => x.objectId === ent.entityId) || {};
+    const strat = (strategy.entities || []).find(s => s.objectId === ent.entityId);
+    const mat = (maturity.entityMaturity || []).find(m => m.objectId === ent.entityId);
+    const perf = perfMetrics.find(p => p.scopeType === 'ENTITY' && p.scopeId === ent.entityId);
+    const entEvents = events.filter(e => e.entityId === ent.entityId);
+    const entRects = rects.filter(t => t.entityId === ent.entityId);
+    const entActions = actions.filter(a => a.entityId === ent.entityId);
+    const entWarnings = warnings.filter(w => w.entityId === ent.entityId);
+    const entQual = quality.filter(q => {
+      const obj = (APP_DATA.dataObjects || []).find(o => o.objectId === q.objectId);
+      return obj && obj.entityId === ent.entityId;
+    });
+    const options = decisionOptionsFor(ent, pri, h, strat);
+    const recommended = options[0];
+    decisionContexts.push({
+      decisionContextId: 'DC-' + String(dcSeq++).padStart(3, '0'),
+      entityId: ent.entityId,
+      regionId: ent.regionId,
+      countryId: ent.countryId,
+      projectId: null,
+      domainId: 'investment',
+      priority: pri.priority || 'LOW',
+      healthLevel: h.level || 'ATTENTION',
+      strategyLevel: strat?.strategyLevel || 'OBSERVE',
+      maturityLevel: mat?.level || maturity.overallLevel || 'L3',
+      riskSummary: { total: entWarnings.length, major: entWarnings.filter(w => w.level === '重大').length, highRiskEvents: entEvents.filter(e => e.riskLevel === 'HIGH').length },
+      dataQualitySummary: { issueCount: entQual.length, openCount: entQual.filter(q => q.status !== '已关闭' && q.status !== '已修复').length },
+      kriSummary: { exceptionCount: ent.kriExceptionCount || 0 },
+      eventSummary: { total: entEvents.length, open: entEvents.filter(e => e.status !== 'CLOSED').length },
+      rectificationSummary: { total: entRects.length, open: entRects.filter(t => t.status !== '已关闭').length, overdue: entRects.filter(t => isOverdue(t.deadline, t.status)).length },
+      actionSummary: { total: entActions.length, pending: entActions.filter(a => !['VERIFIED', 'CANCELLED'].includes(a.status)).length },
+      performanceSummary: perf ? { score: perf.regulatoryEffectivenessScore } : { score: 0 },
+      currentDecision: recommended?.action || 'CONTINUE_MONITORING',
+      decisionOptions: options,
+      recommendedDecision: recommended?.action || 'CONTINUE_MONITORING',
+      decisionBasis: recommended?.basis || pri.recommendedAction || '综合监管状态评估',
+      relatedEventIds: entEvents.slice(0, 5).map(e => e.eventId),
+      relatedRiskMatterIds: entWarnings.slice(0, 5).map(w => w.id),
+      relatedKriIds: entWarnings.filter(w => w.kriId).map(w => w.kriId).slice(0, 3),
+      relatedActionIds: entActions.slice(0, 5).map(a => a.actionId),
+      relatedRectificationTaskIds: entRects.slice(0, 5).map(t => t.taskId),
+      createdAt: '2026-07-01T00:00:00',
+      updatedAt: TODAY + 'T08:00:00'
+    });
+  });
+
+  queue.forEach(q => {
+    if (q.entityId && !q.decisionContextId) {
+      const dc = decisionContexts.find(d => d.entityId === q.entityId);
+      if (dc) q.decisionContextId = dc.decisionContextId;
+    }
+  });
+
+  workbenches.forEach(wb => {
+    wb.topIssues.forEach(issue => {
+      if (issue.entityId) {
+        const dc = decisionContexts.find(d => d.entityId === issue.entityId);
+        if (dc) issue.decisionContextId = dc.decisionContextId;
+      }
+    });
+  });
+
+  const workbenchMetrics = {
+    objectCount: entities.filter(e => e.entityId !== 'G001').length,
+    highPriorityObjectCount: priorityObjects.filter(o => o.priority === 'CRITICAL' || o.priority === 'HIGH').length,
+    majorEventCount: events.filter(e => e.riskLevel === 'HIGH').length,
+    overdueRectCount: rects.filter(t => isOverdue(t.deadline, t.status)).length,
+    pendingDecisionCount: queue.filter(q => q.queueType === 'DECISION').length,
+    pendingActionCount: queue.filter(q => q.queueType === 'ACTION').length,
+    pendingTaskCount: queue.filter(q => q.queueType === 'SUPERVISION_TASK').length,
+    pendingVerificationCount: queue.filter(q => q.queueType === 'VERIFICATION').length,
+    overdueCount: queue.filter(q => q.isOverdue).length,
+    highPriorityCount: queue.filter(q => q.priority === 'CRITICAL' || q.priority === 'HIGH').length,
+    ruleAnomalyCount: queue.filter(q => q.queueType === 'RULE_ANOMALY').length,
+    strategicDeviationCount: queue.filter(q => q.queueType === 'STRATEGIC_REVIEW' || q.queueType === 'PLAN_VARIANCE').length,
+    queueTotal: queue.length,
+    decisionContextCount: decisionContexts.length,
+    workbenchCount: workbenches.length,
+    topEntityIds: priorityObjects.slice(0, 10).map(o => o.objectId),
+    topRegionIds: regions.slice(0, 5).map(r => r.regionId),
+    topDomainIds: (strategy.domains || []).filter(d => d.strategyLevel === 'FOCUS' || d.strategyLevel === 'SPECIAL').slice(0, 5).map(d => d.objectId),
+    topProjectIds: projects.filter(p => (p.highRiskCount || 0) > 0 || (p.riskCount || 0) > 0).slice(0, 10).map(p => p.projectId),
+    loopStatus: {
+      discover: events.filter(e => e.status !== 'CLOSED').length,
+      judge: Object.keys(priorities).filter(k => priorities[k].priority !== 'LOW').length,
+      decide: queue.filter(q => q.queueType === 'DECISION').length,
+      execute: queue.filter(q => q.queueType === 'ACTION').length,
+      resource: allocations.filter(a => a.allocationStatus === 'ACTIVE').length,
+      task: queue.filter(q => q.queueType === 'SUPERVISION_TASK').length,
+      rectify: rects.filter(t => t.status !== '已关闭').length,
+      evaluate: (perfSummary.regulatoryEffectivenessScore || 0),
+      review: recommendations.filter(r => r.status === 'OPEN').length
+    }
+  };
+
+  APP_DATA.regulatoryWorkbench = workbenches;
+  APP_DATA.regulatoryQueue = queue;
+  APP_DATA.regulatoryDecisionContext = decisionContexts;
+  APP_DATA.regulatoryWorkbenchMetrics = workbenchMetrics;
+})();

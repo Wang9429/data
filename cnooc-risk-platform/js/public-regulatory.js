@@ -44,6 +44,9 @@ Object.assign(App, {
     { pageId: 'regulatory-focus-management', label: '年度监管重点管理', category: '战略运营', entryFromGroupOverview: false, supportsPublicNavigation: true, supportsBackNavigation: true },
     { pageId: 'regulatory-plan-execution', label: '年度监管计划执行中心', category: '战略运营', entryFromGroupOverview: false, supportsPublicNavigation: true, supportsBackNavigation: true },
     { pageId: 'regulatory-strategic-review', label: '集团监管战略复盘', category: '战略运营', entryFromGroupOverview: false, supportsPublicNavigation: true, supportsBackNavigation: true },
+    { pageId: 'regulatory-workbench', label: '集团监管统一工作台', category: '平台收口', entryFromGroupOverview: false, supportsPublicNavigation: true, supportsBackNavigation: true },
+    { pageId: 'regulatory-queue', label: '集团监管待办队列', category: '平台收口', entryFromGroupOverview: false, supportsPublicNavigation: true, supportsBackNavigation: true },
+    { pageId: 'regulatory-decision-room', label: '集团监管决策工作室', category: '平台收口', entryFromGroupOverview: false, supportsPublicNavigation: true, supportsBackNavigation: true },
     { pageId: 'major', label: '重大事项监管', category: '重大事项', entryFromGroupOverview: false, supportsPublicNavigation: false, supportsBackNavigation: false }
   ],
 
@@ -91,6 +94,9 @@ Object.assign(App, {
     if (pageId === 'regulatory-focus-management') return { ...(this.regulatoryFocusFilter || {}) };
     if (pageId === 'regulatory-plan-execution') return { ...(this.regulatoryPlanExecutionFilter || {}) };
     if (pageId === 'regulatory-strategic-review') return { ...(this.regulatoryStrategicReviewFilter || {}) };
+    if (pageId === 'regulatory-workbench') return { ...(this.regulatoryWorkbenchFilter || {}) };
+    if (pageId === 'regulatory-queue') return { ...(this.regulatoryQueueFilter || {}) };
+    if (pageId === 'regulatory-decision-room') return { ...(this.regulatoryDecisionRoomFilter || {}) };
     if (pageId === 'regulatory-actions') return { ...(this.regulatoryActionFilter || {}) };
     if (pageId === 'regulatory-action-execution') return { ...(this.regulatoryActionExecutionFilter || {}) };
     if (pageId === 'data-governance') return { ...(this.dataGovFilter || {}) };
@@ -156,6 +162,9 @@ Object.assign(App, {
       ctx.reviewId = this.regulatoryReviewFocusId;
       ctx.recommendationId = this.regulatoryNextCycleRecommendationFocusId;
     }
+    if (pageId === 'regulatory-workbench') ctx.workbenchId = this.regulatoryWorkbenchFocusId;
+    if (pageId === 'regulatory-queue') ctx.queueItemId = this.regulatoryQueueFocusId;
+    if (pageId === 'regulatory-decision-room') ctx.decisionContextId = this.regulatoryDecisionContextFocusId;
     return ctx;
   },
 
@@ -174,6 +183,9 @@ Object.assign(App, {
     if (pageId === 'regulatory-focus-management') this.regulatoryFocusFilter = { ...filters };
     if (pageId === 'regulatory-plan-execution') this.regulatoryPlanExecutionFilter = { ...filters };
     if (pageId === 'regulatory-strategic-review') this.regulatoryStrategicReviewFilter = { ...filters };
+    if (pageId === 'regulatory-workbench') this.regulatoryWorkbenchFilter = { ...filters };
+    if (pageId === 'regulatory-queue') this.regulatoryQueueFilter = { ...filters };
+    if (pageId === 'regulatory-decision-room') this.regulatoryDecisionRoomFilter = { ...filters };
     if (pageId === 'regulatory-actions') this.regulatoryActionFilter = { ...filters };
     if (pageId === 'regulatory-action-execution') this.regulatoryActionExecutionFilter = { ...filters };
     if (pageId === 'data-governance') this.dataGovFilter = { ...filters };
@@ -650,6 +662,46 @@ Object.assign(App, {
     return this.renderPublicResourceFlow(steps);
   },
 
+  renderPublicQueueTypeBadge(queueType) {
+    const labels = { DECISION: '待决策', ACTION: '监管行动', SUPERVISION_TASK: '监管任务', FEEDBACK: '待反馈', VERIFICATION: '待验证', RULE_APPROVAL: '规则审批', RULE_DEPLOYMENT: '规则发布', RULE_ANOMALY: '规则异常', STRATEGIC_REVIEW: '战略复盘', PLAN_VARIANCE: '计划偏差' };
+    const cls = { DECISION: 'badge-danger', ACTION: 'badge-warning', RULE_ANOMALY: 'badge-danger', STRATEGIC_REVIEW: 'badge-info', PLAN_VARIANCE: 'badge-warning' };
+    return `<span class="badge ${cls[queueType] || 'badge-info'}">${labels[queueType] || queueType || '—'}</span>`;
+  },
+
+  renderPublicQueueStatusBadge(status) {
+    return this.renderPublicStatusBadge(status);
+  },
+
+  renderPublicDecisionOptionCard(opt) {
+    const o = opt || {};
+    return `<div class="card" style="padding:10px;margin:6px 0"><b>${this.escHtml(o.label || o.action)}</b><p class="insight-note">${this.escHtml(o.basis || '—')}</p><small>${this.escHtml(o.action || '')}</small></div>`;
+  },
+
+  renderPublicWorkbenchLoop(loop) {
+    const l = loop || {};
+    const steps = [
+      { label: '监管发现', sub: String(l.discover || 0), onclick: `App.navigatePublic('regulatory-events')` },
+      { label: '风险判断', sub: String(l.judge || 0), onclick: `App.navigatePublic('regulatory-command-center')` },
+      { label: '监管决策', sub: String(l.decide || 0), onclick: `App.navigatePublic('regulatory-decision-room')` },
+      { label: '监管行动', sub: String(l.execute || 0), onclick: `App.navigatePublic('regulatory-actions')` },
+      { label: '资源配置', sub: String(l.resource || 0), onclick: `App.navigatePublic('regulatory-resource-allocation')` },
+      { label: '任务协同', sub: String(l.task || 0), onclick: `App.navigatePublic('regulatory-supervision-tasks')` },
+      { label: '整改闭环', sub: String(l.rectify || 0), onclick: `App.navigatePublic('rectification')` },
+      { label: '效果评价', sub: String(l.evaluate || 0), onclick: `App.navigatePublic('regulatory-performance')` },
+      { label: '战略复盘', sub: String(l.review || 0), onclick: `App.navigatePublic('regulatory-strategic-review')` }
+    ];
+    return this.renderPublicStrategicCycleFlow(steps);
+  },
+
+  renderPublicTopIssuesList(issues) {
+    if (!issues || !issues.length) return this.renderPublicEmptyState('暂无重点问题');
+    return issues.map(issue => {
+      const ent = issue.entityId ? APP_DATA.globalLegalEntities.find(e => e.entityId === issue.entityId) : null;
+      const nav = issue.decisionContextId ? `App.navigatePublic('regulatory-decision-room',{decisionContextId:'${issue.decisionContextId}'})` : `App.navigatePublic('regulatory-queue')`;
+      return `<div class="card clickable" style="padding:10px;margin:6px 0" onclick="${nav}"><b>${this.escHtml(issue.title)}</b><p class="insight-note">${ent ? ent.entityName : '—'} · ${this.renderPublicPriorityBadge(issue.priority)} · ${issue.sourceType || ''}</p></div>`;
+    }).join('');
+  },
+
   renderPublicExecutionResult(before, after, label) {
     return `<p class="insight-note"><b>${label || '结果'}：</b>${before || '—'} → <b>${after || '—'}</b></p>`;
   },
@@ -770,6 +822,9 @@ Object.assign(App, {
     if (pageId === 'regulatory-focus-management') return this.regulatoryFocusFilter || {};
     if (pageId === 'regulatory-plan-execution') return this.regulatoryPlanExecutionFilter || {};
     if (pageId === 'regulatory-strategic-review') return this.regulatoryStrategicReviewFilter || {};
+    if (pageId === 'regulatory-workbench') return this.regulatoryWorkbenchFilter || {};
+    if (pageId === 'regulatory-queue') return this.regulatoryQueueFilter || {};
+    if (pageId === 'regulatory-decision-room') return this.regulatoryDecisionRoomFilter || {};
     if (pageId === 'regulatory-actions') return this.regulatoryActionFilter || {};
     if (pageId === 'regulatory-action-execution') return this.regulatoryActionExecutionFilter || {};
     if (pageId === 'cross-border-compliance') return this.cbFilter || {};
@@ -791,6 +846,9 @@ Object.assign(App, {
       : pageId === 'regulatory-focus-management' ? 'regulatoryFocusFilter'
       : pageId === 'regulatory-plan-execution' ? 'regulatoryPlanExecutionFilter'
       : pageId === 'regulatory-strategic-review' ? 'regulatoryStrategicReviewFilter'
+      : pageId === 'regulatory-workbench' ? 'regulatoryWorkbenchFilter'
+      : pageId === 'regulatory-queue' ? 'regulatoryQueueFilter'
+      : pageId === 'regulatory-decision-room' ? 'regulatoryDecisionRoomFilter'
       : pageId === 'regulatory-actions' ? 'regulatoryActionFilter'
       : pageId === 'regulatory-action-execution' ? 'regulatoryActionExecutionFilter'
       : pageId === 'data-governance' ? 'dataGovFilter'
@@ -814,6 +872,9 @@ Object.assign(App, {
     else if (pageId === 'regulatory-focus-management') { this.regulatoryFocusFilter = {}; this.regulatoryFocusFocusId = null; }
     else if (pageId === 'regulatory-plan-execution') { this.regulatoryPlanExecutionFilter = {}; this.regulatoryPlanExecutionFocusId = null; }
     else if (pageId === 'regulatory-strategic-review') { this.regulatoryStrategicReviewFilter = {}; this.regulatoryReviewFocusId = null; this.regulatoryNextCycleRecommendationFocusId = null; }
+    else if (pageId === 'regulatory-workbench') { this.regulatoryWorkbenchFilter = {}; this.regulatoryWorkbenchFocusId = null; }
+    else if (pageId === 'regulatory-queue') { this.regulatoryQueueFilter = {}; this.regulatoryQueueFocusId = null; }
+    else if (pageId === 'regulatory-decision-room') { this.regulatoryDecisionRoomFilter = {}; this.regulatoryDecisionContextFocusId = null; }
     else if (pageId === 'regulatory-actions') { this.regulatoryActionFilter = {}; this.regulatoryActionFocusId = null; }
     else if (pageId === 'regulatory-action-execution') { this.regulatoryActionExecutionFilter = {}; this.regulatoryActionExecutionFocusId = null; this.regulatoryActionFeedbackFocusId = null; }
     else if (pageId === 'cross-border-compliance') { this.cbFilter = {}; this.cbFocusActivityId = null; }
@@ -1088,7 +1149,7 @@ Object.assign(App, {
   },
 
   renderGroupOverviewPageCatalog(m) {
-    const catalogIds = ['global-legal-entities', 'global-regions', 'coverage-gaps', 'platform-operations', 'data-governance', 'cross-border-compliance', 'cross-domain-risks', 'warnings', 'rectification', 'regulatory-events', 'rectification-operations', 'regulatory-evaluation', 'regulatory-command-center', 'regulatory-actions', 'regulatory-action-execution', 'regulatory-strategy', 'regulatory-maturity', 'regulatory-optimization', 'regulatory-rule-config', 'regulatory-simulation', 'regulatory-rule-history', 'regulatory-rule-versions', 'regulatory-rule-approvals', 'regulatory-rule-impact', 'regulatory-rule-effectiveness', 'regulatory-rule-runtime', 'regulatory-rule-executions', 'regulatory-rule-deployments', 'regulatory-performance', 'regulatory-resource-allocation', 'regulatory-supervision-tasks', 'regulatory-benchmarking', 'regulatory-strategy-planning', 'regulatory-annual-plan', 'regulatory-target-management', 'regulatory-focus-management', 'regulatory-plan-execution', 'regulatory-strategic-review'];
+    const catalogIds = ['global-legal-entities', 'global-regions', 'coverage-gaps', 'platform-operations', 'data-governance', 'cross-border-compliance', 'cross-domain-risks', 'warnings', 'rectification', 'regulatory-events', 'rectification-operations', 'regulatory-evaluation', 'regulatory-command-center', 'regulatory-actions', 'regulatory-action-execution', 'regulatory-strategy', 'regulatory-maturity', 'regulatory-optimization', 'regulatory-rule-config', 'regulatory-simulation', 'regulatory-rule-history', 'regulatory-rule-versions', 'regulatory-rule-approvals', 'regulatory-rule-impact', 'regulatory-rule-effectiveness', 'regulatory-rule-runtime', 'regulatory-rule-executions', 'regulatory-rule-deployments', 'regulatory-performance', 'regulatory-resource-allocation', 'regulatory-supervision-tasks', 'regulatory-benchmarking', 'regulatory-strategy-planning', 'regulatory-annual-plan', 'regulatory-target-management', 'regulatory-focus-management', 'regulatory-plan-execution', 'regulatory-strategic-review', 'regulatory-workbench', 'regulatory-queue', 'regulatory-decision-room'];
     const metricMap = {
       'global-legal-entities': { core: `法人 ${m.entityCount}`, anomaly: `高风险 ${(m.entities || []).filter(e => (e.highRiskCount || 0) > 0).length}` },
       'global-regions': { core: `区域 ${m.regionCount} · 国家 ${m.countryCount}`, anomaly: `高风险区域 ${(m.regions || []).filter(r => (r.highRiskCount || 0) > 0).length}` },
@@ -1127,7 +1188,10 @@ Object.assign(App, {
       'regulatory-target-management': { core: `目标 ${(APP_DATA.regulatoryTargets || []).length}`, anomaly: `达成 ${(APP_DATA.regulatoryStrategicPlanningMetrics || {}).targetAchieved || 0}` },
       'regulatory-focus-management': { core: `重点 ${(APP_DATA.regulatoryStrategicFocus || []).length}`, anomaly: `法人 ${(APP_DATA.regulatoryStrategicPlanningMetrics || {}).focusEntities || 0}` },
       'regulatory-plan-execution': { core: `执行 ${(APP_DATA.regulatoryPlanExecution || []).length}`, anomaly: `超期 ${(APP_DATA.regulatoryStrategicPlanningMetrics || {}).executionOverdue || 0}` },
-      'regulatory-strategic-review': { core: `复盘 ${(APP_DATA.regulatoryStrategicReview || []).length}`, anomaly: `建议 ${(APP_DATA.regulatoryNextCycleRecommendations || []).length}` }
+      'regulatory-strategic-review': { core: `复盘 ${(APP_DATA.regulatoryStrategicReview || []).length}`, anomaly: `建议 ${(APP_DATA.regulatoryNextCycleRecommendations || []).length}` },
+      'regulatory-workbench': { core: `待办 ${(APP_DATA.regulatoryWorkbenchMetrics || {}).queueTotal || 0}`, anomaly: `超期 ${(APP_DATA.regulatoryWorkbenchMetrics || {}).overdueCount || 0}` },
+      'regulatory-queue': { core: `队列 ${(APP_DATA.regulatoryQueue || []).length}`, anomaly: `高优先 ${(APP_DATA.regulatoryWorkbenchMetrics || {}).highPriorityCount || 0}` },
+      'regulatory-decision-room': { core: `决策 ${(APP_DATA.regulatoryDecisionContext || []).length}`, anomaly: `待决策 ${(APP_DATA.regulatoryWorkbenchMetrics || {}).pendingDecisionCount || 0}` }
     };
     const pages = (this.publicRegulatoryPages || []).filter(p => catalogIds.includes(p.pageId));
     return `<div class="card"><div class="card-title">公共监管页面目录</div>
@@ -1555,6 +1619,7 @@ Object.assign(App, {
     const benchM = opsM.benchmarking || {};
     const stratM = APP_DATA.regulatoryStrategicPlanningMetrics || {};
     const maturityData = APP_DATA.regulatoryMaturity || {};
+    const wbM = APP_DATA.regulatoryWorkbenchMetrics || {};
     const ruleGovSteps = [
       ['规则变更', (APP_DATA.regulatoryRuleChangeRequests || []).length, `App.navigatePublic('regulatory-rule-approvals')`],
       ['仿真', (APP_DATA.regulatorySimulations || []).length, `App.navigatePublic('regulatory-simulation')`],
@@ -1688,6 +1753,34 @@ Object.assign(App, {
           [maturityData.overallScore || 0, '成熟度变化', `App.navigatePublic('regulatory-maturity')`],
           [stratM.recommendationCount, '下一周期重点', `App.navigatePublic('regulatory-strategic-review')`]
         ].map(([v, l, nav]) => this.renderPublicKpiCard(l, v, nav)).join('')}</div>
+      </div>
+      <div class="group-three">
+        <div class="card"><div class="card-title">统一监管工作台</div>
+          ${[
+            [wbM.queueTotal, '待办总数', `App.navigatePublic('regulatory-workbench')`],
+            [wbM.pendingDecisionCount, '待决策', `App.navigatePublic('regulatory-queue',{queueType:'DECISION'})`],
+            [wbM.pendingActionCount, '待执行', `App.navigatePublic('regulatory-queue',{queueType:'ACTION'})`],
+            [wbM.pendingVerificationCount, '待验证', `App.navigatePublic('regulatory-queue',{queueType:'VERIFICATION'})`],
+            [wbM.overdueCount, '超期', `App.navigatePublic('regulatory-queue',{overdue:'true'})`]
+          ].map(([v, l, nav]) => this.renderPublicKpiCard(l, v, nav)).join('')}
+          <p style="margin-top:8px">${this.renderPublicLinkButton('进入统一工作台', `App.navigatePublic('regulatory-workbench')`)} ${this.renderPublicLinkButton('待办队列', `App.navigatePublic('regulatory-queue')`)} ${this.renderPublicLinkButton('决策工作室', `App.navigatePublic('regulatory-decision-room')`)}</p>
+        </div>
+        <div class="card"><div class="card-title">重点监管对象</div>
+          ${[
+            [(wbM.topEntityIds || []).slice(0, 3).map(id => (APP_DATA.globalLegalEntities.find(e => e.entityId === id) || {}).entityName || id).join('、') || '—', '重点法人', `App.navigatePublic('regulatory-workbench')`],
+            [(wbM.topRegionIds || []).slice(0, +2).map(id => (APP_DATA.globalRegions.find(r => r.regionId === id) || {}).regionName || id).join('、') || '—', '重点区域', `App.navigatePublic('global-regions')`],
+            [(wbM.topDomainIds || []).map(id => (APP_DATA.regulationDomains.find(d => d.id === id) || {}).name || id).join('、') || '—', '重点领域', `App.navigatePublic('regulatory-focus-management',{focusType:'DOMAIN'})`],
+            [(wbM.topProjectIds || []).slice(0, 2).map(id => (APP_DATA.globalProjects.find(p => p.projectId === id) || {}).projectName || id).join('、') || '—', '重点项目', `App.navigatePublic('global-regions')`]
+          ].map(([v, l, nav]) => this.renderPublicKpiCard(l, v, nav)).join('')}
+        </div>
+        <div class="card"><div class="card-title">决策闭环入口</div>
+          ${[
+            [wbM.pendingDecisionCount, '待决策', `App.navigatePublic('regulatory-decision-room')`],
+            [wbM.pendingActionCount, '待执行行动', `App.navigatePublic('regulatory-actions')`],
+            [wbM.pendingTaskCount, '待协同任务', `App.navigatePublic('regulatory-supervision-tasks')`],
+            [wbM.ruleAnomalyCount, '规则异常', `App.navigatePublic('regulatory-queue',{queueType:'RULE_ANOMALY'})`]
+          ].map(([v, l, nav]) => this.renderPublicKpiCard(l, v, nav)).join('')}
+        </div>
       </div>`;
   },
 
@@ -3240,6 +3333,205 @@ Object.assign(App, {
     }, '下一周期建议');
   },
 
+  getRegulatoryWorkbench(workbenchId) {
+    return (APP_DATA.regulatoryWorkbench || []).find(w => w.workbenchId === workbenchId);
+  },
+
+  getRegulatoryQueueItem(queueItemId) {
+    return (APP_DATA.regulatoryQueue || []).find(q => q.queueItemId === queueItemId);
+  },
+
+  getRegulatoryDecisionContext(decisionContextId) {
+    return (APP_DATA.regulatoryDecisionContext || []).find(d => d.decisionContextId === decisionContextId);
+  },
+
+  _queueSourceNavigate(item) {
+    const q = item || {};
+    if (q.sourceType === 'regulatoryEvents') return `App.navigatePublic('regulatory-events',{eventId:'${q.sourceId}'})`;
+    if (q.sourceType === 'rectificationTasks') return `App.navigatePublic('rectification',{rectificationTaskId:'${q.sourceId}'})`;
+    if (q.sourceType === 'regulatoryActions') return `App.navigatePublic('regulatory-actions',{actionId:'${q.sourceId}'})`;
+    if (q.sourceType === 'regulatoryActionFeedbacks') return `App.navigatePublic('regulatory-action-execution',{feedbackId:'${q.sourceId}'})`;
+    if (q.sourceType === 'regulatorySupervisionTasks') return `App.navigatePublic('regulatory-supervision-tasks',{supervisionTaskId:'${q.sourceId}'})`;
+    if (q.sourceType === 'regulatoryRuleChangeRequests') return `App.navigatePublic('regulatory-rule-approvals',{changeRequestId:'${q.sourceId}'})`;
+    if (q.sourceType === 'regulatoryRuleApprovals') return `App.navigatePublic('regulatory-rule-approvals',{approvalId:'${q.sourceId}'})`;
+    if (q.sourceType === 'regulatoryRuleDeployments') return `App.navigatePublic('regulatory-rule-deployments',{deploymentId:'${q.sourceId}'})`;
+    if (q.sourceType === 'regulatoryRuleVersions') return `App.navigatePublic('regulatory-rule-versions',{versionId:'${q.sourceId}'})`;
+    if (q.sourceType === 'regulatoryRuleRuntimeAnomalies') return `App.navigatePublic('regulatory-rule-runtime')`;
+    if (q.sourceType === 'regulatoryStrategicObjectives') return `App.navigatePublic('regulatory-strategy-planning',{objectiveId:'${q.sourceId}'})`;
+    if (q.sourceType === 'regulatoryAnnualPlans') return `App.navigatePublic('regulatory-annual-plan',{planId:'${q.sourceId}'})`;
+    if (q.sourceType === 'regulatoryNextCycleRecommendations') return `App.navigatePublic('regulatory-strategic-review',{recommendationId:'${q.sourceId}'})`;
+    return `App.navigatePublic('${q.nextPageId || 'regulatory-queue'}')`;
+  },
+
+  renderRegulatoryWorkbench() {
+    const node = document.getElementById('regulatoryWorkbench');
+    if (!node) return;
+    const wbM = APP_DATA.regulatoryWorkbenchMetrics || {};
+    const groupWb = (APP_DATA.regulatoryWorkbench || []).find(w => w.scopeType === 'GROUP') || {};
+    const queue = APP_DATA.regulatoryQueue || [];
+    const queueByType = (t) => queue.filter(q => q.queueType === t).length;
+    const topEntities = (wbM.topEntityIds || []).map(id => {
+      const ent = APP_DATA.globalLegalEntities.find(e => e.entityId === id);
+      const po = (APP_DATA.regulatoryPriorityObjects || []).find(o => o.objectId === id);
+      const dc = (APP_DATA.regulatoryDecisionContext || []).find(d => d.entityId === id);
+      return { id, name: ent?.entityName || id, priority: po?.priority, health: po?.healthLevel, dcId: dc?.decisionContextId };
+    });
+    const kpi = [
+      [wbM.objectCount, '监管对象总数', `App.navigatePublic('global-legal-entities')`],
+      [wbM.highPriorityObjectCount, '高优先级对象', `App.navigatePublic('regulatory-command-center')`],
+      [wbM.majorEventCount, '重大风险事件', `App.navigatePublic('regulatory-events')`],
+      [wbM.overdueRectCount, '超期整改', `App.navigatePublic('rectification-operations')`],
+      [wbM.pendingDecisionCount, '待决策事项', `App.navigatePublic('regulatory-queue',{queueType:'DECISION'})`],
+      [wbM.pendingActionCount, '待执行行动', `App.navigatePublic('regulatory-queue',{queueType:'ACTION'})`],
+      [wbM.pendingVerificationCount, '待验证事项', `App.navigatePublic('regulatory-queue',{queueType:'VERIFICATION'})`],
+      [wbM.ruleAnomalyCount, '规则运行异常', `App.navigatePublic('regulatory-queue',{queueType:'RULE_ANOMALY'})`]
+    ];
+    const todoTypes = [['DECISION','待决策'],['ACTION','待分派/执行'],['SUPERVISION_TASK','监管任务'],['FEEDBACK','待反馈'],['VERIFICATION','待验证'],['RULE_APPROVAL','待审批'],['RULE_DEPLOYMENT','待发布'],['STRATEGIC_REVIEW','待复盘']];
+    const entityRows = topEntities.map(e => `<tr class="clickable" onclick="App.navigatePublic('regulatory-decision-room',{decisionContextId:'${e.dcId||''}'})"><td>${e.name}</td><td>${this.renderPublicPriorityBadge(e.priority)}</td><td>${this.renderPublicHealthBadge(e.health)}</td><td>${queue.filter(q=>q.entityId===e.id).length}</td></tr>`).join('');
+    node.innerHTML = `${this.renderPublicBackButton()}
+      <div class="group-hero"><div><span>集团监管平台</span><h2>集团监管统一工作台</h2><p>一个总览、一个工作台、一个待办队列、一个决策工作室。</p></div><div>待办 <b>${wbM.queueTotal || 0}</b></div></div>
+      <div class="group-metrics">${kpi.map(([v,l,n])=>this.renderPublicKpiCard(l,v,n)).join('')}</div>
+      <div class="group-two">
+        <div class="card"><div class="card-title">当前最重要的问题</div>${this.renderPublicTopIssuesList(groupWb.topIssues)}</div>
+        <div class="card"><div class="card-title">监管待办</div>${todoTypes.map(([t,l])=>`<p class="insight-note"><button class="btn btn-outline" onclick="App.navigatePublic('regulatory-queue',{queueType:'${t}'})">${l}</button> <b>${queueByType(t)}</b></p>`).join('')}<p>${this.renderPublicLinkButton('查看全部待办',`App.navigatePublic('regulatory-queue')`)}</p></div>
+      </div>
+      <div class="card"><div class="card-title">重点监管对象 TOP</div>${entityRows?`<table class="data-table"><thead><tr><th>法人</th><th>优先级</th><th>健康度</th><th>待办</th></tr></thead><tbody>${entityRows}</tbody></table>`:this.renderPublicEmptyState('暂无')}</div>
+      <div class="card"><div class="card-title">监管闭环状态</div>${this.renderPublicWorkbenchLoop(wbM.loopStatus)}</div>`;
+  },
+
+  renderRegulatoryQueue() {
+    const node = document.getElementById('regulatoryQueue');
+    if (!node) return;
+    const f = this.regulatoryQueueFilter || {};
+    let list = [...(APP_DATA.regulatoryQueue || [])];
+    if (f.queueType) list = list.filter(q => q.queueType === f.queueType);
+    if (f.priority) list = list.filter(q => q.priority === f.priority);
+    if (f.status) list = list.filter(q => q.status === f.status);
+    if (f.regionId) list = list.filter(q => q.regionId === f.regionId);
+    if (f.entityId) list = list.filter(q => q.entityId === f.entityId);
+    if (f.overdue === 'true') list = list.filter(q => q.isOverdue);
+    if (f.department) list = list.filter(q => q.department === f.department);
+    const depts = [...new Set((APP_DATA.regulatoryQueue || []).map(q => q.department).filter(Boolean))];
+    const types = ['DECISION','ACTION','SUPERVISION_TASK','FEEDBACK','VERIFICATION','RULE_APPROVAL','RULE_DEPLOYMENT','RULE_ANOMALY','STRATEGIC_REVIEW','PLAN_VARIANCE'];
+    const filterBar = `<div class="filter-bar" style="margin-bottom:12px;display:flex;flex-wrap:wrap;gap:8px">
+      <select onchange="App.regulatoryQueueFilter={...(App.regulatoryQueueFilter||{}),queueType:this.value||null};App.renderRegulatoryQueue()"><option value="">全部类型</option>${types.map(t=>`<option value="${t}" ${f.queueType===t?'selected':''}>${t}</option>`).join('')}</select>
+      <select onchange="App.regulatoryQueueFilter={...(App.regulatoryQueueFilter||{}),priority:this.value||null};App.renderRegulatoryQueue()"><option value="">全部优先级</option>${['CRITICAL','HIGH','MEDIUM','LOW'].map(p=>`<option value="${p}" ${f.priority===p?'selected':''}>${p}</option>`).join('')}</select>
+      <select onchange="App.regulatoryQueueFilter={...(App.regulatoryQueueFilter||{}),overdue:this.value||null};App.renderRegulatoryQueue()"><option value="">全部</option><option value="true" ${f.overdue==='true'?'selected':''}>仅超期</option></select>
+      ${this.renderPublicFilterBar('regulatory-queue',['regionId','entityId']).replace('public-filter-bar','')}
+      <select onchange="App.regulatoryQueueFilter={...(App.regulatoryQueueFilter||{}),department:this.value||null};App.renderRegulatoryQueue()"><option value="">全部部门</option>${depts.map(d=>`<option value="${d}" ${f.department===d?'selected':''}>${d}</option>`).join('')}</select>
+      ${Object.values(f).some(v=>v)?`<button class="btn btn-outline" onclick="App.clearPublicFilter('regulatory-queue')">清除筛选</button>`:''}
+    </div>`;
+    const rows = list.map(q => {
+      const ent = q.entityId ? APP_DATA.globalLegalEntities.find(e => e.entityId === q.entityId) : null;
+      const reg = q.regionId ? APP_DATA.globalRegions.find(r => r.regionId === q.regionId) : null;
+      return `<tr class="clickable" onclick="App.showRegulatoryQueueDetail('${q.queueItemId}')"><td>${this.renderPublicPriorityBadge(q.priority)}</td><td>${this.renderPublicQueueTypeBadge(q.queueType)}</td><td>${q.title}</td><td>${q.department}</td><td>${ent?ent.entityName:'—'}</td><td>${reg?reg.regionName:'—'}</td><td>${q.sourceType}</td><td>${q.dueDate||'—'}</td><td>${this.renderPublicQueueStatusBadge(q.status)}</td><td>${q.isOverdue?'<span class="badge badge-danger">是</span>':'否'}</td><td>${q.recommendedAction}</td></tr>`;
+    }).join('');
+    node.innerHTML = `${this.renderPublicBackButton()}
+      <div class="group-hero"><div><span>集团监管平台</span><h2>集团监管待办队列</h2><p>统一索引监管事件、整改、行动、任务、规则与战略事项。</p></div><div>队列 <b>${list.length}</b></div></div>
+      <div class="card"><div class="card-title">监管待办清单</div>${filterBar}
+        ${list.length?`<table class="data-table"><thead><tr><th>优先级</th><th>类型</th><th>标题</th><th>部门</th><th>法人</th><th>区域</th><th>来源</th><th>截止</th><th>状态</th><th>超期</th><th>下一步</th></tr></thead><tbody>${rows}</tbody></table>`:(APP_DATA.regulatoryQueue||[]).length?this.renderPublicNoFilterResults():this.renderPublicEmptyState('暂无待办')}
+      </div>
+      <div id="regulatoryQueueDetail"></div>`;
+    if (this.regulatoryQueueFocusId) setTimeout(() => this.showRegulatoryQueueDetail(this.regulatoryQueueFocusId), 0);
+  },
+
+  showRegulatoryQueueDetail(queueItemId) {
+    const item = this.getRegulatoryQueueItem(queueItemId);
+    const node = document.getElementById('regulatoryQueueDetail');
+    this.regulatoryQueueFocusId = queueItemId;
+    this.showPublicDetailOrNotFound(node, item, () => {
+      const events = (item.sourceEventIds||[]).map(id=>APP_DATA.regulatoryEvents.find(e=>e.eventId===id)).filter(Boolean);
+      const risks = (item.sourceRiskMatterIds||[]).map(id=>APP_DATA.warnings.find(w=>w.id===id)||APP_DATA.crossDomainRiskMatters.find(m=>m.riskMatterId===id)).filter(Boolean);
+      const acts = (item.sourceActionIds||[]).map(id=>APP_DATA.regulatoryActions.find(a=>a.actionId===id)).filter(Boolean);
+      const rects = (item.sourceRectificationTaskIds||[]).map(id=>APP_DATA.rectificationTasks.find(t=>t.taskId===id)).filter(Boolean);
+      const ent = item.entityId ? APP_DATA.globalLegalEntities.find(e=>e.entityId===item.entityId) : null;
+      node.innerHTML = this.buildPublicDetailPanel({ objectType: '监管待办', objectName: item.title, objectId: item.queueItemId, status: item.status,
+        sections: [
+          { title: '一、待办基本信息', content: this.renderPublicMetaGrid([this.renderPublicIdField(item.queueItemId,'队列 ID'),{label:'类型',html:this.renderPublicQueueTypeBadge(item.queueType)},{label:'优先级',html:this.renderPublicPriorityBadge(item.priority)},{label:'来源类型',value:item.sourceType},{label:'来源ID',value:item.sourceId},{label:'责任部门',value:item.department},{label:'截止',value:item.dueDate||'—'},{label:'超期',html:item.isOverdue?'<span class="badge badge-danger">是</span>':'<span class="badge badge-success">否</span>'}]) },
+          { title: '二、当前状态', content: `<p>${this.renderPublicQueueStatusBadge(item.status)}</p><p>${this.escHtml(item.description)}</p>` },
+          { title: '三、来源对象', content: this.renderPublicLinkButton(item.sourceId + ' · 原始详情', this._queueSourceNavigate(item)) },
+          { title: '四、风险上下文', content: risks.length?risks.map(r=>this.renderPublicLinkButton(r.name||r.riskMatterName, r.id?`App.navigatePublic('warnings',{riskMatterId:'${r.id}'})`:`App.navigatePublic('cross-domain-risks',{riskMatterId:'${r.riskMatterId}'})`)).join(''):this.renderPublicEmptyState('暂无') },
+          { title: '五、相关监管事件', content: events.length?events.map(e=>this.renderPublicLinkButton(e.eventId,`App.navigatePublic('regulatory-events',{eventId:'${e.eventId}'})`)).join(''):this.renderPublicEmptyState('暂无') },
+          { title: '六、相关监管行动', content: acts.length?acts.map(a=>this.renderPublicLinkButton(a.actionId,`App.navigatePublic('regulatory-actions',{actionId:'${a.actionId}'})`)).join(''):this.renderPublicEmptyState('暂无') },
+          { title: '七、相关整改任务', content: rects.length?rects.map(t=>this.renderPublicLinkButton(t.title,`App.navigatePublic('rectification',{rectificationTaskId:'${t.taskId}'})`)).join(''):this.renderPublicEmptyState('暂无') },
+          { title: '八、建议下一步', content: `<p class="insight-note">${this.escHtml(item.recommendedAction)}</p>${item.decisionContextId?this.renderPublicLinkButton('进入决策工作室',`App.navigatePublic('regulatory-decision-room',{decisionContextId:'${item.decisionContextId}'})`):''}` }
+        ],
+        footer: `${this.renderPublicLinkButton('原始详情',this._queueSourceNavigate(item))}${ent?this.renderPublicLinkButton('查看法人',`App.navigatePublic('global-legal-entities',{entityId:'${ent.entityId}'})`):''}`
+      });
+      node.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }, '监管待办');
+  },
+
+  renderRegulatoryDecisionRoom() {
+    const node = document.getElementById('regulatoryDecisionRoom');
+    if (!node) return;
+    const f = this.regulatoryDecisionRoomFilter || {};
+    let contexts = APP_DATA.regulatoryDecisionContext || [];
+    if (f.entityId) contexts = contexts.filter(d => d.entityId === f.entityId);
+    if (f.regionId) contexts = contexts.filter(d => d.regionId === f.regionId);
+    if (f.priority) contexts = contexts.filter(d => d.priority === f.priority);
+    const focusId = this.regulatoryDecisionContextFocusId;
+    const ctx = focusId ? contexts.find(d => d.decisionContextId === focusId) || (APP_DATA.regulatoryDecisionContext||[]).find(d=>d.decisionContextId===focusId) : contexts[0];
+    const filterBar = `<div class="filter-bar" style="margin-bottom:12px;display:flex;gap:8px;flex-wrap:wrap">
+      <select onchange="App.regulatoryDecisionRoomFilter={...(App.regulatoryDecisionRoomFilter||{}),entityId:this.value||null};App.regulatoryDecisionContextFocusId=null;App.renderRegulatoryDecisionRoom()"><option value="">全部法人</option>${(APP_DATA.globalLegalEntities||[]).filter(e=>e.entityId!=='G001').map(e=>`<option value="${e.entityId}" ${f.entityId===e.entityId?'selected':''}>${e.entityName}</option>`).join('')}</select>
+      <select onchange="App.regulatoryDecisionRoomFilter={...(App.regulatoryDecisionRoomFilter||{}),priority:this.value||null};App.renderRegulatoryDecisionRoom()"><option value="">全部优先级</option>${['CRITICAL','HIGH','MEDIUM','LOW'].map(p=>`<option value="${p}" ${f.priority===p?'selected':''}>${p}</option>`).join('')}</select>
+    </div>`;
+    const listRows = contexts.slice(0, 15).map(d => {
+      const ent = APP_DATA.globalLegalEntities.find(e => e.entityId === d.entityId);
+      return `<tr class="clickable" onclick="App.showRegulatoryDecisionContextDetail('${d.decisionContextId}')"><td>${ent?ent.entityName:d.entityId}</td><td>${this.renderPublicPriorityBadge(d.priority)}</td><td>${this.renderPublicHealthBadge(d.healthLevel)}</td><td>${this.renderPublicStrategyBadge(d.strategyLevel)}</td><td>${d.maturityLevel}</td><td>${d.recommendedDecision}</td></tr>`;
+    }).join('');
+    let detail = '';
+    if (ctx) {
+      const ent = APP_DATA.globalLegalEntities.find(e => e.entityId === ctx.entityId);
+      const events = (ctx.relatedEventIds||[]).map(id=>APP_DATA.regulatoryEvents.find(e=>e.eventId===id)).filter(Boolean);
+      const risks = (ctx.relatedRiskMatterIds||[]).map(id=>APP_DATA.warnings.find(w=>w.id===id)).filter(Boolean);
+      const acts = (ctx.relatedActionIds||[]).map(id=>APP_DATA.regulatoryActions.find(a=>a.actionId===id)).filter(Boolean);
+      const rects = (ctx.relatedRectificationTaskIds||[]).map(id=>APP_DATA.rectificationTasks.find(t=>t.taskId===id)).filter(Boolean);
+      const loopSteps = [
+        { label: '监管事件', sub: String(ctx.eventSummary?.total||0), onclick: `App.navigatePublic('regulatory-events')` },
+        { label: '风险判断', sub: String(ctx.riskSummary?.major||0), onclick: `App.navigatePublic('warnings')` },
+        { label: '监管行动', sub: String(ctx.actionSummary?.pending||0), onclick: `App.navigatePublic('regulatory-actions')` },
+        { label: '监管任务', sub: String((APP_DATA.regulatorySupervisionTasks||[]).filter(t=>t.entityId===ctx.entityId).length), onclick: `App.navigatePublic('regulatory-supervision-tasks')` },
+        { label: '整改任务', sub: String(ctx.rectificationSummary?.open||0), onclick: `App.navigatePublic('rectification')` },
+        { label: '反馈验证', sub: String(ctx.actionSummary?.pending||0), onclick: `App.navigatePublic('regulatory-action-execution')` }
+      ];
+      detail = `<div class="card"><div class="card-title">决策对象：${ent?ent.entityName:ctx.entityId}</div>
+        ${this.renderPublicMetaGrid([{label:'监管优先级',html:this.renderPublicPriorityBadge(ctx.priority)},{label:'健康度',html:this.renderPublicHealthBadge(ctx.healthLevel)},{label:'监管策略',html:this.renderPublicStrategyBadge(ctx.strategyLevel)},{label:'成熟度',value:ctx.maturityLevel}])}
+        <p><b>风险上下文：</b>重大风险 ${ctx.riskSummary?.major||0} · KRI异常 ${ctx.kriSummary?.exceptionCount||0} · 数据质量 ${ctx.dataQualitySummary?.openCount||0}</p>
+        <p>${this.renderPublicLinkButton('风险事项',`App.navigatePublic('warnings')`)} ${this.renderPublicLinkButton('KRI/数据治理',`App.navigatePublic('data-governance')`)} ${this.renderPublicLinkButton('跨境合规',`App.navigatePublic('cross-border-compliance')`)} ${this.renderPublicLinkButton('跨领域风险',`App.navigatePublic('cross-domain-risks')`)}</p>
+        <div class="card-title" style="margin-top:12px">当前监管闭环</div>${this.renderPublicStrategicCycleFlow(loopSteps)}
+        <div class="card-title" style="margin-top:12px">推荐决策</div><p><b>${ctx.recommendedDecision}</b> — ${ctx.decisionBasis}</p>
+        <div class="card-title" style="margin-top:12px">决策建议选项</div>${(ctx.decisionOptions||[]).map(o=>this.renderPublicDecisionOptionCard(o)).join('')}
+        <p style="margin-top:8px">${events[0]?this.renderPublicLinkButton('监管事件',`App.navigatePublic('regulatory-events',{eventId:'${events[0].eventId}'})`):''}${risks[0]?this.renderPublicLinkButton('风险',`App.navigatePublic('warnings',{riskMatterId:'${risks[0].id}'})`):''}${acts[0]?this.renderPublicLinkButton('监管行动',`App.navigatePublic('regulatory-actions',{actionId:'${acts[0].actionId}'})`):''}${rects[0]?this.renderPublicLinkButton('整改',`App.navigatePublic('rectification',{rectificationTaskId:'${rects[0].taskId}'})`):''}</p>
+      </div>`;
+    }
+    node.innerHTML = `${this.renderPublicBackButton()}
+      <div class="group-hero"><div><span>集团监管平台</span><h2>集团监管决策工作室</h2><p>基于统一决策上下文，展示风险、闭环与监管建议（仅展示建议，不持久化操作）。</p></div><div>上下文 <b>${contexts.length}</b></div></div>
+      ${filterBar}
+      <div class="card"><div class="card-title">决策对象列表</div>${listRows?`<table class="data-table"><thead><tr><th>法人</th><th>优先级</th><th>健康度</th><th>策略</th><th>成熟度</th><th>推荐决策</th></tr></thead><tbody>${listRows}</tbody></table>`:this.renderPublicEmptyState('暂无决策上下文')}</div>
+      ${detail}
+      <div id="regulatoryDecisionContextDetail"></div>`;
+    if (focusId) setTimeout(() => this.showRegulatoryDecisionContextDetail(focusId), 0);
+  },
+
+  showRegulatoryDecisionContextDetail(decisionContextId) {
+    const ctx = this.getRegulatoryDecisionContext(decisionContextId);
+    const node = document.getElementById('regulatoryDecisionContextDetail');
+    this.regulatoryDecisionContextFocusId = decisionContextId;
+    this.showPublicDetailOrNotFound(node, ctx, () => {
+      const ent = APP_DATA.globalLegalEntities.find(e => e.entityId === ctx.entityId);
+      node.innerHTML = this.buildPublicDetailPanel({ objectType: '决策上下文', objectName: ent?ent.entityName:ctx.entityId, objectId: ctx.decisionContextId, status: ctx.priority,
+        sections: [
+          { title: '一、决策上下文', content: this.renderPublicMetaGrid([this.renderPublicIdField(ctx.decisionContextId,'上下文 ID'),{label:'推荐决策',value:ctx.recommendedDecision},{label:'决策依据',value:ctx.decisionBasis},{label:'优先级',html:this.renderPublicPriorityBadge(ctx.priority)},{label:'健康度',html:this.renderPublicHealthBadge(ctx.healthLevel)},{label:'策略',html:this.renderPublicStrategyBadge(ctx.strategyLevel)},{label:'成熟度',value:ctx.maturityLevel}]) },
+          { title: '二、决策选项', content: (ctx.decisionOptions||[]).map(o=>this.renderPublicDecisionOptionCard(o)).join('') || this.renderPublicEmptyState('暂无') },
+          { title: '三、关联穿透', content: `${this.renderPublicLinkButton('监管策略',`App.navigatePublic('regulatory-strategy')`)} ${this.renderPublicLinkButton('监管行动',`App.navigatePublic('regulatory-actions')`)} ${this.renderPublicLinkButton('监管绩效',`App.navigatePublic('regulatory-performance')`)}` }
+        ],
+        footer: `${this.renderPublicLinkButton('待办队列',`App.navigatePublic('regulatory-queue')`)}${ent?this.renderPublicLinkButton('法人详情',`App.navigatePublic('global-legal-entities',{entityId:'${ent.entityId}'})`):''}`
+      });
+      node.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }, '决策上下文');
+  },
+
   rerenderPublicPage(pageId) {
     const routeId = this.resolvePublicRouteId(pageId);
     const fn = {
@@ -3280,7 +3572,10 @@ Object.assign(App, {
       'regulatory-target-management': 'renderRegulatoryTargetManagement',
       'regulatory-focus-management': 'renderRegulatoryFocusManagement',
       'regulatory-plan-execution': 'renderRegulatoryPlanExecution',
-      'regulatory-strategic-review': 'renderRegulatoryStrategicReview'
+      'regulatory-strategic-review': 'renderRegulatoryStrategicReview',
+      'regulatory-workbench': 'renderRegulatoryWorkbench',
+      'regulatory-queue': 'renderRegulatoryQueue',
+      'regulatory-decision-room': 'renderRegulatoryDecisionRoom'
     }[routeId];
     if (fn && this[fn]) this[fn]();
   }

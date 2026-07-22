@@ -94,7 +94,10 @@ const App = {
     'regulatory-target-management': '监管目标管理',
     'regulatory-focus-management': '年度监管重点管理',
     'regulatory-plan-execution': '年度监管计划执行中心',
-    'regulatory-strategic-review': '集团监管战略复盘'
+    'regulatory-strategic-review': '集团监管战略复盘',
+    'regulatory-workbench': '集团监管统一工作台',
+    'regulatory-queue': '集团监管待办队列',
+    'regulatory-decision-room': '集团监管决策工作室'
   },
 
   init() {
@@ -129,6 +132,9 @@ const App = {
     this.renderRegulatoryFocusManagement();
     this.renderRegulatoryPlanExecution();
     this.renderRegulatoryStrategicReview();
+    this.renderRegulatoryWorkbench();
+    this.renderRegulatoryQueue();
+    this.renderRegulatoryDecisionRoom();
     this.renderGlobalLegalEntities();
     this.renderGlobalRegions();
     this.renderCoverageGaps();
@@ -196,7 +202,7 @@ const App = {
       this.renderKriDetail(params.kriId, params.scenarioId);
     }
 
-    if (['global-group-overview', 'group', 'global-legal-entities', 'global-regions', 'coverage-gaps', 'platform-operations', 'data-governance', 'cross-border-compliance', 'cross-domain-risks', 'warnings', 'rectification', 'regulatory-events', 'rectification-operations', 'regulatory-evaluation', 'regulatory-command-center', 'regulatory-actions', 'regulatory-action-execution', 'regulatory-strategy', 'regulatory-maturity', 'regulatory-optimization', 'regulatory-rule-config', 'regulatory-simulation', 'regulatory-rule-history', 'regulatory-rule-versions', 'regulatory-rule-approvals', 'regulatory-rule-impact', 'regulatory-rule-effectiveness', 'regulatory-rule-runtime', 'regulatory-rule-executions', 'regulatory-rule-deployments', 'regulatory-performance', 'regulatory-resource-allocation', 'regulatory-supervision-tasks', 'regulatory-benchmarking', 'regulatory-strategy-planning', 'regulatory-annual-plan', 'regulatory-target-management', 'regulatory-focus-management', 'regulatory-plan-execution', 'regulatory-strategic-review'].includes(pageId) && Object.keys(params).length) {
+    if (['global-group-overview', 'group', 'global-legal-entities', 'global-regions', 'coverage-gaps', 'platform-operations', 'data-governance', 'cross-border-compliance', 'cross-domain-risks', 'warnings', 'rectification', 'regulatory-events', 'rectification-operations', 'regulatory-evaluation', 'regulatory-command-center', 'regulatory-actions', 'regulatory-action-execution', 'regulatory-strategy', 'regulatory-maturity', 'regulatory-optimization', 'regulatory-rule-config', 'regulatory-simulation', 'regulatory-rule-history', 'regulatory-rule-versions', 'regulatory-rule-approvals', 'regulatory-rule-impact', 'regulatory-rule-effectiveness', 'regulatory-rule-runtime', 'regulatory-rule-executions', 'regulatory-rule-deployments', 'regulatory-performance', 'regulatory-resource-allocation', 'regulatory-supervision-tasks', 'regulatory-benchmarking', 'regulatory-strategy-planning', 'regulatory-annual-plan', 'regulatory-target-management', 'regulatory-focus-management', 'regulatory-plan-execution', 'regulatory-strategic-review', 'regulatory-workbench', 'regulatory-queue', 'regulatory-decision-room'].includes(pageId) && Object.keys(params).length) {
       setTimeout(() => this.applyPublicNavigationContext(pageId, params), 50);
     }
   },
@@ -304,6 +310,9 @@ const App = {
       if (ctx.reviewId) this.showRegulatoryReviewDetail(ctx.reviewId);
       else if (ctx.recommendationId) this.showRegulatoryNextCycleRecommendationDetail(ctx.recommendationId);
     }
+    if (pageId === 'regulatory-workbench' && ctx.workbenchId) this.regulatoryWorkbenchFocusId = ctx.workbenchId;
+    if (pageId === 'regulatory-queue' && ctx.queueItemId) this.showRegulatoryQueueDetail(ctx.queueItemId);
+    if (pageId === 'regulatory-decision-room' && ctx.decisionContextId) this.showRegulatoryDecisionContextDetail(ctx.decisionContextId);
   },
 
   applyPublicNavigationContext(pageId, params) {
@@ -452,6 +461,30 @@ const App = {
       if (params.reviewId) { this.regulatoryReviewFocusId = params.reviewId; this.showRegulatoryReviewDetail(params.reviewId); }
       else if (params.recommendationId) { this.regulatoryNextCycleRecommendationFocusId = params.recommendationId; this.showRegulatoryNextCycleRecommendationDetail(params.recommendationId); }
       else this.renderRegulatoryStrategicReview();
+    }
+    if (pageId === 'regulatory-workbench') {
+      if (params.workbenchId) this.regulatoryWorkbenchFocusId = params.workbenchId;
+      if (params.queueType) this.regulatoryQueueFilter = { ...(this.regulatoryQueueFilter || {}), queueType: params.queueType };
+      if (params.overdue) this.regulatoryQueueFilter = { ...(this.regulatoryQueueFilter || {}), overdue: params.overdue };
+      this.renderRegulatoryWorkbench();
+    }
+    if (pageId === 'regulatory-queue') {
+      if (params.queueType) this.regulatoryQueueFilter = { ...(this.regulatoryQueueFilter || {}), queueType: params.queueType };
+      if (params.priority) this.regulatoryQueueFilter = { ...(this.regulatoryQueueFilter || {}), priority: params.priority };
+      if (params.status) this.regulatoryQueueFilter = { ...(this.regulatoryQueueFilter || {}), status: params.status };
+      if (params.regionId) this.regulatoryQueueFilter = { ...(this.regulatoryQueueFilter || {}), regionId: params.regionId };
+      if (params.entityId) this.regulatoryQueueFilter = { ...(this.regulatoryQueueFilter || {}), entityId: params.entityId };
+      if (params.overdue) this.regulatoryQueueFilter = { ...(this.regulatoryQueueFilter || {}), overdue: params.overdue };
+      if (params.department) this.regulatoryQueueFilter = { ...(this.regulatoryQueueFilter || {}), department: params.department };
+      if (params.queueItemId) { this.regulatoryQueueFocusId = params.queueItemId; this.showRegulatoryQueueDetail(params.queueItemId); }
+      else this.renderRegulatoryQueue();
+    }
+    if (pageId === 'regulatory-decision-room') {
+      if (params.entityId) this.regulatoryDecisionRoomFilter = { ...(this.regulatoryDecisionRoomFilter || {}), entityId: params.entityId };
+      if (params.regionId) this.regulatoryDecisionRoomFilter = { ...(this.regulatoryDecisionRoomFilter || {}), regionId: params.regionId };
+      if (params.priority) this.regulatoryDecisionRoomFilter = { ...(this.regulatoryDecisionRoomFilter || {}), priority: params.priority };
+      if (params.decisionContextId) { this.regulatoryDecisionContextFocusId = params.decisionContextId; this.showRegulatoryDecisionContextDetail(params.decisionContextId); }
+      else this.renderRegulatoryDecisionRoom();
     }
   },
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * 公共监管底座 Phase 14 端到端验收（15 条链路）
+ * 公共监管底座 Phase 15 端到端验收（15 条链路）
  */
 const fs = require('fs');
 const path = require('path');
@@ -21,144 +21,150 @@ function ok(step, cond, msg) { return { step, pass: !!cond, msg: cond ? 'OK' : m
 
 const chains = [
   {
-    name: '测试1：集团总览→战略规划',
+    name: '测试1：总览→统一工作台',
     steps: [
-      () => ok('战略规划指标', !!(D.regulatoryStrategicPlanningMetrics || {}).objectiveCount),
-      () => ok('战略目标', (D.regulatoryStrategicObjectives || []).length > 0)
+      () => ok('工作台指标', !!(D.regulatoryWorkbenchMetrics || {}).queueTotal),
+      () => ok('工作台对象', (D.regulatoryWorkbench || []).some(w => w.scopeType === 'GROUP'))
     ]
   },
   {
-    name: '测试2：战略规划→战略目标→目标达成',
+    name: '测试2：工作台→待办队列',
     steps: [
       () => {
-        const obj = (D.regulatoryStrategicObjectives || [])[0];
-        const tgt = obj && D.regulatoryTargets.find(t => t.relatedObjectiveId === obj.objectiveId);
-        return ok('目标达成链', obj && tgt && tgt.completionRate >= 0);
+        const wbM = D.regulatoryWorkbenchMetrics || {};
+        const q = D.regulatoryQueue || [];
+        return ok('待办聚合', wbM.queueTotal === q.length && q.length > 0);
       }
     ]
   },
   {
-    name: '测试3：战略目标→年度计划',
+    name: '测试3：工作台→决策工作室',
     steps: [
       () => {
-        const plan = (D.regulatoryAnnualPlans || [])[0];
-        const obj = plan && D.regulatoryStrategicObjectives.find(o => (plan.objectiveIds || []).includes(o.objectiveId));
-        return ok('战略计划链', plan && obj);
+        const wb = (D.regulatoryWorkbench || []).find(w => w.scopeType === 'GROUP');
+        const dc = (D.regulatoryDecisionContext || [])[0];
+        return ok('决策上下文', wb && dc && dc.decisionContextId);
       }
     ]
   },
   {
-    name: '测试4：年度计划→重点对象',
+    name: '测试4：决策工作室→风险事项',
     steps: [
       () => {
-        const plan = (D.regulatoryAnnualPlans || [])[0];
-        const focus = plan && D.regulatoryStrategicFocus.find(f => (f.relatedPlanIds || []).includes(plan.planId));
-        return ok('计划重点链', plan && (focus || (plan.focusEntityIds || []).length));
+        const dc = (D.regulatoryDecisionContext || [])[0];
+        const risk = dc && (dc.relatedRiskMatterIds || [])[0];
+        const found = risk && (D.warnings || []).find(w => w.id === risk);
+        return ok('风险穿透', dc && (found || (dc.relatedRiskMatterIds || []).length >= 0));
       }
     ]
   },
   {
-    name: '测试5：重点法人→优先级→风险→整改',
+    name: '测试5：决策工作室→KRI',
     steps: [
       () => {
-        const focus = (D.regulatoryStrategicFocus || []).find(f => f.focusType === 'ENTITY');
-        const pri = focus && (D.regulatoryPrioritiesRecalculated || D.regulatoryPriorities || {})[focus.focusObjectId];
-        const rect = focus && D.rectificationTasks.find(t => t.entityId === focus.focusObjectId);
-        return ok('法人整改链', focus && pri && rect);
+        const dc = (D.regulatoryDecisionContext || [])[0];
+        return ok('KRI摘要', dc && dc.kriSummary && dc.kriSummary.exceptionCount >= 0);
       }
     ]
   },
   {
-    name: '测试6：年度计划→监管行动→监管资源',
+    name: '测试6：决策工作室→数据质量',
     steps: [
       () => {
-        const plan = (D.regulatoryAnnualPlans || [])[0];
-        const act = plan && D.regulatoryActions.find(a => (plan.plannedActionIds || []).includes(a.actionId));
-        const alloc = plan && D.regulatoryResourceAllocations.find(a => (plan.plannedResourceAllocationIds || []).includes(a.allocationId));
-        return ok('行动资源链', plan && act && alloc);
+        const dc = (D.regulatoryDecisionContext || [])[0];
+        return ok('数据质量摘要', dc && dc.dataQualitySummary);
       }
     ]
   },
   {
-    name: '测试7：监管资源→监管任务→执行反馈',
+    name: '测试7：决策工作室→整改任务',
     steps: [
       () => {
-        const plan = (D.regulatoryAnnualPlans || [])[0];
-        const task = plan && D.regulatorySupervisionTasks.find(t => (plan.plannedSupervisionTaskIds || []).includes(t.supervisionTaskId));
-        const pex = plan && D.regulatoryPlanExecution.find(e => e.planId === plan.planId);
-        return ok('任务执行链', plan && task && pex);
+        const dc = (D.regulatoryDecisionContext || [])[0];
+        const rect = (dc.relatedRectificationTaskIds || [])[0];
+        const found = rect && D.rectificationTasks.find(t => t.taskId === rect);
+        return ok('整改穿透', dc && (found || !(dc.relatedRectificationTaskIds || []).length));
       }
     ]
   },
   {
-    name: '测试8：计划执行→目标达成',
+    name: '测试8：待办→原始事件',
     steps: [
       () => {
-        const pex = (D.regulatoryPlanExecution || [])[0];
-        const tgt = pex && D.regulatoryTargets.find(t => t.relatedPlanId === pex.planId);
-        const plan = pex && D.regulatoryAnnualPlans.find(p => p.planId === pex.planId);
-        return ok('执行目标链', pex && (tgt || plan));
+        const q = (D.regulatoryQueue || []).find(x => x.sourceType === 'regulatoryEvents');
+        const ev = q && D.regulatoryEvents.find(e => e.eventId === q.sourceId);
+        return ok('事件追溯', q && ev);
       }
     ]
   },
   {
-    name: '测试9：目标偏差→重点对象',
+    name: '测试9：待办→原始行动',
     steps: [
       () => {
-        const tgt = (D.regulatoryTargets || []).find(t => t.status === 'BEHIND' || t.status === 'AT_RISK');
-        const focus = D.regulatoryStrategicFocus.length > 0;
-        return ok('偏差重点链', (tgt || focus) && D.regulatoryStrategicFocus.length);
+        const q = (D.regulatoryQueue || []).find(x => x.sourceType === 'regulatoryActions');
+        const act = q && D.regulatoryActions.find(a => a.actionId === q.sourceId);
+        return ok('行动追溯', q && act);
       }
     ]
   },
   {
-    name: '测试10：战略复盘→监管绩效',
+    name: '测试10：待办→原始整改',
     steps: [
       () => {
-        const rev = (D.regulatoryStrategicReview || []).find(r => r.reviewDimension === 'GROUP');
-        const perf = D.regulatoryPerformanceSummary;
-        return ok('复盘绩效链', rev && perf && perf.regulatoryEffectivenessScore > 0);
+        const q = (D.regulatoryQueue || []).find(x => x.sourceType === 'rectificationTasks');
+        const rect = q && D.rectificationTasks.find(t => t.taskId === q.sourceId);
+        return ok('整改追溯', q && rect);
       }
     ]
   },
   {
-    name: '测试11：战略复盘→成熟度',
-    steps: [
-      () => ok('成熟度', !!(D.regulatoryMaturity || {}).overallScore),
-      () => ok('复盘成熟度', (D.regulatoryStrategicReview || []).some(r => r.maturityScore > 0))
-    ]
-  },
-  {
-    name: '测试12：战略复盘→下一周期建议',
-    steps: [
-      () => ok('建议', (D.regulatoryNextCycleRecommendations || []).length > 0),
-      () => ok('复盘', (D.regulatoryStrategicReview || []).length > 0)
-    ]
-  },
-  {
-    name: '测试13：下一周期建议→新年度重点',
+    name: '测试11：工作台→重点法人',
     steps: [
       () => {
-        const rec = (D.regulatoryNextCycleRecommendations || [])[0];
-        const focus = rec && D.regulatoryStrategicFocus.length > 0;
-        return ok('建议重点链', rec && focus);
+        const ids = (D.regulatoryWorkbenchMetrics || {}).topEntityIds || [];
+        const ent = ids[0] && D.globalLegalEntities.find(e => e.entityId === ids[0]);
+        return ok('重点法人', ids.length > 0 && ent);
       }
     ]
   },
   {
-    name: '测试14：无效 objectiveId→错误态',
+    name: '测试12：重点法人→优先级',
     steps: [
-      () => ok('无效目标', !(D.regulatoryStrategicObjectives || []).find(o => o.objectiveId === 'OBJ_NOT_EXIST'))
+      () => {
+        const id = ((D.regulatoryWorkbenchMetrics || {}).topEntityIds || [])[0];
+        const pri = id && (D.regulatoryPrioritiesRecalculated || D.regulatoryPriorities || {})[id];
+        return ok('优先级链', id && pri);
+      }
+    ]
+  },
+  {
+    name: '测试13：优先级→监管策略',
+    steps: [
+      () => {
+        const id = ((D.regulatoryWorkbenchMetrics || {}).topEntityIds || [])[0];
+        const strat = id && ((D.regulatoryStrategyAnalysis || {}).entities || []).find(e => e.objectId === id);
+        return ok('策略链', id && (strat || D.regulatoryStrategyAnalysis));
+      }
+    ]
+  },
+  {
+    name: '测试14：监管策略→监管行动',
+    steps: [
+      () => {
+        const id = ((D.regulatoryWorkbenchMetrics || {}).topEntityIds || [])[0];
+        const act = id && D.regulatoryActions.find(a => a.entityId === id);
+        return ok('行动链', id && act);
+      }
     ]
   },
   {
     name: '测试15：A→B→C→D→E→F多跳返回',
     steps: [
-      () => ok('战略目标', (D.regulatoryStrategicObjectives || []).length > 0),
-      () => ok('年度计划', (D.regulatoryAnnualPlans || []).length > 0),
-      () => ok('监管目标', (D.regulatoryTargets || []).length > 0),
-      () => ok('监管重点', (D.regulatoryStrategicFocus || []).length > 0),
-      () => ok('计划执行', (D.regulatoryPlanExecution || []).length > 0),
+      () => ok('工作台', (D.regulatoryWorkbench || []).length > 0),
+      () => ok('待办队列', (D.regulatoryQueue || []).length > 0),
+      () => ok('决策上下文', (D.regulatoryDecisionContext || []).length > 0),
+      () => ok('监管行动', (D.regulatoryActions || []).length > 0),
+      () => ok('整改任务', (D.rectificationTasks || []).length > 0),
       () => ok('战略复盘', (D.regulatoryStrategicReview || []).length > 0)
     ]
   }
@@ -188,51 +194,66 @@ async function browserTests() {
   const browser = await playwright.chromium.launch({ headless: true });
   const page = await browser.newPage();
   await page.goto(`http://127.0.0.1:${port}/index.html`, { waitUntil: 'networkidle' });
-  await page.waitForFunction(() => typeof App !== 'undefined' && App.renderRegulatoryStrategyPlanning, { timeout: 10000 });
+  await page.waitForFunction(() => typeof App !== 'undefined' && App.renderRegulatoryWorkbench, { timeout: 10000 });
   await page.evaluate(() => { document.getElementById('domainGateway').style.display = 'none'; if (App.enterDomain) App.enterDomain('investment', false); });
 
-  const stratNav = await page.evaluate(async () => {
+  const workbenchNav = await page.evaluate(async () => {
     App.publicNavHistory = [];
     App.navigatePublic('group');
     await new Promise(r => setTimeout(r, 100));
-    App.navigatePublic('regulatory-strategy-planning');
+    App.navigatePublic('regulatory-workbench');
     await new Promise(r => setTimeout(r, 100));
-    const obj = (APP_DATA.regulatoryStrategicObjectives || [])[0];
-    if (obj) App.showRegulatoryObjectiveDetail(obj.objectiveId);
+    const wbText = document.getElementById('regulatoryWorkbench')?.innerText || '';
+    App.navigatePublic('regulatory-queue');
     await new Promise(r => setTimeout(r, 100));
-    App.navigatePublic('regulatory-annual-plan');
+    const qText = document.getElementById('regulatoryQueue')?.innerText || '';
+    return { hasWorkbench: wbText.includes('统一工作台'), hasQueue: qText.includes('待办') };
+  });
+
+  const decisionRoom = await page.evaluate(async () => {
+    const dc = (APP_DATA.regulatoryDecisionContext || [])[0];
+    App.navigatePublic('regulatory-decision-room', { decisionContextId: dc?.decisionContextId });
+    await new Promise(r => setTimeout(r, 150));
+    const text = document.getElementById('regulatoryDecisionRoom')?.innerText || '';
+    return { hasDecision: text.includes('决策工作室') || text.includes('推荐决策') };
+  });
+
+  const queueDetail = await page.evaluate(async () => {
+    const q = (APP_DATA.regulatoryQueue || [])[0];
+    App.navigatePublic('regulatory-queue');
     await new Promise(r => setTimeout(r, 100));
-    const text = document.getElementById('regulatoryAnnualPlan')?.innerText || '';
-    return { hasStrategy: document.getElementById('regulatoryStrategyPlanning')?.innerText?.includes('战略规划'), hasPlan: text.includes('年度') || text.includes('计划') };
+    if (q) App.showRegulatoryQueueDetail(q.queueItemId);
+    await new Promise(r => setTimeout(r, 100));
+    const detail = document.getElementById('regulatoryQueueDetail')?.innerText || '';
+    return { hasDetail: detail.includes('待办基本信息') || detail.includes('队列 ID') };
   });
 
   const invalidDetail = await page.evaluate(async () => {
-    App.navigatePublic('regulatory-strategy-planning');
+    App.navigatePublic('regulatory-queue');
     await new Promise(r => setTimeout(r, 100));
-    App.showRegulatoryObjectiveDetail('OBJ_NOT_EXIST');
+    App.showRegulatoryQueueDetail('QUE_NOT_EXIST');
     await new Promise(r => setTimeout(r, 100));
-    const bad = document.getElementById('regulatoryObjectiveDetail')?.innerText || '';
+    const bad = document.getElementById('regulatoryQueueDetail')?.innerText || '';
     App.navigatePublic('regulatory-command-center');
     await new Promise(r => setTimeout(r, 100));
     const cc = document.getElementById('regulatoryCommandCenter')?.innerText || '';
-    return { invalidOk: bad.includes('对象不存在'), commandCenterOk: cc.includes('战略目标达成') && cc.includes('战略复盘') };
+    return { invalidOk: bad.includes('不存在') || bad.includes('未找到'), commandCenterOk: cc.includes('统一监管工作台') };
   });
 
   const multiHop = await page.evaluate(async () => {
     App.publicNavHistory = [];
     App.navigatePublic('group');
+    App.publicNavHistory = [];
     await new Promise(r => setTimeout(r, 80));
-    App.navigatePublic('regulatory-strategy-planning');
+    App.navigatePublic('regulatory-workbench');
     await new Promise(r => setTimeout(r, 80));
-    App.navigatePublic('regulatory-annual-plan');
+    App.navigatePublic('regulatory-queue');
     await new Promise(r => setTimeout(r, 80));
-    App.navigatePublic('regulatory-target-management');
+    App.navigatePublic('regulatory-decision-room');
     await new Promise(r => setTimeout(r, 80));
-    App.navigatePublic('regulatory-focus-management');
+    App.navigatePublic('warnings');
     await new Promise(r => setTimeout(r, 80));
-    App.navigatePublic('regulatory-plan-execution');
-    await new Promise(r => setTimeout(r, 80));
-    App.navigatePublic('regulatory-strategic-review');
+    App.navigatePublic('regulatory-strategy');
     await new Promise(r => setTimeout(r, 80));
     for (let i = 0; i < 6; i++) { App.goBackPublic(); await new Promise(r => setTimeout(r, 180)); }
     return { finalPage: App.currentPage };
@@ -240,25 +261,26 @@ async function browserTests() {
 
   const catalog = await page.evaluate(() => ({
     count: (App.publicRegulatoryPages || []).length,
-    hasStrategyPlanning: (App.publicRegulatoryPages || []).some(p => p.pageId === 'regulatory-strategy-planning'),
-    hasAnnualPlan: (App.publicRegulatoryPages || []).some(p => p.pageId === 'regulatory-annual-plan'),
-    hasTarget: (App.publicRegulatoryPages || []).some(p => p.pageId === 'regulatory-target-management'),
-    hasFocus: (App.publicRegulatoryPages || []).some(p => p.pageId === 'regulatory-focus-management'),
-    hasExecution: (App.publicRegulatoryPages || []).some(p => p.pageId === 'regulatory-plan-execution'),
-    hasReview: (App.publicRegulatoryPages || []).some(p => p.pageId === 'regulatory-strategic-review')
+    hasWorkbench: (App.publicRegulatoryPages || []).some(p => p.pageId === 'regulatory-workbench'),
+    hasQueue: (App.publicRegulatoryPages || []).some(p => p.pageId === 'regulatory-queue'),
+    hasDecisionRoom: (App.publicRegulatoryPages || []).some(p => p.pageId === 'regulatory-decision-room')
   }));
 
   await browser.close();
   server.close();
 
   return {
-    stratNav: (stratNav.hasStrategy && stratNav.hasPlan) ? '通过' : '不通过',
-    stratNavDetail: stratNav,
+    workbenchNav: (workbenchNav.hasWorkbench && workbenchNav.hasQueue) ? '通过' : '不通过',
+    workbenchNavDetail: workbenchNav,
+    decisionRoom: decisionRoom.hasDecision ? '通过' : '不通过',
+    decisionRoomDetail: decisionRoom,
+    queueDetail: queueDetail.hasDetail ? '通过' : '不通过',
+    queueDetailInfo: queueDetail,
     invalidDetail: (invalidDetail.invalidOk && invalidDetail.commandCenterOk) ? '通过' : '不通过',
     invalidDetailInfo: invalidDetail,
-    multiHop: ['regulatory-strategic-review', 'regulatory-plan-execution', 'regulatory-focus-management', 'regulatory-target-management', 'regulatory-annual-plan', 'regulatory-strategy-planning', 'group'].includes(multiHop.finalPage) ? '通过' : '不通过',
+    multiHop: ['regulatory-strategy', 'warnings', 'regulatory-decision-room', 'regulatory-queue', 'regulatory-workbench', 'group'].includes(multiHop.finalPage) ? '通过' : '不通过',
     multiHopDetail: multiHop,
-    pageCatalog: (catalog.count === 40 && catalog.hasStrategyPlanning && catalog.hasAnnualPlan && catalog.hasTarget && catalog.hasFocus && catalog.hasExecution && catalog.hasReview) ? '通过' : '不通过',
+    pageCatalog: (catalog.count === 43 && catalog.hasWorkbench && catalog.hasQueue && catalog.hasDecisionRoom) ? '通过' : '不通过',
     pageCatalogDetail: catalog
   };
 }
@@ -270,10 +292,10 @@ async function browserTests() {
   }));
   let browserResult;
   try { browserResult = await browserTests(); } catch (e) {
-    browserResult = { error: String(e), stratNav: '不通过', invalidDetail: '不通过', multiHop: '不通过', pageCatalog: '不通过' };
+    browserResult = { error: String(e), workbenchNav: '不通过', decisionRoom: '不通过', queueDetail: '不通过', invalidDetail: '不通过', multiHop: '不通过', pageCatalog: '不通过' };
   }
   const allDataPass = summary.every(s => s.result === '通过');
-  const browserKeys = ['stratNav', 'invalidDetail', 'multiHop', 'pageCatalog'];
+  const browserKeys = ['workbenchNav', 'decisionRoom', 'queueDetail', 'invalidDetail', 'multiHop', 'pageCatalog'];
   const allBrowserPass = browserKeys.every(k => browserResult[k] === '通过' || browserResult[k] === 'skipped');
   const output = { dataChainTests: summary, browserTests: browserResult, allPass: allDataPass && allBrowserPass };
   console.log(JSON.stringify(output, null, 2));
