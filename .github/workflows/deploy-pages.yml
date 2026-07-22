@@ -6,6 +6,7 @@ on:
     branches:
       - master
       - cursor/cnooc-risk-platform-demo-1bfe
+      - cursor/regulatory-offline-demo-pack-43c2
     paths:
       - 'cnooc-risk-platform/**'
       - '.github/workflows/deploy-pages.yml'
