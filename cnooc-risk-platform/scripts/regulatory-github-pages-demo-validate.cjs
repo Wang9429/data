@@ -40,8 +40,12 @@ check(externalHits.length === 0, `external:${externalHits.join(',')}`);
 check(!/<script[^>]+src=/i.test(html), 'external script');
 check(html.includes('window.__GITHUB_PAGES_DEMO__=true'), 'github pages marker');
 check(html.includes('<title>集团穿透式监管平台</title>'), 'systemNameTitle');
-check(!html.includes('集团监管平台 Demo') && !html.includes('集团监管视角 Demo') && !html.includes('集团监管平台 Demo Final')
-  && !html.includes('集团穿透式监管 Demo') && !html.includes('投资管理专题监管'), 'noInconsistentSystemName');
+const sidebarBrandHtml = (html.match(/<aside class="sidebar">[\s\S]*?<\/aside>/) || [''])[0];
+const topHeaderHtml = (html.match(/<header class="top-header">[\s\S]*?<\/header>/) || [''])[0];
+check(!html.includes('集团监管平台 Demo Final'), 'noInconsistentSystemName');
+check(sidebarBrandHtml.includes('集团穿透式监管平台') && !/<div class="sidebar-subtitle">/.test(sidebarBrandHtml)
+  && !/(投资管理领域|投资管理专题监管|集团监管平台 Demo|集团穿透式监管 Demo)/.test(sidebarBrandHtml), 'noForbiddenDomainBesideSidebarBrand');
+check(topHeaderHtml.includes('id="pageTitle">投资管理驾驶舱</div>') && !/(投资管理领域|投资管理专题监管)/.test(topHeaderHtml), 'pageHeaderUsesBusinessTitle');
 
 const scriptBlocks = [...html.matchAll(/<script[^>]*data-inline-from="([^"]+)"[^>]*>([\s\S]*?)<\/script>/gi)];
 check(scriptBlocks.length === 3, `inlineScripts=${scriptBlocks.length}`);
@@ -94,12 +98,18 @@ const originalVisualStructurePreserved = html.includes('sidebar-title')
   && html.includes('集团穿透式监管平台')
   && html.includes('domain-tabs-bar');
 const noDomainLabelBesideSystemName = html.includes('<title>集团穿透式监管平台</title>')
-  && !html.includes('<div class="sidebar-subtitle">投资管理领域</div>')
-  && !/sidebar-title[^<]*集团穿透式监管平台[\s\S]{0,120}投资管理领域/.test(html);
+  && appJsSource.includes('syncSystemBrand')
+  && appJsSource.includes('syncPageTitle')
+  && appJsSource.includes('getRenderedSystemBrandSnapshot')
+  && !html.includes('<div class="sidebar-subtitle">')
+  && html.includes('id="pageTitle">投资管理驾驶舱</div>');
 const strategicDirectionAnalysisNoNavigation = (() => {
   const pub = byFile['js/public-regulatory.js'] || '';
   const block = pub.match(/\{ title: '战略方向匹配分析'[\s\S]*?\}/);
-  return block && !block[0].includes('App.navigate(') && block[0].includes('showPortfolioDetail');
+  return block && block[0].includes('staticOnly: true')
+    && !block[0].includes('nav:')
+    && !block[0].includes('App.navigate(')
+    && !block[0].includes('showPortfolioDetail');
 })();
 const originalBusinessScenesPreserved = html.includes('国资监管主题落实情况')
   && html.includes('投资管理领域运行')
@@ -260,6 +270,24 @@ check(demo06?.trendStatus === 'INSUFFICIENT_HISTORY' || (D.regulatoryDemoScenari
 const workflow = fs.readFileSync(path.join(ROOT, '..', '.github/workflows/deploy-pages.yml'), 'utf8');
 check(workflow.includes('cnooc-risk-platform'), 'pages workflow path');
 
+let runtimeUiE2e = { skipped: true, allPass: false };
+try {
+  const { execSync } = require('child_process');
+  const out = execSync('node scripts/regulatory-demo-runtime-ui-e2e.cjs', { cwd: ROOT, encoding: 'utf8' });
+  runtimeUiE2e = JSON.parse(out);
+} catch (e) {
+  try { runtimeUiE2e = JSON.parse((e.stdout || '').toString()); } catch { runtimeUiE2e = { allPass: false, error: String(e.message || e) }; }
+}
+check(runtimeUiE2e.skipped !== true, 'runtimeUiE2ePlaywrightAvailable');
+check(runtimeUiE2e.allPass === true, 'runtimeUiE2eAllPass');
+check(runtimeUiE2e.offlineDemoContainsLatestRuntimeFix === true, 'offlineDemoContainsLatestRuntimeFix');
+check(runtimeUiE2e.actualRenderedSystemBrand === '集团穿透式监管平台', 'actualRenderedSystemBrand');
+check(runtimeUiE2e.actualBusinessPageTitle === '投资管理驾驶舱', 'actualBusinessPageTitle');
+check(runtimeUiE2e.noDomainLabelBesideSystemBrand === true, 'noDomainLabelBesideSystemBrand');
+check(runtimeUiE2e.strategicDirectionAnalysisPageBefore === runtimeUiE2e.strategicDirectionAnalysisPageAfter, 'strategicDirectionAnalysisPageStable');
+check(runtimeUiE2e.strategicDirectionAnalysisNoNavigation === true, 'runtimeStrategicDirectionAnalysisNoNavigation');
+check(runtimeUiE2e.navigateCallsDuringStrategicClick === 0, 'navigateCallsDuringStrategicClick');
+
 const result = {
   phase: 'Phase 37 — GitHub Pages 在线 Demo',
   githubPagesFileExists: fs.existsSync(OUT_PAGES),
@@ -326,6 +354,13 @@ const result = {
   businessLogicModified: false,
   demoPaths,
   deployNote: '推送至 master 或触发 deploy-pages workflow 后，约 1-3 分钟可访问线上链接',
+  runtimeUiE2e,
+  offlineDemoContainsLatestRuntimeFix: runtimeUiE2e.offlineDemoContainsLatestRuntimeFix,
+  actualRenderedSystemBrand: runtimeUiE2e.actualRenderedSystemBrand,
+  actualBusinessPageTitle: runtimeUiE2e.actualBusinessPageTitle,
+  noDomainLabelBesideSystemBrand: runtimeUiE2e.noDomainLabelBesideSystemBrand,
+  strategicDirectionAnalysisPageBefore: runtimeUiE2e.strategicDirectionAnalysisPageBefore,
+  strategicDirectionAnalysisPageAfter: runtimeUiE2e.strategicDirectionAnalysisPageAfter,
   allPass: fails.length === 0,
   failures: fails
 };
