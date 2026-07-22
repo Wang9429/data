@@ -19,7 +19,18 @@ function loadAppData() {
   return sandbox.APP_DATA;
 }
 
+function loadApp() {
+  const dataCode = fs.readFileSync(dataPath, 'utf8');
+  const pubCode = fs.readFileSync(pubPath, 'utf8');
+  const sandbox = { console, document: { getElementById: () => null }, window: {} };
+  vm.runInNewContext(dataCode + '\n;this.APP_DATA = APP_DATA;', sandbox, { filename: 'data.js' });
+  vm.runInNewContext('var App = {};\n' + pubCode, sandbox, { filename: 'public-regulatory.js' });
+  if (sandbox.App.finalizeRegulatoryPlatform) sandbox.App.finalizeRegulatoryPlatform();
+  return sandbox.App;
+}
+
 const D = loadAppData();
+const App = loadApp();
 const appJs = fs.readFileSync(appPath, 'utf8');
 const pubJs = fs.readFileSync(pubPath, 'utf8');
 const html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
@@ -111,8 +122,10 @@ expectedPages.forEach(pid => {
   if (!pubJs.includes(`pageId: '${pid}'`)) errors.push(`公共页面清单缺失: ${pid}`);
 });
 
-const publicPageCount = (pubJs.match(/pageId: '/g) || []).length;
-if (publicPageCount !== 70) warnings.push(`公共页面数=${publicPageCount}，期望70`);
+const publicPageCount = (App.publicRegulatoryPages || []).length;
+const regexPageCount = (pubJs.match(/pageId: '/g) || []).length;
+if (publicPageCount !== 70) errors.push(`公共页面注册数=${publicPageCount}，期望70`);
+if (regexPageCount !== publicPageCount) warnings.push(`pageId正则计数=${regexPageCount}，注册集合=${publicPageCount}（以注册集合为准）`);
 
 const components = [
   'canRegulatoryAccess', 'createRegulatoryAuditLog', 'executeRegulatoryStateChange',

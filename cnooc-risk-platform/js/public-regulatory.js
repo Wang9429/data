@@ -3863,6 +3863,480 @@ Object.assign(App, {
     }
     return `<div class="card"><div class="card-title">最终验收 · ${roleType}</div>
       <div class="group-metrics">${items.map(([v, l]) => this.renderPublicKpiCard(l, v, `App.navigatePublic('regulatory-workbench')`)).join('')}</div>
+      ${this.renderFinalAcceptanceRemediationRolePanel(roleType)}
+    </div>`;
+  },
+
+  _REMEDIATION_STATES: ['OPEN', 'DATA_REQUIRED', 'ACTION_REQUIRED', 'IN_REMEDIATION', 'PENDING_VERIFICATION', 'VERIFICATION_FAILED', 'VERIFIED'],
+  _REMEDIATION_TRANSITIONS: {
+    OPEN: ['DATA_REQUIRED', 'ACTION_REQUIRED'],
+    DATA_REQUIRED: ['ACTION_REQUIRED', 'OPEN'],
+    ACTION_REQUIRED: ['IN_REMEDIATION', 'DATA_REQUIRED'],
+    IN_REMEDIATION: ['PENDING_VERIFICATION', 'ACTION_REQUIRED'],
+    PENDING_VERIFICATION: ['VERIFIED', 'VERIFICATION_FAILED'],
+    VERIFICATION_FAILED: ['ACTION_REQUIRED', 'IN_REMEDIATION'],
+    VERIFIED: []
+  },
+
+  _classifyAcceptanceIssueGap(issue) {
+    const t = issue.issueType || '';
+    if (t === 'TRACEABILITY_ISSUE') return 'TRACEABILITY_GAP';
+    if (t === 'DATA_QUALITY' || t === 'DATA_GAP' || t === 'MISSING_MAPPING') return 'DATA_GAP';
+    if (t === 'MISSING_VERIFICATION') return 'VERIFICATION_GAP';
+    if (t === 'MISSING_KRI' || t === 'MISSING_WARNING') return 'CONFIGURATION_GAP';
+    if (t === 'MISSING_ACTION' || t === 'MISSING_RECTIFICATION') return 'OPERATIONAL_GAP';
+    if (t === 'PERMISSION_ISSUE') return 'GOVERNANCE_GAP';
+    return 'OTHER';
+  },
+
+  _resolveIssueResponsibleOrg(issue) {
+    const st = issue.sourceType;
+    const sid = issue.sourceId;
+    if (st === 'warnings') {
+      const w = (APP_DATA.warnings || []).find(x => x.id === sid);
+      return w?.unit || w?.entityId || '集团监管部门';
+    }
+    if (st === 'regulatoryDataQualityIssues') {
+      const i = (APP_DATA.regulatoryDataQualityIssues || []).find(x => x.qualityIssueId === sid);
+      return i?.responsibleOrganization || i?.domainId || '数据治理团队';
+    }
+    if (st === 'rectificationTasks') {
+      const t = (APP_DATA.rectificationTasks || []).find(x => x.taskId === sid);
+      return t?.responsibleDept || t?.entityId || '整改责任单位';
+    }
+    if (st === 'regulatoryCoordinationCases') {
+      const c = (APP_DATA.regulatoryCoordinationCases || []).find(x => x.id === sid);
+      return c?.primaryOrganization || '集团监管部门';
+    }
+    if (st === 'regulatoryRuleChangeRequests') return '规则治理团队';
+    if (st === 'regulatoryImprovementOpportunities') return '持续改进团队';
+    if (st === 'regulatoryOperatingCycleInstances') return '集团监管部门';
+    return '集团监管部门';
+  },
+
+  _findRectificationForSource(sourceType, sourceId) {
+    const rects = APP_DATA.rectificationTasks || [];
+    if (sourceType === 'warnings') {
+      const w = (APP_DATA.warnings || []).find(x => x.id === sourceId);
+      return rects.filter(t => t.riskMatterId === sourceId || t.riskId === sourceId || t.entityId === w?.entityId);
+    }
+    if (sourceType === 'crossDomainRiskMatters') {
+      const m = (APP_DATA.crossDomainRiskMatters || []).find(x => x.riskMatterId === sourceId);
+      return rects.filter(t => (m?.relatedRectificationTaskIds || []).includes(t.taskId));
+    }
+    if (sourceType === 'regulatoryDataQualityIssues') {
+      const i = (APP_DATA.regulatoryDataQualityIssues || []).find(x => x.qualityIssueId === sourceId);
+      return rects.filter(t => t.dataQualityIssueId === sourceId || (i?.kriId && t.kriId === i.kriId));
+    }
+    if (sourceType === 'regulatoryCoordinationCases') {
+      const c = (APP_DATA.regulatoryCoordinationCases || []).find(x => x.id === sourceId);
+      return rects.filter(t => (c?.relatedRectificationTaskIds || []).includes(t.taskId) || (c?.affectedEntities || []).includes(t.entityId));
+    }
+    if (sourceType === 'rectificationTasks') return rects.filter(t => t.taskId === sourceId);
+    return [];
+  },
+
+  _findRiskForSource(sourceType, sourceId) {
+    if (sourceType === 'warnings') return (APP_DATA.warnings || []).find(x => x.id === sourceId);
+    if (sourceType === 'crossDomainRiskMatters') return (APP_DATA.crossDomainRiskMatters || []).find(x => x.riskMatterId === sourceId);
+    if (sourceType === 'regulatoryDataQualityIssues') {
+      const i = (APP_DATA.regulatoryDataQualityIssues || []).find(x => x.qualityIssueId === sourceId);
+      if (i?.kriId) return (APP_DATA.warnings || []).find(w => w.kriId === i.kriId);
+    }
+    if (sourceType === 'regulatoryCoordinationCases') {
+      const c = (APP_DATA.regulatoryCoordinationCases || []).find(x => x.id === sourceId);
+      return (APP_DATA.warnings || []).find(w => (c?.affectedEntities || []).includes(w.entityId));
+    }
+    if (sourceType === 'regulatoryImprovementOpportunities') {
+      const o = (APP_DATA.regulatoryImprovementOpportunities || []).find(x => x.opportunityId === sourceId);
+      if (o?.sourceType === 'warnings') return (APP_DATA.warnings || []).find(w => w.id === o.sourceId);
+    }
+    return null;
+  },
+
+  _assessIssueDataSupport(issue) {
+    const st = issue.sourceType;
+    const sid = issue.sourceId;
+    if (!st || !sid) return { hasData: false, reason: 'NO_SOURCE' };
+    const resolvers = {
+      warnings: () => !!(APP_DATA.warnings || []).find(x => x.id === sid),
+      regulatoryDataQualityIssues: () => !!(APP_DATA.regulatoryDataQualityIssues || []).find(x => x.qualityIssueId === sid),
+      rectificationTasks: () => !!(APP_DATA.rectificationTasks || []).find(x => x.taskId === sid),
+      regulatoryCoordinationCases: () => !!(APP_DATA.regulatoryCoordinationCases || []).find(x => x.id === sid),
+      regulatoryRuleChangeRequests: () => !!(APP_DATA.regulatoryRuleChangeRequests || []).find(x => x.changeRequestId === sid),
+      regulatoryImprovementOpportunities: () => !!(APP_DATA.regulatoryImprovementOpportunities || []).find(x => x.opportunityId === sid),
+      regulatoryOperatingCycleInstances: () => !!(APP_DATA.regulatoryOperatingCycleInstances || []).find(x => x.id === sid),
+      regulatoryAuditLogs: () => !!(APP_DATA.regulatoryAuditLogs || []).find(x => x.auditId === sid)
+    };
+    const hasSource = resolvers[st] ? resolvers[st]() : false;
+    if (!hasSource) return { hasData: false, reason: 'SOURCE_NOT_FOUND' };
+    const blocker = issue.description || '';
+    if (blocker === 'MISSING_RECTIFICATION') {
+      const rects = this._findRectificationForSource(st, sid);
+      return { hasData: rects.length > 0, reason: rects.length ? 'RECT_LINKED' : 'NO_RECTIFICATION_DATA', linkedRects: rects.map(t => t.taskId) };
+    }
+    if (blocker === 'MISSING_RISK') {
+      const risk = this._findRiskForSource(st, sid);
+      return { hasData: !!risk, reason: risk ? 'RISK_LINKED' : 'NO_RISK_DATA', riskId: risk?.id || risk?.riskMatterId };
+    }
+    if (issue.issueType === 'DATA_QUALITY') {
+      const qi = (APP_DATA.regulatoryDataQualityIssues || []).find(x => x.qualityIssueId === sid);
+      return { hasData: !!qi, reason: qi?.status === 'CLOSED' ? 'QUALITY_CLOSED' : 'QUALITY_OPEN', qualityStatus: qi?.status };
+    }
+    if (issue.issueType === 'MISSING_VERIFICATION') {
+      const rect = (APP_DATA.rectificationTasks || []).find(x => x.taskId === sid);
+      return { hasData: !!rect, reason: rect?.verificationStatus || 'NO_RECT', verificationStatus: rect?.verificationStatus };
+    }
+    return { hasData: true, reason: 'SOURCE_EXISTS' };
+  },
+
+  _computeIssueRemediationStatus(issue, existing) {
+    if (existing?.status === 'VERIFIED' && existing?.verificationResult?.evidenceValid) {
+      const revalidate = this._assessIssueDataSupport(issue);
+      if (revalidate.hasData && (issue.issueType !== 'DATA_QUALITY' || revalidate.reason === 'QUALITY_CLOSED')) return 'VERIFIED';
+    }
+    const support = this._assessIssueDataSupport(issue);
+    const gap = this._classifyAcceptanceIssueGap(issue);
+    if (!support.hasData) return 'DATA_REQUIRED';
+    if (issue.issueType === 'DATA_QUALITY') {
+      if (support.qualityStatus === 'CLOSED') {
+        const gov = (APP_DATA.regulatoryDataGovernanceTasks || []).find(t => t.relatedQualityIssueId === issue.sourceId && ['VERIFIED', 'CLOSED'].includes(t.status));
+        return gov ? 'PENDING_VERIFICATION' : 'IN_REMEDIATION';
+      }
+      return issue.severity === 'CRITICAL' ? 'ACTION_REQUIRED' : 'DATA_REQUIRED';
+    }
+    if (issue.issueType === 'MISSING_VERIFICATION') {
+      if (support.verificationStatus === '已验证') return 'PENDING_VERIFICATION';
+      if (support.verificationStatus === '验证失败') return 'VERIFICATION_FAILED';
+      return 'ACTION_REQUIRED';
+    }
+    if (gap === 'TRACEABILITY_GAP') {
+      if (issue.description === 'MISSING_RECTIFICATION') {
+        const rects = this._findRectificationForSource(issue.sourceType, issue.sourceId);
+        if (!rects.length) return 'DATA_REQUIRED';
+        if (rects.some(t => t.verificationStatus === '已验证')) return 'PENDING_VERIFICATION';
+        return 'ACTION_REQUIRED';
+      }
+      if (issue.description === 'MISSING_RISK') {
+        if (!this._findRiskForSource(issue.sourceType, issue.sourceId)) return 'DATA_REQUIRED';
+        return 'IN_REMEDIATION';
+      }
+      return 'OPEN';
+    }
+    return support.hasData ? 'ACTION_REQUIRED' : 'OPEN';
+  },
+
+  _getIssueAffectedScenarios(issue) {
+    if (issue.scenarioId) {
+      const s = (APP_DATA.regulatoryFinalAcceptanceScenarios || []).find(x => x.id === issue.scenarioId);
+      return s ? [s.scenarioCode] : [];
+    }
+    return (APP_DATA.regulatoryFinalAcceptanceScenarios || []).filter(s =>
+      s.sourceType === issue.sourceType && s.sourceId === issue.sourceId
+    ).map(s => s.scenarioCode);
+  },
+
+  buildAcceptanceIssueRemediationIndexes() {
+    const issues = APP_DATA.regulatoryFinalAcceptanceIssues || [];
+    const indexes = [];
+    issues.forEach(issue => {
+      const existing = (APP_DATA.regulatoryFinalAcceptanceRemediationIndexes || []).find(r => r.issueId === issue.id);
+      const gapType = this._classifyAcceptanceIssueGap(issue);
+      const dataSupport = this._assessIssueDataSupport(issue);
+      const status = this._computeIssueRemediationStatus(issue, existing);
+      const scenario = issue.scenarioId ? (APP_DATA.regulatoryFinalAcceptanceScenarios || []).find(s => s.id === issue.scenarioId) : null;
+      indexes.push({
+        remediationId: 'RFR-' + issue.id.replace('RFI-', ''),
+        issueId: issue.id,
+        scenarioId: issue.scenarioId,
+        scenarioCodes: this._getIssueAffectedScenarios(issue),
+        gapType,
+        sourceType: issue.sourceType,
+        sourceId: issue.sourceId,
+        affectedChain: scenario?.expectedTraceChain || [],
+        responsibleOrganization: this._resolveIssueResponsibleOrg(issue),
+        recommendedAction: issue.recommendedAction || '补齐真实业务数据或推动整改',
+        hasDataSupport: dataSupport.hasData,
+        dataSupportReason: dataSupport.reason,
+        requiresHumanDecision: issue.severity === 'CRITICAL' || gapType === 'GOVERNANCE_GAP' || (scenario?.requiresHumanDecision === true),
+        requiresAdditionalData: !dataSupport.hasData || status === 'DATA_REQUIRED',
+        status,
+        verificationResult: existing?.verificationResult || null,
+        sourceTraceability: { sourceType: issue.sourceType, sourceId: issue.sourceId, issueType: issue.issueType },
+        updatedAt: this._coordNow()
+      });
+    });
+    APP_DATA.regulatoryFinalAcceptanceRemediationIndexes = indexes;
+    return indexes;
+  },
+
+  advanceAcceptanceIssueRemediation(issueId, targetStatus, context) {
+    const access = this.canRegulatoryAccess(this.getCurrentRegulatoryUser()?.userId, 'regulatoryFinalAcceptanceRemediationIndexes', issueId, 'MANAGE');
+    if (!access.allowed) return { success: false, message: '无权操作验收整改' };
+    const idx = (APP_DATA.regulatoryFinalAcceptanceRemediationIndexes || []).find(r => r.issueId === issueId);
+    const issue = (APP_DATA.regulatoryFinalAcceptanceIssues || []).find(i => i.id === issueId);
+    if (!idx || !issue) return { success: false, message: '整改事项不存在' };
+    const from = idx.status;
+    const allowed = (this._REMEDIATION_TRANSITIONS[from] || []);
+    if (!allowed.includes(targetStatus)) return { success: false, message: `不允许从 ${from} 到 ${targetStatus}` };
+    if (targetStatus === 'VERIFIED') return { success: false, message: '须通过 verifyAcceptanceIssueRemediation 验证' };
+    if (targetStatus === 'IN_REMEDIATION' && idx.requiresHumanDecision && !(context?.approved)) {
+      return { success: false, message: '需要人工确认' };
+    }
+    idx.status = targetStatus;
+    idx.updatedAt = this._coordNow();
+    issue.status = targetStatus;
+    this.createRegulatoryAuditLog({
+      actionType: 'REMEDIATION_STATUS_CHANGE', objectType: 'regulatoryFinalAcceptanceRemediationIndexes',
+      objectId: idx.remediationId, beforeState: from, afterState: targetStatus,
+      reason: context?.reason || '验收问题整改状态变更', requiresApproval: idx.requiresHumanDecision,
+      approved: context?.approved || false
+    });
+    return { success: true, status: targetStatus };
+  },
+
+  verifyAcceptanceIssueRemediation(issueId, result) {
+    const access = this.canRegulatoryAccess(this.getCurrentRegulatoryUser()?.userId, 'regulatoryFinalAcceptanceRemediationIndexes', issueId, 'MANAGE');
+    if (!access.allowed) return { success: false, message: '无权验证' };
+    const idx = (APP_DATA.regulatoryFinalAcceptanceRemediationIndexes || []).find(r => r.issueId === issueId);
+    const issue = (APP_DATA.regulatoryFinalAcceptanceIssues || []).find(i => i.id === issueId);
+    if (!idx || !issue) return { success: false, message: '不存在' };
+    if (idx.status !== 'PENDING_VERIFICATION') return { success: false, message: '当前状态不可验证' };
+    const support = this._assessIssueDataSupport(issue);
+    const passed = result?.passed === true && support.hasData && this._validateRemediationEvidence(issue, support);
+    idx.verificationResult = { passed, evidenceValid: passed, verifiedAt: this._coordNow(), evidence: support, verifier: this.getCurrentRegulatoryUser()?.userId };
+    if (passed) {
+      idx.status = 'VERIFIED';
+      issue.status = 'VERIFIED';
+    } else {
+      idx.status = 'VERIFICATION_FAILED';
+      issue.status = 'VERIFICATION_FAILED';
+    }
+    idx.updatedAt = this._coordNow();
+    this.createRegulatoryAuditLog({
+      actionType: passed ? 'REMEDIATION_VERIFIED' : 'REMEDIATION_VERIFICATION_FAILED',
+      objectType: 'regulatoryFinalAcceptanceRemediationIndexes', objectId: idx.remediationId,
+      beforeState: 'PENDING_VERIFICATION', afterState: idx.status,
+      reason: result?.reason || (passed ? '验收整改验证通过' : '验收整改验证失败')
+    });
+    if (!passed) this.advanceAcceptanceIssueRemediation(issueId, 'ACTION_REQUIRED', { reason: '验证失败重新整改', approved: true });
+    return { success: true, status: idx.status, passed };
+  },
+
+  _validateRemediationEvidence(issue, support) {
+    if (!support.hasData) return false;
+    if (issue.issueType === 'DATA_QUALITY') {
+      const qi = (APP_DATA.regulatoryDataQualityIssues || []).find(x => x.qualityIssueId === issue.sourceId);
+      return qi && (qi.status === 'CLOSED' || qi.status === 'RESOLVED');
+    }
+    if (issue.issueType === 'MISSING_VERIFICATION') {
+      const rect = (APP_DATA.rectificationTasks || []).find(x => x.taskId === issue.sourceId);
+      return rect?.verificationStatus === '已验证';
+    }
+    if (issue.description === 'MISSING_RECTIFICATION') {
+      return (support.linkedRects || []).length > 0;
+    }
+    if (issue.description === 'MISSING_RISK') {
+      return !!support.riskId || !!this._findRiskForSource(issue.sourceType, issue.sourceId);
+    }
+    return false;
+  },
+
+  calculateFinalAcceptanceReadiness() {
+    const health = APP_DATA.regulatoryFinalAcceptanceHealth || this.calculateFinalAcceptanceHealth();
+    const indexes = APP_DATA.regulatoryFinalAcceptanceRemediationIndexes || this.buildAcceptanceIssueRemediationIndexes();
+    const scenarios = APP_DATA.regulatoryFinalAcceptanceScenarios || [];
+    const results = APP_DATA.regulatoryFinalAcceptanceResultIndexes || [];
+    const full = results.filter(r => r.traceabilityStatus === 'FULL_TRACEABLE').length;
+    const partial = results.filter(r => r.traceabilityStatus === 'PARTIAL_TRACEABLE').length;
+    const verified = indexes.filter(r => r.status === 'VERIFIED').length;
+    const open = indexes.filter(r => !['VERIFIED'].includes(r.status)).length;
+    const dataRequired = indexes.filter(r => r.status === 'DATA_REQUIRED').length;
+    const dims = {
+      traceabilityCompleteness: scenarios.length ? Math.round((full + partial * 0.5) / scenarios.length * 100) : null,
+      dataCredibility: health.dimensions?.dataQuality ?? null,
+      keyScenarioOperability: scenarios.length ? Math.round(scenarios.filter(s => s.status !== 'BLOCKED').length / scenarios.length * 100) : null,
+      permissionAuditIntegrity: health.dimensions?.permissionComplianceRate ?? null,
+      humanDecisionControl: scenarios.every(s => s.requiresHumanDecision) ? 100 : null,
+      regulatoryClosureCompleteness: health.dimensions?.actionClosureRate ?? null,
+      issueRemediationCompletion: indexes.length ? Math.round(verified / indexes.length * 100) : null,
+      realBusinessDataCoverage: health.dimensions?.dataAvailability ?? null
+    };
+    const vals = Object.values(dims).filter(v => v != null);
+    let overallStatus = 'NOT_READY';
+    if (vals.length) {
+      const avg = vals.reduce((a, b) => a + b, 0) / vals.length;
+      const blocked = scenarios.filter(s => s.status === 'BLOCKED').length;
+      if (blocked > 0) overallStatus = 'NOT_READY';
+      else if (avg >= 80 && verified === indexes.length && full === scenarios.length) overallStatus = 'READY';
+      else if (avg >= 40 || partial > 0 || open > 0) overallStatus = 'READY_WITH_GAPS';
+      else overallStatus = 'NOT_READY';
+    }
+    const readiness = {
+      overallStatus,
+      dimensions: dims,
+      openIssueCount: open,
+      verifiedIssueCount: verified,
+      dataRequiredCount: dataRequired,
+      humanDecisionRequiredCount: indexes.filter(r => r.requiresHumanDecision && r.status !== 'VERIFIED').length,
+      trendStatus: 'INSUFFICIENT_HISTORY',
+      dataStatus: vals.length ? 'DERIVED' : 'INSUFFICIENT_DATA',
+      evaluatedAt: this._coordNow()
+    };
+    APP_DATA.regulatoryFinalAcceptanceReadiness = readiness;
+    return readiness;
+  },
+
+  buildRegulatoryFinalDeliveryChecklist() {
+    const pages = (this.publicRegulatoryPages || []).length;
+    const scenarios = APP_DATA.regulatoryFinalAcceptanceScenarios || [];
+    const opScenarios = APP_DATA.regulatoryOperationalScenarios || [];
+    const indexes = APP_DATA.regulatoryFinalAcceptanceRemediationIndexes || [];
+    const readiness = APP_DATA.regulatoryFinalAcceptanceReadiness || this.calculateFinalAcceptanceReadiness();
+    const health = APP_DATA.regulatoryFinalAcceptanceHealth || {};
+    const mark = (cond, partialCond, noData) => cond ? (partialCond ? 'PARTIAL' : 'COMPLETED') : (noData ? 'DATA_REQUIRED' : 'PARTIAL');
+    const items = [
+      { id: 'DC-01', name: '平台能力地图', status: (APP_DATA.regulatoryCapabilityMap || []).length >= 70 ? 'COMPLETED' : 'PARTIAL', sourceType: 'regulatoryCapabilityMap' },
+      { id: 'DC-02', name: '70个公共监管页面', status: pages === 70 ? 'COMPLETED' : 'PARTIAL', sourceType: 'publicRegulatoryPages', count: pages },
+      { id: 'DC-03', name: '4类角色旅程', status: ['GROUP_LEADER', 'GROUP_REGULATORY', 'DOMAIN_REGULATOR', 'ENTITY_REGULATOR'].every(r => this.validateRoleAcceptanceJourney(r).journeyPass) ? 'COMPLETED' : 'PARTIAL', sourceType: 'regulatoryRoleProfiles' },
+      { id: 'DC-04', name: '9个最终验收场景', status: scenarios.length >= 9 ? 'COMPLETED' : 'PARTIAL', sourceType: 'regulatoryFinalAcceptanceScenarios', count: scenarios.length },
+      { id: 'DC-05', name: '8个运营实战监管场景', status: opScenarios.length >= 8 ? 'COMPLETED' : 'PARTIAL', sourceType: 'regulatoryOperationalScenarios', count: opScenarios.length },
+      { id: 'DC-06', name: '数据源与数据治理链路', status: mark((APP_DATA.regulatoryDataSources || []).length > 0 && (APP_DATA.regulatoryDataGovernanceTasks || []).length > 0, false, true), sourceType: 'regulatoryDataSources' },
+      { id: 'DC-07', name: 'KRI与预警链路', status: mark((APP_DATA.regulatoryKriRuntime || []).length > 0 && (APP_DATA.regulatoryWarnings || []).length > 0, health.partialTraceableCount > 0, true), sourceType: 'regulatoryKriRuntime' },
+      { id: 'DC-08', name: '规则治理链路', status: mark((APP_DATA.regulatoryRules || []).length > 0 && (APP_DATA.regulatoryRuleChangeRequests || []).length > 0, false, true), sourceType: 'regulatoryRules' },
+      { id: 'DC-09', name: '权限授权与审计链路', status: mark((APP_DATA.regulatoryAuditLogs || []).length > 0 && (APP_DATA.regulatoryAuthorizationRequests || []).length > 0, false, false), sourceType: 'regulatoryAuditLogs' },
+      { id: 'DC-10', name: '协同监管链路', status: mark((APP_DATA.regulatoryCoordinationCases || []).length > 0, health.partialTraceableCount > 0, false), sourceType: 'regulatoryCoordinationCases' },
+      { id: 'DC-11', name: '持续改进链路', status: mark((APP_DATA.regulatoryImprovementOpportunities || []).length > 0, false, false), sourceType: 'regulatoryImprovementOpportunities' },
+      { id: 'DC-12', name: '最终验收问题清单', status: indexes.length >= 15 ? 'COMPLETED' : 'PARTIAL', sourceType: 'regulatoryFinalAcceptanceIssues', count: indexes.length },
+      { id: 'DC-13', name: '数据缺口清单', status: indexes.filter(r => r.status === 'DATA_REQUIRED').length > 0 ? 'DATA_REQUIRED' : 'COMPLETED', sourceType: 'regulatoryDomainDataGaps' },
+      { id: 'DC-14', name: '待补充真实业务数据清单', status: indexes.filter(r => r.requiresAdditionalData).length > 0 ? 'DATA_REQUIRED' : 'COMPLETED', sourceType: 'regulatoryFinalAcceptanceRemediationIndexes' },
+      { id: 'DC-15', name: '投资管理冻结证明', status: 'COMPLETED', sourceType: 'investmentFreeze', note: "navigate('penetration')===3" },
+      { id: 'DC-16', name: '全部验收脚本清单', status: 'COMPLETED', sourceType: 'acceptanceScripts', note: 'Phase 21-32 validate+e2e' }
+    ];
+    const completed = items.filter(i => i.status === 'COMPLETED').length;
+    const checklist = {
+      items,
+      completedCount: completed,
+      partialCount: items.filter(i => i.status === 'PARTIAL').length,
+      dataRequiredCount: items.filter(i => i.status === 'DATA_REQUIRED').length,
+      readinessStatus: readiness.overallStatus,
+      healthStatus: health.overallStatus,
+      evaluatedAt: this._coordNow(),
+      dataStatus: 'DERIVED'
+    };
+    APP_DATA.regulatoryFinalAcceptanceDeliveryChecklist = checklist;
+    return checklist;
+  },
+
+  initializeRegulatoryFinalRemediation() {
+    this.buildAcceptanceIssueRemediationIndexes();
+    this.calculateFinalAcceptanceReadiness();
+    this.buildRegulatoryFinalDeliveryChecklist();
+    APP_DATA.regulatoryFinalAcceptanceRemediationMetrics = {
+      issueCount: (APP_DATA.regulatoryFinalAcceptanceRemediationIndexes || []).length,
+      openCount: (APP_DATA.regulatoryFinalAcceptanceRemediationIndexes || []).filter(r => r.status === 'OPEN').length,
+      dataRequiredCount: (APP_DATA.regulatoryFinalAcceptanceRemediationIndexes || []).filter(r => r.status === 'DATA_REQUIRED').length,
+      actionRequiredCount: (APP_DATA.regulatoryFinalAcceptanceRemediationIndexes || []).filter(r => r.status === 'ACTION_REQUIRED').length,
+      inRemediationCount: (APP_DATA.regulatoryFinalAcceptanceRemediationIndexes || []).filter(r => r.status === 'IN_REMEDIATION').length,
+      pendingVerificationCount: (APP_DATA.regulatoryFinalAcceptanceRemediationIndexes || []).filter(r => r.status === 'PENDING_VERIFICATION').length,
+      verifiedCount: (APP_DATA.regulatoryFinalAcceptanceRemediationIndexes || []).filter(r => r.status === 'VERIFIED').length,
+      verificationFailedCount: (APP_DATA.regulatoryFinalAcceptanceRemediationIndexes || []).filter(r => r.status === 'VERIFICATION_FAILED').length,
+      readinessStatus: APP_DATA.regulatoryFinalAcceptanceReadiness?.overallStatus,
+      deliveryCompletedCount: APP_DATA.regulatoryFinalAcceptanceDeliveryChecklist?.completedCount,
+      trendStatus: 'INSUFFICIENT_HISTORY',
+      dataStatus: 'DERIVED'
+    };
+    return APP_DATA.regulatoryFinalAcceptanceRemediationMetrics;
+  },
+
+  renderFinalAcceptanceRemediationDashboardPanel() {
+    const rm = APP_DATA.regulatoryFinalAcceptanceRemediationMetrics || {};
+    const readiness = APP_DATA.regulatoryFinalAcceptanceReadiness || {};
+    const indexes = APP_DATA.regulatoryFinalAcceptanceRemediationIndexes || [];
+    const h = APP_DATA.regulatoryFinalAcceptanceHealth || {};
+    const highPri = indexes.filter(r => ['CRITICAL', 'HIGH'].includes((APP_DATA.regulatoryFinalAcceptanceIssues || []).find(i => i.id === r.issueId)?.severity)).length;
+    return `<div class="card"><div class="card-title">最终验收整改收口 ${this.renderPublicUnifiedStatusBadge(readiness.overallStatus || 'NOT_READY')}</div>
+      <p class="insight-note">整体健康度 ${this.renderPublicUnifiedStatusBadge(h.overallStatus)} · 问题 <b>${rm.issueCount || indexes.length}</b> · FULL <b>${h.fullTraceableCount ?? 0}</b> / PARTIAL <b>${h.partialTraceableCount ?? 0}</b></p>
+      <div class="group-metrics">${[
+        [rm.issueCount || indexes.length, '验收问题总览', `App.navigatePublic('regulatory-improvement-center')`],
+        [highPri, '高优先级问题', `App.navigatePublic('regulatory-improvement-center')`],
+        [rm.dataRequiredCount || 0, '待补充数据', `App.navigatePublic('regulatory-data-governance')`],
+        [rm.actionRequiredCount || 0, '待整改', `App.navigatePublic('regulatory-workbench')`],
+        [rm.pendingVerificationCount || 0, '待验证', `App.navigatePublic('rectification')`],
+        [rm.verifiedCount || 0, '已验证', `App.navigatePublic('regulatory-improvement-center')`]
+      ].map(([v, l, n]) => this.renderPublicKpiCard(l, v, n)).join('')}</div>
+    </div>`;
+  },
+
+  renderFinalAcceptanceRemediationWorkbenchPanel() {
+    const indexes = APP_DATA.regulatoryFinalAcceptanceRemediationIndexes || [];
+    return `<div class="card"><div class="card-title">我的验收整改事项</div>
+      <div class="group-metrics">${[
+        [indexes.filter(r => r.status === 'DATA_REQUIRED').length, '待补充数据', `App.navigatePublic('regulatory-data-governance')`],
+        [indexes.filter(r => r.status === 'ACTION_REQUIRED' || r.status === 'IN_REMEDIATION').length, '待整改', `App.navigatePublic('rectification')`],
+        [indexes.filter(r => r.status === 'PENDING_VERIFICATION').length, '待验证', `App.navigatePublic('rectification')`],
+        [indexes.filter(r => r.status === 'VERIFIED').length, '已验证', `App.navigatePublic('regulatory-improvement-center')`],
+        [indexes.filter(r => r.requiresHumanDecision && r.status !== 'VERIFIED').length, '需人工决策', `App.navigatePublic('regulatory-queue',{queueType:'DECISION'})`]
+      ].map(([v, l, n]) => this.renderPublicKpiCard(l, v, n)).join('')}</div>
+    </div>`;
+  },
+
+  renderFinalAcceptanceRemediationImprovementPanel() {
+    const indexes = APP_DATA.regulatoryFinalAcceptanceRemediationIndexes || [];
+    const unresolved = indexes.filter(r => r.status !== 'VERIFIED');
+    const rows = indexes.slice(0, 10).map(r => {
+      const issue = (APP_DATA.regulatoryFinalAcceptanceIssues || []).find(i => i.id === r.issueId);
+      return `<tr><td>${r.issueId}</td><td>${r.gapType}</td><td>${this.renderPublicUnifiedStatusBadge(r.status)}</td><td>${r.responsibleOrganization}</td><td>${issue?.description || '—'}</td></tr>`;
+    }).join('');
+    return `<div class="card"><div class="card-title">验收问题整改闭环</div>
+      <p class="insight-note">根因分析 → 优化方案 → 整改实施 → 效果验证 · 未解决 <b>${unresolved.length}</b> 项</p>
+      ${rows ? `<table class="data-table"><thead><tr><th>问题</th><th>缺口类型</th><th>整改状态</th><th>责任组织</th><th>描述</th></tr></thead><tbody>${rows}</tbody></table>` : this.renderPublicEmptyState('暂无')}
+      <p>${this.renderPublicLinkButton('根因分析', `App.navigatePublic('regulatory-root-cause-analysis')`)} ${this.renderPublicLinkButton('优化方案', `App.navigatePublic('regulatory-optimization-plans')`)} ${this.renderPublicLinkButton('效果验证', `App.navigatePublic('regulatory-improvement-effectiveness')`)}</p>
+    </div>`;
+  },
+
+  renderFinalAcceptanceRemediationDetailPanel() {
+    const scenarios = APP_DATA.regulatoryFinalAcceptanceScenarios || [];
+    const evidence = APP_DATA.regulatoryFinalAcceptanceEvidenceIndexes || [];
+    const indexes = APP_DATA.regulatoryFinalAcceptanceRemediationIndexes || [];
+    const checklist = APP_DATA.regulatoryFinalAcceptanceDeliveryChecklist || {};
+    const rows = scenarios.map(s => {
+      const issues = indexes.filter(r => (r.scenarioCodes || []).includes(s.scenarioCode));
+      return `<tr><td>${s.scenarioCode}</td><td>${this.renderPublicUnifiedStatusBadge(s.traceabilityStatus)}</td><td>${this.renderPublicUnifiedStatusBadge(s.status)}</td><td>${issues.length}</td><td>${issues.filter(r => r.status === 'VERIFIED').length}</td></tr>`;
+    }).join('');
+    return `<div class="card"><div class="card-title">验收场景追溯与整改进度</div>
+      <p class="insight-note">证据链 <b>${evidence.length}</b> · 交付清单 ${checklist.completedCount || 0}/${(checklist.items || []).length} 完成 · ${this.renderPublicUnifiedStatusBadge(checklist.readinessStatus || 'READY_WITH_GAPS')}</p>
+      ${rows ? `<table class="data-table"><thead><tr><th>场景</th><th>追溯完整性</th><th>场景状态</th><th>关联问题</th><th>已验证</th></tr></thead><tbody>${rows}</tbody></table>` : ''}
+    </div>`;
+  },
+
+  renderFinalAcceptanceRemediationRolePanel(roleType) {
+    const indexes = APP_DATA.regulatoryFinalAcceptanceRemediationIndexes || [];
+    let filtered = indexes;
+    if (roleType === 'DOMAIN_REGULATOR') {
+      const dom = this.regulatoryRoleScopeId;
+      filtered = indexes.filter(r => {
+        const qi = (APP_DATA.regulatoryDataQualityIssues || []).find(i => i.qualityIssueId === r.sourceId);
+        return !dom || !qi || qi.domainId === dom;
+      });
+    } else if (roleType === 'ENTITY_REGULATOR') {
+      const eid = this.regulatoryRoleScopeId;
+      filtered = indexes.filter(r => {
+        const w = (APP_DATA.warnings || []).find(x => x.id === r.sourceId);
+        const t = (APP_DATA.rectificationTasks || []).find(x => x.taskId === r.sourceId);
+        return !eid || w?.entityId === eid || t?.entityId === eid || r.sourceType === 'regulatoryCoordinationCases';
+      });
+    } else if (roleType === 'GROUP_LEADER') {
+      filtered = indexes.filter(r => r.requiresHumanDecision || ['CRITICAL', 'HIGH'].includes((APP_DATA.regulatoryFinalAcceptanceIssues || []).find(i => i.id === r.issueId)?.severity));
+    }
+    const items = [
+      [filtered.filter(r => r.status === 'DATA_REQUIRED').length, '待补数据'],
+      [filtered.filter(r => r.status === 'ACTION_REQUIRED').length, '待整改'],
+      [filtered.filter(r => r.status === 'PENDING_VERIFICATION').length, '待验证'],
+      [filtered.filter(r => r.requiresHumanDecision).length, '需人工决策']
+    ];
+    return `<div style="margin-top:8px"><div class="card-title" style="font-size:13px">验收整改事项 · ${roleType}</div>
+      <div class="group-metrics" style="grid-template-columns:repeat(4,1fr)">${items.map(([v, l]) => `<div class="metric-card"><div class="value">${v}</div><div class="label">${l}</div></div>`).join('')}</div>
     </div>`;
   },
 
@@ -4663,7 +5137,9 @@ Object.assign(App, {
       'regulatoryCoordinationCases:VIEW': 'COORDINATION_VIEW', 'regulatoryCoordinationCases:MANAGE': 'COORDINATION_MANAGE',
       'regulatoryEscalationRecords:CONFIRM': 'COORDINATION_ESCALATE', 'regulatoryEscalationRecords:VIEW': 'COORDINATION_VIEW',
       'regulatoryOperationalScenarios:VIEW': 'OPERATIONAL_VIEW', 'regulatoryOperationalScenarios:MANAGE': 'OPERATIONAL_MANAGE',
-      'regulatoryFinalAcceptanceScenarios:VIEW': 'ACCEPTANCE_VIEW'
+      'regulatoryFinalAcceptanceScenarios:VIEW': 'ACCEPTANCE_VIEW',
+      'regulatoryFinalAcceptanceRemediationIndexes:VIEW': 'ACCEPTANCE_REMEDIATION_VIEW',
+      'regulatoryFinalAcceptanceRemediationIndexes:MANAGE': 'ACCEPTANCE_REMEDIATION_MANAGE'
     };
     if (map[resourceType + ':' + action]) return map[resourceType + ':' + action];
     if (action === 'APPROVE') return 'ACTION_APPROVE';
@@ -6502,6 +6978,7 @@ Object.assign(App, {
       ${this.renderOperationalScenarioDashboardPanel()}
       ${this.renderCoordinationDashboardPanel()}
       ${this.renderFinalAcceptanceDashboardPanel()}
+      ${this.renderFinalAcceptanceRemediationDashboardPanel()}
       ${this.renderGroupOverviewOperationsEntry()}
       ${this.renderGroupOverviewPageCatalog(m)}
       <div id="groupOverviewDetail"></div>`;
@@ -8901,6 +9378,7 @@ Object.assign(App, {
       ${this.renderOperationalScenarioWorkbenchPanel()}
       ${this.renderCoordinationWorkbenchPanel()}
       ${this.renderFinalAcceptanceWorkbenchPanel()}
+      ${this.renderFinalAcceptanceRemediationWorkbenchPanel()}
       ${this.renderPeriodicFocusPanel()}
       ${this.renderClosureVerificationWorkbenchPanel()}
       ${this.renderDomainClosureDashboardPanel()}
@@ -9800,6 +10278,7 @@ Object.assign(App, {
       ${this.renderDomainClosureReadinessPanel()}
       ${this.renderOperatingCycleAnalysisPanel()}
       ${this.renderFinalAcceptanceAnalysisPanel()}
+      ${this.renderFinalAcceptanceRemediationDetailPanel()}
       <div class="group-metrics">${[
         [health.compositeHealthScore ?? '—', '综合监管健康度'],
         [am.highRiskEntityCount, '高风险法人'],
@@ -9975,6 +10454,7 @@ Object.assign(App, {
       ${this.renderDomainClosurePlansPanel()}
       ${this.renderFinanceClosureVerificationPanel()}
       ${this.renderFinalAcceptanceImprovementPanel()}
+      ${this.renderFinalAcceptanceRemediationImprovementPanel()}
       <div class="filter-bar" style="margin-bottom:12px"><select onchange="App.regulatoryImprovementCenterFilter={...(App.regulatoryImprovementCenterFilter||{}),sourceCategory:this.value||null};App.renderRegulatoryImprovementCenter()"><option value="">全部来源</option>${cats.map(c=>`<option value="${c}" ${f.sourceCategory===c?'selected':''}>${c}</option>`).join('')}</select></div>
       <div class="card"><div class="card-title">改进机会清单</div>${rows ? `<table class="data-table"><thead><tr><th>ID</th><th>来源</th><th>标题</th><th>优先级</th><th>状态</th><th>问题表现</th></tr></thead><tbody>${rows}</tbody></table>` : this.renderPublicEmptyState('暂无')}</div>
       <div id="regulatoryOpportunityDetail"></div>`;

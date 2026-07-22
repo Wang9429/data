@@ -6424,12 +6424,17 @@ Object.assign(APP_DATA, {
   APP_DATA.regulatoryFinalAcceptanceEvidenceIndexes = APP_DATA.regulatoryFinalAcceptanceEvidenceIndexes || [];
   APP_DATA.regulatoryFinalAcceptanceIssues = APP_DATA.regulatoryFinalAcceptanceIssues || [];
   APP_DATA.regulatoryFinalAcceptanceMetrics = APP_DATA.regulatoryFinalAcceptanceMetrics || {};
+  APP_DATA.regulatoryFinalAcceptanceRemediationIndexes = APP_DATA.regulatoryFinalAcceptanceRemediationIndexes || [];
+  APP_DATA.regulatoryFinalAcceptanceReadiness = APP_DATA.regulatoryFinalAcceptanceReadiness || {};
+  APP_DATA.regulatoryFinalAcceptanceDeliveryChecklist = APP_DATA.regulatoryFinalAcceptanceDeliveryChecklist || {};
   const rpmFa = APP_DATA.regulatoryRolePermissionMap || {};
   ['ROLE-GROUP-LEADER', 'ROLE-GROUP-REG', 'ROLE-DOMAIN-REG', 'ROLE-ENTITY-REG'].forEach(r => {
-    rpmFa[r] = [...new Set([...(rpmFa[r] || []), 'ACCEPTANCE_VIEW'])];
+    rpmFa[r] = [...new Set([...(rpmFa[r] || []), 'ACCEPTANCE_VIEW', 'ACCEPTANCE_REMEDIATION_VIEW'])];
   });
   APP_DATA.regulatoryRolePermissionMap = rpmFa;
   APP_DATA.regulatoryPermissionSets = [...(APP_DATA.regulatoryPermissionSets || []),
-    { permissionSetId: 'PS-FA-01', permissionCode: 'ACCEPTANCE_VIEW', resourceType: 'regulatoryFinalAcceptanceScenarios', action: 'VIEW', riskLevel: 'LOW' }
+    { permissionSetId: 'PS-FA-01', permissionCode: 'ACCEPTANCE_VIEW', resourceType: 'regulatoryFinalAcceptanceScenarios', action: 'VIEW', riskLevel: 'LOW' },
+    { permissionSetId: 'PS-FA-02', permissionCode: 'ACCEPTANCE_REMEDIATION_VIEW', resourceType: 'regulatoryFinalAcceptanceRemediationIndexes', action: 'VIEW', riskLevel: 'LOW' },
+    { permissionSetId: 'PS-FA-03', permissionCode: 'ACCEPTANCE_REMEDIATION_MANAGE', resourceType: 'regulatoryFinalAcceptanceRemediationIndexes', action: 'MANAGE', riskLevel: 'MEDIUM' }
   ];
 })();
