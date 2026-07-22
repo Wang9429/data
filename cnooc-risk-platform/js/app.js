@@ -21,6 +21,7 @@ const App = {
   selectedRiskId: null,
   currentDomain: 'investment',
   domainPageTemplates: {},
+  groupRegulatoryDemoContext: null,
   dataGovFilter: {},
   dataGovLineageFocus: 'LIN001',
   dataGovLineageStep: 0,
@@ -43,20 +44,100 @@ const App = {
 
   openInvestmentPenetrationFromWarnings(riskId = 'risk-2') {
     const target = 'penetration';
+    if (!this.groupRegulatoryDemoContext) {
+      const w = (APP_DATA.warnings || []).find(x => x.id === riskId) || {};
+      this.groupRegulatoryDemoContext = {
+        objectName: w.name || '投资收益未达预期风险',
+        objectLevel: '风险事项',
+        parentOrg: '投后经营跟踪',
+        riskSignal: 'KRI超阈值',
+        whyFocus: '红色预警 · 影响集团整体风险判断',
+        riskId,
+        source: '投资风险监测',
+        status: '穿透分析中'
+      };
+    } else {
+      this.groupRegulatoryDemoContext = { ...this.groupRegulatoryDemoContext, riskId, status: '穿透分析中' };
+    }
     this.navigate(target, { riskId, detail: true });
   },
 
-  startGroupRegulatoryPerspectiveWalkthrough(stepIndex = 0) {
-    const steps = [
-      () => this.navigate('dashboard'),
-      () => this.navigate('warnings'),
-      () => this.openInvestmentPenetrationFromWarnings('risk-2'),
-      () => this.navigate('rectification'),
-      () => this.navigate('dashboard')
-    ];
+  drillDownFromGroupPerspective(ctx = {}, options = {}) {
+    const riskId = ctx.riskId || 'risk-2';
+    this.groupRegulatoryDemoContext = {
+      objectName: ctx.objectName || '中东区域',
+      objectLevel: ctx.objectLevel || '区域',
+      parentOrg: ctx.parentOrg || '集团总部',
+      riskSignal: ctx.riskSignal || '风险集中度偏高',
+      whyFocus: ctx.whyFocus || '8项重大风险占集团42%',
+      riskId,
+      source: ctx.source || '集团监管视角 → 重点监管对象',
+      status: ctx.status || '风险监测中'
+    };
+    this.navigate('warnings');
+    setTimeout(() => this.refreshWarningsDemoChrome(), 0);
+    if (options.showDetail) {
+      setTimeout(() => this.showWarningDetail(riskId), 80);
+    }
+  },
+
+  traceUpToGroupRiskPerspective(riskId = 'risk-2') {
+    const w = (APP_DATA.warnings || []).find(x => x.id === riskId) || (APP_DATA.warnings || [])[0] || {};
+    this.groupRegulatoryDemoContext = {
+      objectName: w.name || '投资收益未达预期风险',
+      objectLevel: '风险事项',
+      parentOrg: w.project || '某境外能源项目',
+      riskSignal: '向上追溯集团影响',
+      whyFocus: '底层风险影响集团整体风险态势判断',
+      riskId,
+      source: '穿透分析 / 整改闭环 → 集团风险态势',
+      status: '向上追溯中'
+    };
+    this.navigate('dashboard');
+    setTimeout(() => {
+      const overlay = document.getElementById('dashboardGroupRegulatoryOverlay');
+      if (overlay) overlay.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 120);
+  },
+
+  openDemoMainPathStep(stepIndex = 0) {
+    const steps = this.getDemoMainPathDefinition ? this.getDemoMainPathDefinition() : [];
     const i = Math.max(0, Math.min(stepIndex, steps.length - 1));
-    steps[i]();
-    return { step: i, total: steps.length, labels: ['投资驾驶舱', '投资风险监测', '投资穿透分析', '整改闭环', '监管复盘'] };
+    const step = steps[i];
+    if (step && typeof step.action === 'function') step.action();
+    return { step: i, total: steps.length, label: step ? step.label : '' };
+  },
+
+  startGroupRegulatoryPerspectiveWalkthrough(stepIndex = 0) {
+    return this.openDemoMainPathStep(stepIndex);
+  },
+
+  renderWarningsGroupContextBanner() {
+    const node = document.getElementById('warningsGroupContextBanner');
+    if (!node) return;
+    if (!this.groupRegulatoryDemoContext || !this.renderWarningsDemoContextBanner) {
+      node.innerHTML = '';
+      return;
+    }
+    node.innerHTML = this.renderWarningsDemoContextBanner(this.groupRegulatoryDemoContext);
+  },
+
+  refreshWarningsDemoChrome() {
+    this.renderWarningsGroupContextBanner();
+    const entryNode = document.getElementById('warningsPenetrationEntry');
+    const ctx = this.groupRegulatoryDemoContext;
+    const riskId = (ctx && ctx.riskId) || 'risk-2';
+    if (entryNode) {
+      const ctxLine = ctx ? `<p class="insight-note" style="margin-top:8px"><b>当前监管对象：</b>${ctx.objectName}（${ctx.objectLevel}） · <b>来源：</b>${ctx.source} · <b>状态：</b>${ctx.status}</p>` : '';
+      entryNode.innerHTML = `<div class="card" style="margin-bottom:16px"><div class="card-title">投资风险监测 · 穿透分析入口</div><p class="insight-note">从集团监管视角向下穿透后，在本页继续定位底层风险事项，并进入「风险监测投资穿透分析」详情页（非左侧菜单）。</p>${ctxLine}<button class="btn btn-primary" onclick="App.openInvestmentPenetrationFromWarnings('${riskId}')">进入投资穿透分析</button></div>`;
+    }
+  },
+
+  renderRectificationGroupDemoOverlay() {
+    const node = document.getElementById('rectificationGroupDemoOverlay');
+    if (!node || !this.renderRectificationGroupSupervisionClosure) return;
+    const riskId = (this.groupRegulatoryDemoContext || {}).riskId || 'risk-2';
+    node.innerHTML = this.renderRectificationGroupSupervisionClosure(riskId);
   },
 
   renderDashboardGroupRegulatoryOverlay() {
@@ -294,6 +375,14 @@ const App = {
       this.renderPenetration(this.selectedRiskId);
       document.getElementById('penetrationBack').style.display = 'block';
       document.getElementById('pageTitle').textContent = '风险监测投资穿透分析';
+    }
+
+    if (pageId === 'warnings' && this.currentDomain === 'investment') {
+      setTimeout(() => this.refreshWarningsDemoChrome(), 0);
+    }
+
+    if (pageId === 'rectification' && this.currentDomain === 'investment') {
+      setTimeout(() => this.renderRectificationGroupDemoOverlay(), 0);
     }
 
     if (pageId === 'process' && params.activityId) {
@@ -2239,10 +2328,7 @@ const App = {
   },
 
   renderWarnings() {
-    const entryNode = document.getElementById('warningsPenetrationEntry');
-    if (entryNode) {
-      entryNode.innerHTML = `<div class="card" style="margin-bottom:16px"><div class="card-title">投资风险监测 · 穿透分析</div><p class="insight-note">从风险监测总览、风险预警与风险事项详情进入穿透分析；「风险监测投资穿透分析」为二级详情页，不在左侧菜单独立展示。</p><button class="btn btn-primary" onclick="App.openInvestmentPenetrationFromWarnings('risk-2')">进入投资穿透分析</button></div>`;
-    }
+    this.refreshWarningsDemoChrome();
     const chainNode = document.getElementById('warningsGroupRegulatoryChain');
     if (chainNode && this.renderWarningsGroupRegulatoryChain) {
       chainNode.innerHTML = this.renderWarningsGroupRegulatoryChain();
@@ -2544,6 +2630,7 @@ const App = {
   },
 
   renderRectification() {
+    this.renderRectificationGroupDemoOverlay();
     const r = APP_DATA.rectification;
     document.getElementById('rectStats').innerHTML = `
       <button class="warning-stat total" onclick="App.renderRectKanban()"><div class="num">86</div><div class="label">整改任务总数</div></button>
