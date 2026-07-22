@@ -2507,3 +2507,347 @@ Object.assign(APP_DATA, {
     impactAssessedCount: changeRequests.filter(cr => ['IMPACT_ASSESSED', 'PENDING_APPROVAL', 'APPROVED', 'PUBLISHED'].includes(cr.status)).length
   };
 })();
+
+(function () {
+  const TODAY = '2026-07-22';
+  const versions = APP_DATA.regulatoryRuleVersions || [];
+  const changeRequests = APP_DATA.regulatoryRuleChangeRequests || [];
+  const approvals = APP_DATA.regulatoryRuleApprovals || [];
+  const priorities = APP_DATA.regulatoryPrioritiesRecalculated || APP_DATA.regulatoryPriorities || {};
+  const entities = (APP_DATA.globalLegalEntities || []).filter(e => e.entityId !== 'G001');
+  const events = APP_DATA.regulatoryEvents || [];
+  const warnings = APP_DATA.warnings || [];
+  const rects = APP_DATA.rectificationTasks || [];
+  const actions = APP_DATA.regulatoryActions || [];
+  const quality = APP_DATA.dataQualityIssues || [];
+  const kris = APP_DATA.groupKris || [];
+  const strategy = APP_DATA.regulatoryStrategyAnalysis || {};
+
+  const activeGovVersions = versions.filter(v => v.status === 'ACTIVE' && ['RULE-001', 'RULE-002', 'RULE-003', 'RULE-004', 'RULE-005'].includes(v.ruleId));
+
+  const deployments = [];
+  activeGovVersions.forEach((ver, idx) => {
+    const cr = changeRequests.find(c => c.ruleId === ver.ruleId && c.status === 'PUBLISHED')
+      || changeRequests.find(c => c.ruleId === ver.ruleId);
+    const apr = cr ? approvals.find(a => a.changeRequestId === cr.changeRequestId && a.approvalStage === 'FINAL_APPROVAL') : null;
+    const simId = (cr?.simulationIds || [])[0] || 'SIM-BASE';
+    const impId = cr?.impactAnalysisId || null;
+    deployments.push({
+      deploymentId: 'DEPLOY-' + String(idx + 1).padStart(3, '0'),
+      ruleId: ver.ruleId,
+      versionId: ver.versionId,
+      ruleName: ver.ruleName,
+      deploymentStatus: 'ACTIVE',
+      environment: 'PRODUCTION',
+      effectiveAt: ver.effectiveFrom + 'T00:00:00',
+      deployedAt: (ver.publishedAt || ver.effectiveFrom) + 'T09:00:00',
+      deployedBy: ver.publishedBy || '系统默认',
+      previousVersionId: ver.basedOnVersionId,
+      rollbackVersionId: ver.basedOnVersionId,
+      parameterSnapshot: ver.parameterSnapshot || {},
+      changeRequestId: cr?.changeRequestId || null,
+      approvalId: apr?.approvalId || null,
+      simulationId: simId,
+      impactAnalysisId: impId,
+      lastExecutedAt: null,
+      executionCount: 0,
+      sourceType: 'SYSTEM_DEFAULT'
+    });
+  });
+
+  const supersededDeploy = {
+    deploymentId: 'DEPLOY-000',
+    ruleId: 'RULE-001',
+    versionId: 'RULE-V001',
+    ruleName: '监管优先级规则',
+    deploymentStatus: 'SUPERSEDED',
+    environment: 'PRODUCTION',
+    effectiveAt: '2026-06-01T00:00:00',
+    deployedAt: '2026-06-01T09:00:00',
+    deployedBy: '系统默认',
+    previousVersionId: null,
+    rollbackVersionId: 'RULE-V001',
+    parameterSnapshot: deployments.find(d => d.ruleId === 'RULE-001')?.parameterSnapshot || {},
+    changeRequestId: 'CR-001',
+    approvalId: 'APR-001-04',
+    simulationId: 'SIM-BASE',
+    impactAnalysisId: 'IMP-CR-001',
+    lastExecutedAt: '2026-06-28T18:00:00',
+    executionCount: 0,
+    sourceType: 'SYSTEM_DEFAULT'
+  };
+  deployments.unshift(supersededDeploy);
+
+  const PRIORITY_ORDER = { LOW: 0, MEDIUM: 1, HIGH: 2, CRITICAL: 3 };
+  const changeTypeOf = (before, after) => {
+    if (!before || !after) return 'NO_CHANGE';
+    if (PRIORITY_ORDER[after] > PRIORITY_ORDER[before]) return 'PRIORITY_UPGRADED';
+    if (PRIORITY_ORDER[after] < PRIORITY_ORDER[before]) return 'PRIORITY_DOWNGRADED';
+    return 'NO_CHANGE';
+  };
+
+  const executions = [];
+  const runtimeLogs = [];
+  let execSeq = 0;
+  const deploy001 = deployments.find(d => d.ruleId === 'RULE-001' && d.deploymentStatus === 'ACTIVE');
+
+  const execDates = ['2026-07-16', '2026-07-17', '2026-07-18', '2026-07-19', '2026-07-20', '2026-07-21', '2026-07-22'];
+
+  entities.forEach((ent, ei) => {
+    const curP = priorities[ent.entityId] || {};
+    const entEvts = events.filter(e => e.entityId === ent.entityId);
+    const entWarns = warnings.filter(w => w.entityId === ent.entityId);
+    const entRects = rects.filter(t => t.entityId === ent.entityId);
+    const entActs = actions.filter(a => a.entityId === ent.entityId);
+    const highRisk = entEvts.filter(e => e.riskLevel === 'HIGH').length;
+    const overdue = entRects.filter(t => t.deadline && t.deadline < TODAY && t.status !== '已关闭').length;
+    const kriExc = ent.kriExceptionCount || 0;
+    const prevPri = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'];
+    const prevIdx = Math.max(0, (PRIORITY_ORDER[curP.priority] || 0) - (highRisk > 0 || overdue > 0 ? 1 : 0));
+    const previousPriority = prevPri[prevIdx];
+    const previousScore = Math.max(0, (curP.score || 0) - (highRisk * 8 + overdue * 10 + kriExc * 3));
+    const changed = previousPriority !== curP.priority;
+    const dateIdx = ei % execDates.length;
+    const executedAt = execDates[dateIdx] + 'T' + String(9 + (ei % 8)).padStart(2, '0') + ':00:00';
+
+    if (deploy001) {
+      execSeq++;
+      const execId = 'EXEC-' + String(execSeq).padStart(3, '0');
+      const relEvts = entEvts.slice(0, 2).map(e => e.eventId);
+      const relRisks = entWarns.slice(0, 2).map(w => w.id);
+      const relActs = entActs.slice(0, 2).map(a => a.actionId);
+      const ct = changeTypeOf(previousPriority, curP.priority);
+      executions.push({
+        executionId: execId,
+        ruleId: 'RULE-001',
+        versionId: deploy001.versionId,
+        deploymentId: deploy001.deploymentId,
+        entityId: ent.entityId,
+        entityName: ent.entityName,
+        executionMode: 'PRODUCTION',
+        simulationOnly: false,
+        executedAt,
+        inputSnapshot: { highRiskEventCount: highRisk, overdueRectificationCount: overdue, kriExceptionCount: kriExc },
+        previousResult: { priority: previousPriority, score: previousScore },
+        currentResult: { priority: curP.priority, score: curP.score || 0 },
+        resultChanged: changed,
+        changeType: ct,
+        relatedEventIds: relEvts,
+        relatedRiskMatterIds: relRisks,
+        relatedActionIds: relActs,
+        executionStatus: 'SUCCESS'
+      });
+      runtimeLogs.push({
+        runtimeLogId: 'RUNTIME-' + String(execSeq).padStart(3, '0'),
+        ruleId: 'RULE-001',
+        versionId: deploy001.versionId,
+        deploymentId: deploy001.deploymentId,
+        executionId: execId,
+        executionStatus: 'SUCCESS',
+        executionDurationMs: 12 + (ei % 20),
+        inputRecordCount: highRisk + overdue + kriExc + entWarns.length,
+        outputRecordCount: changed ? 1 : 0,
+        errorCount: 0,
+        warningCount: kriExc > 0 ? 1 : 0,
+        executedAt
+      });
+    }
+
+    if (ei < 2) {
+      const depStrat = deployments.find(d => d.ruleId === 'RULE-002' && d.deploymentStatus === 'ACTIVE');
+      if (depStrat) {
+        execSeq++;
+        const strat = (strategy.entities || []).find(x => x.objectId === ent.entityId);
+        executions.push({
+          executionId: 'EXEC-' + String(execSeq).padStart(3, '0'),
+          ruleId: 'RULE-002',
+          versionId: depStrat.versionId,
+          deploymentId: depStrat.deploymentId,
+          entityId: ent.entityId,
+          entityName: ent.entityName,
+          executionMode: 'PRODUCTION',
+          simulationOnly: false,
+          executedAt: execDates[(ei + 2) % execDates.length] + 'T14:00:00',
+          inputSnapshot: { highRiskEventCount: highRisk, strategyLevel: strat?.strategyLevel || 'ROUTINE' },
+          previousResult: { strategy: 'ROUTINE' },
+          currentResult: { strategy: strat?.strategyLevel || 'ROUTINE' },
+          resultChanged: strat && strat.strategyLevel !== 'ROUTINE',
+          changeType: strat?.strategyLevel === 'FOCUS' ? 'STRATEGY_ESCALATED' : 'NO_CHANGE',
+          relatedEventIds: entEvts.slice(0, 1).map(e => e.eventId),
+          relatedRiskMatterIds: [],
+          relatedActionIds: [],
+          executionStatus: 'SUCCESS'
+        });
+      }
+    }
+  });
+
+  const failedExec = {
+    executionId: 'EXEC-' + String(++execSeq).padStart(3, '0'),
+    ruleId: 'RULE-001',
+    versionId: deploy001?.versionId,
+    deploymentId: deploy001?.deploymentId,
+    entityId: 'C001',
+    entityName: 'C项目公司',
+    executionMode: 'PRODUCTION',
+    simulationOnly: false,
+    executedAt: '2026-07-21T16:30:00',
+    inputSnapshot: { highRiskEventCount: 0, overdueRectificationCount: 0, kriExceptionCount: 4 },
+    previousResult: { priority: 'HIGH', score: 49 },
+    currentResult: null,
+    resultChanged: false,
+    changeType: 'EXECUTION_FAILED',
+    relatedEventIds: [],
+    relatedRiskMatterIds: [],
+    relatedActionIds: [],
+    executionStatus: 'FAILED',
+    errorMessage: '输入数据不足'
+  };
+  executions.push(failedExec);
+  runtimeLogs.push({
+    runtimeLogId: 'RUNTIME-' + String(execSeq).padStart(3, '0'),
+    ruleId: 'RULE-001',
+    versionId: deploy001?.versionId,
+    deploymentId: deploy001?.deploymentId,
+    executionId: failedExec.executionId,
+    executionStatus: 'FAILED',
+    executionDurationMs: 120,
+    inputRecordCount: 4,
+    outputRecordCount: 0,
+    errorCount: 1,
+    warningCount: 0,
+    executedAt: failedExec.executedAt
+  });
+
+  deployments.forEach(dep => {
+    const depExecs = executions.filter(e => e.deploymentId === dep.deploymentId);
+    dep.executionCount = depExecs.length;
+    dep.lastExecutedAt = depExecs.length ? depExecs.sort((a, b) => b.executedAt.localeCompare(a.executedAt))[0].executedAt : null;
+  });
+
+  const rollbacks = [{
+    rollbackId: 'ROLLBACK-001',
+    ruleId: 'RULE-001',
+    fromVersionId: 'RULE-V006',
+    toVersionId: 'RULE-V001',
+    fromDeploymentId: null,
+    toDeploymentId: deploy001?.deploymentId,
+    reason: '试运行版本参数导致优先级波动异常，回滚至稳定版本',
+    triggerType: 'MANUAL',
+    initiatedBy: '系统默认',
+    initiatedAt: '2026-06-28T11:00:00',
+    rollbackStatus: 'COMPLETED',
+    affectedExecutionCount: executions.filter(e => e.ruleId === 'RULE-001').length,
+    sourceType: 'SYSTEM_DEFAULT'
+  }];
+
+  const todayExecs = executions.filter(e => e.executedAt && e.executedAt.startsWith(TODAY));
+  const successExecs = executions.filter(e => e.executionStatus === 'SUCCESS');
+  const failedExecs = executions.filter(e => e.executionStatus === 'FAILED');
+  const changedExecs = executions.filter(e => e.resultChanged);
+  const hitExecs = executions.filter(e => e.executionStatus === 'SUCCESS' && (e.resultChanged || (e.relatedActionIds || []).length));
+
+  const trend7 = execDates.map(date => {
+    const dayExecs = executions.filter(e => e.executedAt && e.executedAt.startsWith(date));
+    return {
+      period: date,
+      executionCount: dayExecs.length,
+      successCount: dayExecs.filter(e => e.executionStatus === 'SUCCESS').length,
+      failedCount: dayExecs.filter(e => e.executionStatus === 'FAILED').length,
+      hitCount: dayExecs.filter(e => e.resultChanged).length,
+      changedCount: dayExecs.filter(e => e.resultChanged).length
+    };
+  });
+
+  const anomalies = [];
+  if (failedExecs.length) {
+    anomalies.push({
+      anomalyId: 'ANOM-001',
+      anomalyType: 'EXECUTION_FAILED',
+      ruleId: failedExec.executionId ? 'RULE-001' : 'RULE-001',
+      versionId: failedExec.versionId,
+      deploymentId: failedExec.deploymentId,
+      executionId: failedExec.executionId,
+      entityId: failedExec.entityId,
+      severity: 'HIGH',
+      description: '规则执行失败：输入数据不足',
+      detectedAt: failedExec.executedAt,
+      sourceType: 'SYSTEM_DETECTED'
+    });
+  }
+  const c001Execs = executions.filter(e => e.entityId === 'C001' && e.resultChanged);
+  if (c001Execs.length >= 1 && (entities.find(e => e.entityId === 'C001')?.kriExceptionCount || 0) > 0) {
+    anomalies.push({
+      anomalyId: 'ANOM-002',
+      anomalyType: 'RESULT_CHANGE_WITH_DATA_QUALITY',
+      ruleId: 'RULE-001',
+      versionId: deploy001?.versionId,
+      deploymentId: deploy001?.deploymentId,
+      executionId: c001Execs[0]?.executionId,
+      entityId: 'C001',
+      severity: 'MEDIUM',
+      description: '法人 C001 规则结果变化与 KRI 异常同时出现',
+      detectedAt: c001Execs[0]?.executedAt,
+      sourceType: 'SYSTEM_DETECTED'
+    });
+  }
+  const b001Rapid = executions.find(e => e.entityId === 'B001' && e.changeType === 'PRIORITY_UPGRADED');
+  if (b001Rapid) {
+    anomalies.push({
+      anomalyId: 'ANOM-003',
+      anomalyType: 'PRIORITY_RAPID_RISE',
+      ruleId: 'RULE-001',
+      versionId: b001Rapid.versionId,
+      deploymentId: b001Rapid.deploymentId,
+      executionId: b001Rapid.executionId,
+      entityId: 'B001',
+      severity: 'HIGH',
+      description: '法人 B001 监管优先级短期内快速上升',
+      detectedAt: b001Rapid.executedAt,
+      sourceType: 'SYSTEM_DETECTED'
+    });
+  }
+  const failRate = executions.length ? failedExecs.length / executions.length : 0;
+  if (failRate > 0.05) {
+    anomalies.push({
+      anomalyId: 'ANOM-004',
+      anomalyType: 'FAILURE_RATE_ELEVATED',
+      ruleId: 'RULE-001',
+      versionId: deploy001?.versionId,
+      deploymentId: deploy001?.deploymentId,
+      executionId: failedExec.executionId,
+      entityId: null,
+      severity: 'MEDIUM',
+      description: `规则执行失败率 ${Math.round(failRate * 100)}% 超过阈值`,
+      detectedAt: TODAY + 'T18:00:00',
+      sourceType: 'SYSTEM_DETECTED'
+    });
+  }
+
+  const activeDeployCount = deployments.filter(d => d.deploymentStatus === 'ACTIVE').length;
+  const executionMetrics = {
+    totalRules: activeGovVersions.length,
+    activeRules: activeGovVersions.length,
+    productionRules: activeDeployCount,
+    todayExecutionCount: todayExecs.length,
+    executionSuccessRate: executions.length ? Math.round(successExecs.length / executions.length * 100) : 100,
+    executionFailureCount: failedExecs.length,
+    ruleHitCount: hitExecs.length,
+    resultChangedCount: changedExecs.length,
+    triggeredActionCount: executions.reduce((s, e) => s + (e.relatedActionIds || []).length, 0),
+    anomalyCount: anomalies.length,
+    currentVersionCount: versions.length,
+    pendingPublishVersionCount: versions.filter(v => ['PENDING_PUBLISH', 'APPROVED'].includes(v.status)).length,
+    rollbackCount: rollbacks.length,
+    totalExecutions: executions.length,
+    trend7,
+    trend30: trend7
+  };
+
+  APP_DATA.regulatoryRuleDeployments = deployments;
+  APP_DATA.regulatoryRuleExecutions = executions;
+  APP_DATA.regulatoryRuleRuntimeLogs = runtimeLogs;
+  APP_DATA.regulatoryRuleRollbacks = rollbacks;
+  APP_DATA.regulatoryRuleRuntimeAnomalies = anomalies;
+  APP_DATA.regulatoryRuleExecutionMetrics = executionMetrics;
+})();

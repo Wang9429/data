@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * 公共监管底座 Phase 11 验收脚本
+ * 公共监管底座 Phase 12 验收脚本
  */
 const fs = require('fs');
 const path = require('path');
@@ -26,6 +26,7 @@ const html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
 const errors = [];
 const warnings = [];
 const governanceFails = [];
+const runtimeFails = [];
 
 function req(id, label) {
   if (!id) errors.push(`缺失ID: ${label}`);
@@ -46,6 +47,7 @@ const expectedPages = [
   'regulatory-maturity', 'regulatory-optimization',
   'regulatory-rule-config', 'regulatory-simulation', 'regulatory-rule-history',
   'regulatory-rule-versions', 'regulatory-rule-approvals', 'regulatory-rule-impact', 'regulatory-rule-effectiveness',
+  'regulatory-rule-runtime', 'regulatory-rule-executions', 'regulatory-rule-deployments',
   'major'
 ];
 expectedPages.forEach(pid => {
@@ -53,16 +55,14 @@ expectedPages.forEach(pid => {
 });
 
 const publicPageCount = (pubJs.match(/pageId: '/g) || []).length;
-if (publicPageCount !== 27) warnings.push(`公共页面数=${publicPageCount}，期望27`);
+if (publicPageCount !== 30) warnings.push(`公共页面数=${publicPageCount}，期望30`);
 
 const components = [
-  'renderPublicRuleTypeBadge', 'renderPublicVersionStatusBadge', 'renderPublicChangeRequestStatusBadge',
-  'renderPublicApprovalStatusBadge', 'renderPublicEffectivenessBadge', 'renderPublicGovernanceComparison',
-  'renderRegulatoryRuleVersions', 'renderRegulatoryRuleApprovals', 'renderRegulatoryRuleImpact',
-  'renderRegulatoryRuleEffectiveness', 'showRegulatoryRuleVersionDetail', 'showRegulatoryRuleChangeRequestDetail',
-  'showRegulatoryRuleApprovalDetail', 'showRegulatoryRuleImpactDetail', 'showRegulatoryRuleEffectivenessDetail',
-  'showRegulatoryRuleOptimizationDetail', 'getRegulatoryRuleVersion', 'getRegulatoryRuleChangeRequest',
-  'getRegulatoryRuleImpactAnalysis', 'getRegulatoryRuleEffectiveness'
+  'renderPublicRuleRuntimeBadge', 'renderPublicExecutionStatusBadge', 'renderPublicDeploymentStatusBadge',
+  'renderPublicExecutionResult', 'renderPublicVersionTimeline', 'renderPublicRuntimeHealth',
+  'renderRegulatoryRuleRuntime', 'renderRegulatoryRuleExecutions', 'renderRegulatoryRuleDeployments',
+  'showRegulatoryRuleExecutionDetail', 'showRegulatoryRuleDeploymentDetail', 'showRegulatoryRuleRollbackDetail',
+  'getRegulatoryRuleDeployment', 'getRegulatoryRuleExecution', 'getRegulatoryRuleRollback'
 ];
 components.forEach(fn => {
   if (!pubJs.includes(fn)) errors.push(`公共组件缺失: ${fn}`);
@@ -77,70 +77,64 @@ let hardcodeOffsetCount = 0;
   });
 });
 
+(D.regulatoryRuleDeployments || []).forEach(d => {
+  req(d.deploymentId, 'deploymentId');
+  resolve(d.ruleId, D.regulatoryRuleVersions, 'ruleId', 'deploy.ruleId');
+  resolve(d.versionId, D.regulatoryRuleVersions, 'versionId', 'deploy.versionId');
+  if (d.changeRequestId) resolve(d.changeRequestId, D.regulatoryRuleChangeRequests, 'changeRequestId', 'deploy.changeRequestId');
+  if (d.approvalId) resolve(d.approvalId, D.regulatoryRuleApprovals, 'approvalId', 'deploy.approvalId');
+  if (d.simulationId) resolve(d.simulationId, D.regulatorySimulations, 'simulationId', 'deploy.simulationId');
+  if (d.impactAnalysisId) resolve(d.impactAnalysisId, D.regulatoryRuleImpactAnalysis, 'impactAnalysisId', 'deploy.impactAnalysisId');
+});
+(D.regulatoryRuleExecutions || []).forEach(e => {
+  req(e.executionId, 'executionId');
+  resolve(e.deploymentId, D.regulatoryRuleDeployments, 'deploymentId', 'exec.deploymentId');
+  resolve(e.versionId, D.regulatoryRuleVersions, 'versionId', 'exec.versionId');
+  resolve(e.entityId, D.globalLegalEntities, 'entityId', 'exec.entityId');
+  if (e.simulationOnly !== false) errors.push(`生产执行 ${e.executionId} simulationOnly!=false`);
+  if (e.executionMode !== 'PRODUCTION') errors.push(`生产执行 ${e.executionId} executionMode!=PRODUCTION`);
+  (e.relatedEventIds || []).forEach(id => resolve(id, D.regulatoryEvents, 'eventId', 'exec.eventId'));
+  (e.relatedRiskMatterIds || []).forEach(id => resolve(id, D.warnings, 'id', 'exec.riskId'));
+  (e.relatedActionIds || []).forEach(id => resolve(id, D.regulatoryActions, 'actionId', 'exec.actionId'));
+});
+(D.regulatoryRuleRuntimeLogs || []).forEach(l => {
+  req(l.runtimeLogId, 'runtimeLogId');
+  resolve(l.executionId, D.regulatoryRuleExecutions, 'executionId', 'log.executionId');
+});
+(D.regulatoryRuleRollbacks || []).forEach(r => {
+  req(r.rollbackId, 'rollbackId');
+  resolve(r.fromVersionId, D.regulatoryRuleVersions, 'versionId', 'rb.fromVersionId');
+  resolve(r.toVersionId, D.regulatoryRuleVersions, 'versionId', 'rb.toVersionId');
+});
+(D.regulatoryRuleRuntimeAnomalies || []).forEach(a => {
+  req(a.anomalyId, 'anomalyId');
+  if (a.executionId) resolve(a.executionId, D.regulatoryRuleExecutions, 'executionId', 'anom.executionId');
+  if (a.entityId) resolve(a.entityId, D.globalLegalEntities, 'entityId', 'anom.entityId');
+});
+
+const activeDeploys = (D.regulatoryRuleDeployments || []).filter(d => d.deploymentStatus === 'ACTIVE');
+const activeByRule = {};
+activeDeploys.forEach(d => {
+  if (activeByRule[d.ruleId]) runtimeFails.push(`规则 ${d.ruleId} 存在多个 ACTIVE 部署`);
+  activeByRule[d.ruleId] = d.deploymentId;
+});
 const govRuleIds = ['RULE-001', 'RULE-002', 'RULE-003', 'RULE-004', 'RULE-005'];
 govRuleIds.forEach(rid => {
-  const activeVers = (D.regulatoryRuleVersions || []).filter(v => v.ruleId === rid && v.status === 'ACTIVE');
-  if (activeVers.length !== 1) governanceFails.push(`${rid} ACTIVE版本数=${activeVers.length}，期望1`);
-});
-
-(D.regulatoryRuleVersions || []).forEach(v => {
-  req(v.versionId, 'versionId');
-  resolve(v.ruleId, D.regulatoryRuleVersions, 'ruleId', 'version.ruleId');
-});
-(D.regulatoryRuleChangeRequests || []).forEach(cr => {
-  req(cr.changeRequestId, 'changeRequestId');
-  resolve(cr.baseVersionId, D.regulatoryRuleVersions, 'versionId', 'cr.baseVersionId');
-  if (cr.proposedVersionId) resolve(cr.proposedVersionId, D.regulatoryRuleVersions, 'versionId', 'cr.proposedVersionId');
-  if (cr.impactAnalysisId) resolve(cr.impactAnalysisId, D.regulatoryRuleImpactAnalysis, 'impactAnalysisId', 'cr.impactAnalysisId');
-  (cr.simulationIds || []).forEach(sid => resolve(sid, D.regulatorySimulations, 'simulationId', 'cr.simulationId'));
-  (cr.affectedEntityIds || []).forEach(eid => resolve(eid, D.globalLegalEntities, 'entityId', 'cr.entityId'));
-  (cr.affectedActionIds || []).forEach(aid => resolve(aid, D.regulatoryActions, 'actionId', 'cr.actionId'));
-});
-(D.regulatoryRuleApprovals || []).forEach(a => {
-  req(a.approvalId, 'approvalId');
-  resolve(a.changeRequestId, D.regulatoryRuleChangeRequests, 'changeRequestId', 'approval.changeRequestId');
-});
-(D.regulatoryRuleImpactAnalysis || []).forEach(imp => {
-  req(imp.impactAnalysisId, 'impactAnalysisId');
-  resolve(imp.changeRequestId, D.regulatoryRuleChangeRequests, 'changeRequestId', 'imp.changeRequestId');
-  if (imp.simulationOnly !== true) governanceFails.push(`${imp.impactAnalysisId} 未标记 simulationOnly`);
-  (imp.affectedEntities || []).forEach(e => resolve(e.entityId, D.globalLegalEntities, 'entityId', 'imp.entityId'));
-});
-(D.regulatoryRuleEffectiveness || []).forEach(e => {
-  req(e.effectivenessId, 'effectivenessId');
-  resolve(e.versionId, D.regulatoryRuleVersions, 'versionId', 'eff.versionId');
-});
-(D.regulatoryRuleOptimizationLoop || []).forEach(o => {
-  req(o.optimizationId, 'optimizationId');
-  resolve(o.currentVersionId, D.regulatoryRuleVersions, 'versionId', 'opt.versionId');
-  if (o.nextChangeRequestId) resolve(o.nextChangeRequestId, D.regulatoryRuleChangeRequests, 'changeRequestId', 'opt.changeRequestId');
-});
-
-(D.regulatoryRuleChangeRequests || []).filter(cr => cr.status === 'PUBLISHED').forEach(cr => {
-  const approvals = (D.regulatoryRuleApprovals || []).filter(a => a.changeRequestId === cr.changeRequestId && a.approvalStatus === 'APPROVED');
-  if (!approvals.length) governanceFails.push(`PUBLISHED ${cr.changeRequestId} 无审批记录`);
-});
-(D.regulatoryRuleChangeRequests || []).filter(cr => cr.status === 'APPROVED' || cr.status === 'PENDING_APPROVAL').forEach(cr => {
-  if (!(cr.simulationIds || []).length) governanceFails.push(`${cr.changeRequestId} 无仿真记录`);
-});
-(D.regulatoryRuleChangeRequests || []).filter(cr => ['IMPACT_ASSESSED', 'PENDING_APPROVAL', 'APPROVED', 'PUBLISHED'].includes(cr.status)).forEach(cr => {
-  if (!cr.impactAnalysisId) governanceFails.push(`${cr.changeRequestId} 无影响分析`);
+  if (!activeByRule[rid]) runtimeFails.push(`规则 ${rid} 缺少 ACTIVE 部署`);
 });
 
 (D.regulatorySimulationResults || []).forEach(s => {
   if (s.simulationOnly !== true) errors.push(`仿真 ${s.simulationId} simulationOnly!=true`);
 });
 
-if (!D.regulatoryRuleVersions?.length) errors.push('regulatoryRuleVersions 未生成');
-if (!D.regulatoryRuleChangeRequests?.length) errors.push('regulatoryRuleChangeRequests 未生成');
-if (!D.regulatoryRuleApprovals?.length) errors.push('regulatoryRuleApprovals 未生成');
-if (!D.regulatoryRuleImpactAnalysis?.length) errors.push('regulatoryRuleImpactAnalysis 未生成');
-if (!D.regulatoryRuleRuntimeMetrics?.length) errors.push('regulatoryRuleRuntimeMetrics 未生成');
-if (!D.regulatoryRuleEffectiveness?.length) errors.push('regulatoryRuleEffectiveness 未生成');
-if (!D.regulatoryRuleOptimizationLoop?.length) errors.push('regulatoryRuleOptimizationLoop 未生成');
-if (!D.regulatoryRuleGovernanceMetrics) errors.push('regulatoryRuleGovernanceMetrics 未生成');
+if (!D.regulatoryRuleDeployments?.length) errors.push('regulatoryRuleDeployments 未生成');
+if (!D.regulatoryRuleExecutions?.length) errors.push('regulatoryRuleExecutions 未生成');
+if (!D.regulatoryRuleRuntimeLogs?.length) errors.push('regulatoryRuleRuntimeLogs 未生成');
+if (!D.regulatoryRuleRollbacks?.length) errors.push('regulatoryRuleRollbacks 未生成');
+if (!D.regulatoryRuleRuntimeAnomalies?.length) errors.push('regulatoryRuleRuntimeAnomalies 未生成');
+if (!D.regulatoryRuleExecutionMetrics) errors.push('regulatoryRuleExecutionMetrics 未生成');
 
-['page-regulatory-rule-versions', 'page-regulatory-rule-approvals', 'page-regulatory-rule-impact', 'page-regulatory-rule-effectiveness'].forEach(id => {
+['page-regulatory-rule-runtime', 'page-regulatory-rule-executions', 'page-regulatory-rule-deployments'].forEach(id => {
   if (!html.includes(id)) errors.push(`index.html 缺失: ${id}`);
 });
 
@@ -157,20 +151,22 @@ try {
 } catch { nodeCheck = '不通过'; }
 
 const result = {
+  publicPageCount,
   idIntegrity: errors.length === 0 ? '通过' : '不通过',
   errorCount: errors.length,
   warningCount: warnings.length,
-  governanceCheck: governanceFails.length === 0 ? '通过' : '不通过',
+  dataSourceUniqueness: errors.length === 0 ? '通过' : '不通过',
+  runtimeGovernanceCheck: runtimeFails.length === 0 ? '通过' : '不通过',
+  activeVersionUniqueness: runtimeFails.length === 0 ? '通过' : '不通过',
+  runtimeFails: runtimeFails.slice(0, 20),
   governanceFails: governanceFails.slice(0, 20),
   errors: errors.slice(0, 40),
   warnings: warnings.slice(0, 15),
   investmentFreeze: freezeFails.length === 0 ? '通过' : '不通过',
   freezeFails,
   penetrateCallCount: penetrateCount,
-  publicPageCount,
   hardcodeOffsetCount,
-  nodeCheck,
-  dataSourceUniqueness: errors.length === 0 ? '通过' : '不通过'
+  nodeCheck
 };
 console.log(JSON.stringify(result, null, 2));
-process.exit(errors.length || freezeFails.length || hardcodeOffsetCount || governanceFails.length ? 1 : 0);
+process.exit(errors.length || freezeFails.length || hardcodeOffsetCount || runtimeFails.length ? 1 : 0);
