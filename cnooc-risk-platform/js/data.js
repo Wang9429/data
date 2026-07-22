@@ -6322,3 +6322,24 @@ Object.assign(APP_DATA, {
   rpmOp['ROLE-GROUP-LEADER'] = [...new Set([...(rpmOp['ROLE-GROUP-LEADER'] || []), 'OPERATING_MANAGE'])];
   APP_DATA.regulatoryRolePermissionMap = rpmOp;
 })();
+
+(function () {
+  APP_DATA.regulatoryOperatingRuntimeScenarios = [
+    { scenarioId: 'OP-01', name: '日常运营', roleType: 'GROUP_REGULATORY', startPage: 'regulatory-workbench', steps: ['数据异常', 'KRI异常', '预警', '待办', '监管行动'], expectedResult: '日常运营链路可追溯', dataChain: 'dailyOperations → source objects' },
+    { scenarioId: 'OP-02', name: '周度复核', roleType: 'GROUP_REGULATORY', startPage: 'regulatory-analysis-center', steps: ['高风险事项', '周度复核', '人工确认', '监管行动'], expectedResult: '只生成复核建议不自动执行', dataChain: 'weeklyReview → human decision' },
+    { scenarioId: 'OP-03', name: '月度领域评价', roleType: 'GROUP_REGULATORY', startPage: 'regulatory-data-governance', steps: ['数据质量', 'KRI', '预警', '整改', '验证', '领域健康度'], expectedResult: '领域状态动态计算', dataChain: 'domainOperationReview' },
+    { scenarioId: 'OP-04', name: '季度绩效', roleType: 'GROUP_LEADER', startPage: 'regulatory-performance', steps: ['监管行动', '整改', '验证', '绩效评价'], expectedResult: '建议不写回业务数据', dataChain: 'quarterlyPerformance' },
+    { scenarioId: 'OP-05', name: '年度战略复盘', roleType: 'GROUP_LEADER', startPage: 'regulatory-strategic-review', steps: ['年度运营结果', '战略目标', '年度重点', '下一周期规划'], expectedResult: '运营结果联动战略', dataChain: 'annualOperationReview' },
+    { scenarioId: 'OP-06', name: '数据异常阻断', roleType: 'GROUP_REGULATORY', startPage: 'regulatory-data-quality', steps: ['数据源异常', '质量失败', 'KRI可信度下降', '阻断预警', '治理任务'], expectedResult: '质量失败不生成可信预警', dataChain: 'operatingExceptions' },
+    { scenarioId: 'OP-07', name: '运营异常', roleType: 'GROUP_REGULATORY', startPage: 'regulatory-workbench', steps: ['运行失败', '运营异常', '责任分派', '整改', '验证'], expectedResult: '异常可穿透原始对象', dataChain: 'exceptions → rectification' },
+    { scenarioId: 'OP-08', name: '运营建议', roleType: 'GROUP_LEADER', startPage: 'regulatory-workbench', steps: ['运营分析', '生成建议', 'requiresHumanDecision', '人工确认', '监管行动'], expectedResult: '人工决策后留痕', dataChain: 'recommendations → audit' }
+  ];
+  APP_DATA.regulatoryOperatingCycleInstances = APP_DATA.regulatoryOperatingCycleInstances || [];
+  APP_DATA.regulatoryOperatingExceptions = APP_DATA.regulatoryOperatingExceptions || [];
+  APP_DATA.regulatoryDomainOperationReviews = APP_DATA.regulatoryDomainOperationReviews || [];
+  APP_DATA.regulatoryQuarterlyPerformanceReviews = APP_DATA.regulatoryQuarterlyPerformanceReviews || [];
+  APP_DATA.regulatoryAnnualOperationResults = APP_DATA.regulatoryAnnualOperationResults || [];
+  APP_DATA.regulatoryOperatingExecutionRecords = APP_DATA.regulatoryOperatingExecutionRecords || [];
+  APP_DATA.regulatoryOperatingResultIndexes = APP_DATA.regulatoryOperatingResultIndexes || [];
+  APP_DATA.regulatoryOperatingRuntimeMetrics = APP_DATA.regulatoryOperatingRuntimeMetrics || {};
+})();
