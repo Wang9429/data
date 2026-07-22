@@ -69,6 +69,11 @@ Object.assign(App, {
     { pageId: 'regulatory-risk-propagation', label: '集团监管风险传导分析', category: '综合研判', entryFromGroupOverview: false, supportsPublicNavigation: true, supportsBackNavigation: true },
     { pageId: 'regulatory-scenario-analysis', label: '集团监管情景分析中心', category: '综合研判', entryFromGroupOverview: false, supportsPublicNavigation: true, supportsBackNavigation: true },
     { pageId: 'regulatory-decision-recommendations', label: '集团监管决策建议中心', category: '综合研判', entryFromGroupOverview: false, supportsPublicNavigation: true, supportsBackNavigation: true },
+    { pageId: 'regulatory-improvement-center', label: '集团监管持续改进中心', category: '持续改进', entryFromGroupOverview: false, supportsPublicNavigation: true, supportsBackNavigation: true },
+    { pageId: 'regulatory-root-cause-analysis', label: '集团监管问题根因分析中心', category: '持续改进', entryFromGroupOverview: false, supportsPublicNavigation: true, supportsBackNavigation: true },
+    { pageId: 'regulatory-optimization-plans', label: '集团监管优化方案中心', category: '持续改进', entryFromGroupOverview: false, supportsPublicNavigation: true, supportsBackNavigation: true },
+    { pageId: 'regulatory-improvement-execution', label: '集团监管改进实施中心', category: '持续改进', entryFromGroupOverview: false, supportsPublicNavigation: true, supportsBackNavigation: true },
+    { pageId: 'regulatory-improvement-effectiveness', label: '集团监管改进效果验证中心', category: '持续改进', entryFromGroupOverview: false, supportsPublicNavigation: true, supportsBackNavigation: true },
     { pageId: 'major', label: '重大事项监管', category: '重大事项', entryFromGroupOverview: false, supportsPublicNavigation: false, supportsBackNavigation: false }
   ],
 
@@ -141,6 +146,11 @@ Object.assign(App, {
     if (pageId === 'regulatory-risk-propagation') return { ...(this.regulatoryRiskPropagationFilter || {}) };
     if (pageId === 'regulatory-scenario-analysis') return { ...(this.regulatoryScenarioAnalysisFilter || {}) };
     if (pageId === 'regulatory-decision-recommendations') return { ...(this.regulatoryDecisionRecommendationsFilter || {}) };
+    if (pageId === 'regulatory-improvement-center') return { ...(this.regulatoryImprovementCenterFilter || {}) };
+    if (pageId === 'regulatory-root-cause-analysis') return { ...(this.regulatoryRootCauseAnalysisFilter || {}) };
+    if (pageId === 'regulatory-optimization-plans') return { ...(this.regulatoryOptimizationPlansFilter || {}) };
+    if (pageId === 'regulatory-improvement-execution') return { ...(this.regulatoryImprovementExecutionFilter || {}) };
+    if (pageId === 'regulatory-improvement-effectiveness') return { ...(this.regulatoryImprovementEffectivenessFilter || {}) };
     if (pageId === 'regulatory-actions') return { ...(this.regulatoryActionFilter || {}) };
     if (pageId === 'regulatory-action-execution') return { ...(this.regulatoryActionExecutionFilter || {}) };
     if (pageId === 'data-governance') return { ...(this.dataGovFilter || {}) };
@@ -231,6 +241,11 @@ Object.assign(App, {
     if (pageId === 'regulatory-risk-propagation') ctx.propagationId = this.regulatoryPropagationFocusId;
     if (pageId === 'regulatory-scenario-analysis') ctx.scenarioId = this.regulatoryScenarioFocusId;
     if (pageId === 'regulatory-decision-recommendations') ctx.recommendationId = this.regulatoryRecommendationFocusId;
+    if (pageId === 'regulatory-improvement-center') ctx.opportunityId = this.regulatoryOpportunityFocusId;
+    if (pageId === 'regulatory-root-cause-analysis') ctx.rootCauseId = this.regulatoryRootCauseFocusId;
+    if (pageId === 'regulatory-optimization-plans') ctx.planId = this.regulatoryOptimizationPlanFocusId;
+    if (pageId === 'regulatory-improvement-execution') ctx.executionId = this.regulatoryImprovementExecutionFocusId;
+    if (pageId === 'regulatory-improvement-effectiveness') ctx.effectivenessId = this.regulatoryImprovementEffectivenessFocusId;
     return ctx;
   },
 
@@ -274,6 +289,11 @@ Object.assign(App, {
     if (pageId === 'regulatory-risk-propagation') this.regulatoryRiskPropagationFilter = { ...filters };
     if (pageId === 'regulatory-scenario-analysis') this.regulatoryScenarioAnalysisFilter = { ...filters };
     if (pageId === 'regulatory-decision-recommendations') this.regulatoryDecisionRecommendationsFilter = { ...filters };
+    if (pageId === 'regulatory-improvement-center') this.regulatoryImprovementCenterFilter = { ...filters };
+    if (pageId === 'regulatory-root-cause-analysis') this.regulatoryRootCauseAnalysisFilter = { ...filters };
+    if (pageId === 'regulatory-optimization-plans') this.regulatoryOptimizationPlansFilter = { ...filters };
+    if (pageId === 'regulatory-improvement-execution') this.regulatoryImprovementExecutionFilter = { ...filters };
+    if (pageId === 'regulatory-improvement-effectiveness') this.regulatoryImprovementEffectivenessFilter = { ...filters };
     if (pageId === 'regulatory-actions') this.regulatoryActionFilter = { ...filters };
     if (pageId === 'regulatory-action-execution') this.regulatoryActionExecutionFilter = { ...filters };
     if (pageId === 'data-governance') this.dataGovFilter = { ...filters };
@@ -501,7 +521,12 @@ Object.assign(App, {
       'regulatoryDecisionRecommendations:REJECT': 'DECISION_RECOMMENDATION_REJECT',
       'regulatoryDecisionRecommendations:EXECUTE': 'DECISION_RECOMMENDATION_EXECUTE',
       'regulatoryRiskConcentration:VIEW': 'ANALYSIS_VIEW',
-      'regulatoryRiskPropagation:VIEW': 'ANALYSIS_VIEW'
+      'regulatoryRiskPropagation:VIEW': 'ANALYSIS_VIEW',
+      'regulatoryImprovementOpportunities:VIEW': 'IMPROVEMENT_VIEW',
+      'regulatoryRootCauseAnalyses:VIEW': 'ROOT_CAUSE_VIEW', 'regulatoryRootCauseAnalyses:CONFIRM': 'ROOT_CAUSE_CONFIRM',
+      'regulatoryOptimizationPlans:VIEW': 'OPTIMIZATION_PLAN_VIEW', 'regulatoryOptimizationPlans:APPROVE': 'OPTIMIZATION_PLAN_APPROVE',
+      'regulatoryImprovementExecution:VIEW': 'IMPROVEMENT_EXECUTION_VIEW', 'regulatoryImprovementExecution:MANAGE': 'IMPROVEMENT_EXECUTION_MANAGE',
+      'regulatoryImprovementEffectiveness:VIEW': 'EFFECTIVENESS_VIEW', 'regulatoryImprovementEffectiveness:VALIDATE': 'EFFECTIVENESS_VALIDATE'
     };
     if (map[resourceType + ':' + action]) return map[resourceType + ':' + action];
     if (action === 'APPROVE') return 'ACTION_APPROVE';
@@ -542,6 +567,16 @@ Object.assign(App, {
     if (prop) entityId = (prop.affectedEntityIds || [])[0] || entityId;
     if (rec) { entityId = rec.entityId || rec.affectedScope?.scopeId; domainId = rec.affectedScope?.scopeType === 'DOMAIN' ? rec.affectedScope.scopeId : domainId; regionId = rec.regionId || regionId; }
     if (ar) entityId = entityId || 'G001';
+    const opp = (APP_DATA.regulatoryImprovementOpportunities || []).find(o => o.opportunityId === resourceId);
+    const rca = (APP_DATA.regulatoryRootCauseAnalyses || []).find(r => r.rootCauseId === resourceId);
+    const opt = (APP_DATA.regulatoryOptimizationPlans || []).find(p => p.planId === resourceId);
+    const exe = (APP_DATA.regulatoryImprovementExecution || []).find(e => e.executionId === resourceId);
+    const eff = (APP_DATA.regulatoryImprovementEffectiveness || []).find(e => e.effectivenessId === resourceId);
+    if (opp) { entityId = opp.entityId; domainId = opp.domainId; }
+    if (rca) { const o = (APP_DATA.regulatoryImprovementOpportunities || []).find(x => x.opportunityId === rca.opportunityId); entityId = o?.entityId; domainId = o?.domainId; }
+    if (opt) { entityId = opt.entityId; domainId = opt.domainId; }
+    if (exe) entityId = exe.entityId;
+    if (eff) { const ex = (APP_DATA.regulatoryImprovementExecution || []).find(x => x.executionId === eff.executionId); entityId = ex?.entityId; }
     if (scopeType === 'ENTITY') return scopeIds.includes(entityId);
     if (scopeType === 'DOMAIN') return scopeIds.includes(domainId || 'investment');
     if (scopeType === 'REGION') return scopeIds.includes(regionId);
@@ -1089,6 +1124,150 @@ Object.assign(App, {
     rec.relatedActionId = existingAction.actionId;
     this.createRegulatoryAuditLog({ actionType: 'UPDATE', objectType: 'regulatoryDecisionRecommendations', objectId: recommendationId, beforeState: before, afterState: { status: rec.status, relatedActionId: rec.relatedActionId }, reason: '建议转监管行动（关联现有行动）' });
     return { success: true, recommendation: rec, action: existingAction };
+  },
+
+  identifyImprovementOpportunities() {
+    return (APP_DATA.regulatoryImprovementOpportunities || []).map(o => ({
+      opportunityId: o.opportunityId,
+      sourceCategory: o.sourceCategory,
+      title: o.title,
+      priority: o.priority,
+      status: o.status,
+      sourceType: o.sourceType,
+      sourceId: o.sourceId,
+      requiresHumanDecision: o.requiresHumanDecision
+    }));
+  },
+
+  analyzeRegulatoryRootCause(opportunityId) {
+    const rca = (APP_DATA.regulatoryRootCauseAnalyses || []).find(r => r.opportunityId === opportunityId);
+    if (!rca) return null;
+    return { ...rca, potentialRootCause: rca.potentialRootCause, confidence: rca.confidence, evidence: rca.evidence, requiresHumanConfirmation: true };
+  },
+
+  generateRegulatoryOptimizationPlan(rootCauseId) {
+    const plan = (APP_DATA.regulatoryOptimizationPlans || []).find(p => p.rootCauseId === rootCauseId);
+    if (!plan) return null;
+    return { ...plan, requiresHumanDecision: true };
+  },
+
+  evaluateImprovementEffectiveness(executionId) {
+    const eff = (APP_DATA.regulatoryImprovementEffectiveness || []).find(e => e.executionId === executionId);
+    if (!eff) {
+      const exe = (APP_DATA.regulatoryImprovementExecution || []).find(e => e.executionId === executionId);
+      if (!exe) return { dataStatus: 'NOT_FOUND' };
+      return { executionId, before: null, after: null, change: null, effectiveness: 'INSUFFICIENT_HISTORY', dataStatus: 'INSUFFICIENT_HISTORY' };
+    }
+    return { ...eff, before: eff.before, after: eff.after, change: eff.change, effectiveness: eff.effectiveness, dataStatus: eff.dataStatus };
+  },
+
+  filterImprovementByUserScope(items, getEntityId, getDomainId) {
+    return this.filterAnalysisByUserScope(items, getEntityId, getDomainId);
+  },
+
+  confirmRegulatoryRootCause(rootCauseId, confirmedCause, notes) {
+    const rca = (APP_DATA.regulatoryRootCauseAnalyses || []).find(r => r.rootCauseId === rootCauseId);
+    if (!rca) return { success: false, message: '根因分析不存在' };
+    const access = this.canRegulatoryAccess(this.getCurrentRegulatoryUser()?.userId, 'regulatoryRootCauseAnalyses', rootCauseId, 'CONFIRM');
+    if (!access.allowed) return { success: false, denied: true, message: access.reason };
+    const before = { rootCauseStatus: rca.rootCauseStatus, confirmedRootCause: rca.confirmedRootCause };
+    rca.rootCauseStatus = 'CONFIRMED_ROOT_CAUSE';
+    rca.confirmedRootCause = confirmedCause || rca.potentialRootCause;
+    rca.confirmedAt = new Date().toISOString().slice(0, 19);
+    this.createRegulatoryAuditLog({ actionType: 'APPROVE', objectType: 'regulatoryRootCauseAnalyses', objectId: rootCauseId, beforeState: before, afterState: { rootCauseStatus: rca.rootCauseStatus, confirmedRootCause: rca.confirmedRootCause }, reason: notes || '人工确认根因' });
+    return { success: true, rootCause: rca };
+  },
+
+  approveRegulatoryOptimizationPlan(planId, notes) {
+    const plan = (APP_DATA.regulatoryOptimizationPlans || []).find(p => p.planId === planId);
+    if (!plan) return { success: false, message: '优化方案不存在' };
+    const access = this.canRegulatoryAccess(this.getCurrentRegulatoryUser()?.userId, 'regulatoryOptimizationPlans', planId, 'APPROVE');
+    if (!access.allowed) return { success: false, denied: true, message: access.reason };
+    if (plan.optimizationType === 'RULE_OPTIMIZATION') return { success: false, needRuleWorkflow: true, message: '规则优化须走规则治理闭环', nextPageId: 'regulatory-rule-config' };
+    if (plan.optimizationType === 'KRI_OPTIMIZATION') return { success: false, needRuleWorkflow: true, message: 'KRI优化须走阈值治理闭环', nextPageId: 'regulatory-rule-config' };
+    const before = { status: plan.status };
+    plan.status = 'APPROVED';
+    plan.approvedAt = new Date().toISOString().slice(0, 19);
+    this.createRegulatoryAuditLog({ actionType: 'APPROVE', objectType: 'regulatoryOptimizationPlans', objectId: planId, beforeState: before, afterState: { status: plan.status }, reason: notes || '批准优化方案' });
+    return { success: true, plan };
+  },
+
+  startRegulatoryImprovementExecution(planId) {
+    const plan = (APP_DATA.regulatoryOptimizationPlans || []).find(p => p.planId === planId);
+    if (!plan) return { success: false, message: '优化方案不存在' };
+    if (plan.status !== 'APPROVED') return { success: false, message: '方案须先批准' };
+    const access = this.canRegulatoryAccess(this.getCurrentRegulatoryUser()?.userId, 'regulatoryImprovementExecution', planId, 'MANAGE');
+    if (!access.allowed) return { success: false, denied: true, message: access.reason };
+    let exe = (APP_DATA.regulatoryImprovementExecution || []).find(e => e.planId === planId);
+    if (!exe) {
+      exe = { executionId: 'EXE-' + Date.now(), planId, opportunityId: plan.opportunityId, rootCauseId: plan.rootCauseId, status: 'IMPLEMENTING', progress: 10, entityId: plan.entityId, linkedSupervisionTaskId: null, linkedRectificationTaskId: null, startedAt: new Date().toISOString().slice(0, 10) };
+      APP_DATA.regulatoryImprovementExecution = [...(APP_DATA.regulatoryImprovementExecution || []), exe];
+    } else {
+      const before = { status: exe.status, progress: exe.progress };
+      exe.status = 'IMPLEMENTING';
+      exe.progress = Math.max(exe.progress || 0, 10);
+      exe.startedAt = exe.startedAt || new Date().toISOString().slice(0, 10);
+      this.createRegulatoryAuditLog({ actionType: 'UPDATE', objectType: 'regulatoryImprovementExecution', objectId: exe.executionId, beforeState: before, afterState: { status: exe.status, progress: exe.progress }, reason: '启动改进实施' });
+    }
+    plan.status = 'IMPLEMENTING';
+    return { success: true, execution: exe };
+  },
+
+  completeRegulatoryImprovementExecution(executionId, notes) {
+    const exe = (APP_DATA.regulatoryImprovementExecution || []).find(e => e.executionId === executionId);
+    if (!exe) return { success: false, message: '实施记录不存在' };
+    const access = this.canRegulatoryAccess(this.getCurrentRegulatoryUser()?.userId, 'regulatoryImprovementExecution', executionId, 'MANAGE');
+    if (!access.allowed) return { success: false, denied: true, message: access.reason };
+    const before = { status: exe.status };
+    exe.status = 'PENDING_VALIDATION';
+    exe.progress = 100;
+    exe.completedAt = new Date().toISOString().slice(0, 10);
+    const plan = (APP_DATA.regulatoryOptimizationPlans || []).find(p => p.planId === exe.planId);
+    if (plan) plan.status = 'PENDING_VALIDATION';
+    this.createRegulatoryAuditLog({ actionType: 'UPDATE', objectType: 'regulatoryImprovementExecution', objectId: executionId, beforeState: before, afterState: { status: exe.status }, reason: notes || '完成改进实施' });
+    return { success: true, execution: exe };
+  },
+
+  validateRegulatoryImprovementEffectiveness(effectivenessId, result, notes) {
+    const eff = (APP_DATA.regulatoryImprovementEffectiveness || []).find(e => e.effectivenessId === effectivenessId);
+    if (!eff) return { success: false, message: '效果验证记录不存在' };
+    const access = this.canRegulatoryAccess(this.getCurrentRegulatoryUser()?.userId, 'regulatoryImprovementEffectiveness', effectivenessId, 'VALIDATE');
+    if (!access.allowed) return { success: false, denied: true, message: access.reason };
+    const before = { effectiveness: eff.effectiveness };
+    eff.effectiveness = result || 'PARTIALLY_EFFECTIVE';
+    eff.validatedAt = new Date().toISOString().slice(0, 19);
+    eff.validationNotes = notes || '';
+    const exe = (APP_DATA.regulatoryImprovementExecution || []).find(e => e.executionId === eff.executionId);
+    if (exe) exe.status = 'VALIDATED';
+    this.createRegulatoryAuditLog({ actionType: 'APPROVE', objectType: 'regulatoryImprovementEffectiveness', objectId: effectivenessId, beforeState: before, afterState: { effectiveness: eff.effectiveness }, reason: notes || '确认效果验证' });
+    return { success: true, effectiveness: eff };
+  },
+
+  renderPublicImprovementSourceLinks(opp) {
+    if (!opp) return '';
+    const links = [];
+    (opp.relatedRiskIds || []).forEach(id => links.push(this.renderPublicLinkButton('风险 ' + id, `App.navigatePublic('warnings',{riskMatterId:'${id}'})`)));
+    (opp.relatedKriIds || []).forEach(id => links.push(this.renderPublicLinkButton('KRI ' + id, `App.navigatePublic('regulatory-kri-monitoring',{kriId:'${id}'})`)));
+    (opp.relatedWarningIds || []).forEach(id => links.push(this.renderPublicLinkButton('预警 ' + id, `App.navigatePublic('regulatory-warning-center',{regulatoryWarningId:'${id}'})`)));
+    (opp.relatedActionIds || []).forEach(id => links.push(this.renderPublicLinkButton('行动 ' + id, `App.navigatePublic('regulatory-actions',{actionId:'${id}'})`)));
+    (opp.relatedRectificationTaskIds || []).forEach(id => links.push(this.renderPublicLinkButton('整改 ' + id, `App.navigatePublic('rectification',{rectificationTaskId:'${id}'})`)));
+    if (opp.sourceType && opp.sourceId) links.push(this.renderPublicLinkButton('来源 ' + opp.sourceId, this._improvementSourceNavigate(opp)));
+    return links.join(' ') || '—';
+  },
+
+  _improvementSourceNavigate(opp) {
+    const map = {
+      regulatoryWarnings: `App.navigatePublic('regulatory-warning-center',{regulatoryWarningId:'${opp.sourceId}'})`,
+      regulatoryDataQualityIssues: `App.navigatePublic('regulatory-data-quality',{qualityIssueId:'${opp.sourceId}'})`,
+      regulatoryActions: `App.navigatePublic('regulatory-actions',{actionId:'${opp.sourceId}'})`,
+      rectificationTasks: `App.navigatePublic('rectification',{rectificationTaskId:'${opp.sourceId}'})`,
+      regulatoryRiskConcentration: `App.navigatePublic('regulatory-risk-concentration',{concentrationId:'${opp.sourceId}'})`,
+      regulatoryRiskPropagation: `App.navigatePublic('regulatory-risk-propagation',{propagationId:'${opp.sourceId}'})`,
+      regulatoryKriEvaluations: `App.navigatePublic('regulatory-kri-effectiveness')`,
+      regulatoryRuleEffectiveness: `App.navigatePublic('regulatory-rule-effectiveness')`,
+      regulatoryStrategicObjectives: `App.navigatePublic('regulatory-strategy-planning',{objectiveId:'${opp.sourceId}'})`
+    };
+    return map[opp.sourceType] || `App.navigatePublic('regulatory-improvement-center',{opportunityId:'${opp.opportunityId}'})`;
   },
 
   renderPublicAnalysisMatrix(points) {
@@ -1710,6 +1889,11 @@ Object.assign(App, {
     if (pageId === 'regulatory-risk-propagation') return this.regulatoryRiskPropagationFilter || {};
     if (pageId === 'regulatory-scenario-analysis') return this.regulatoryScenarioAnalysisFilter || {};
     if (pageId === 'regulatory-decision-recommendations') return this.regulatoryDecisionRecommendationsFilter || {};
+    if (pageId === 'regulatory-improvement-center') return this.regulatoryImprovementCenterFilter || {};
+    if (pageId === 'regulatory-root-cause-analysis') return this.regulatoryRootCauseAnalysisFilter || {};
+    if (pageId === 'regulatory-optimization-plans') return this.regulatoryOptimizationPlansFilter || {};
+    if (pageId === 'regulatory-improvement-execution') return this.regulatoryImprovementExecutionFilter || {};
+    if (pageId === 'regulatory-improvement-effectiveness') return this.regulatoryImprovementEffectivenessFilter || {};
     if (pageId === 'regulatory-actions') return this.regulatoryActionFilter || {};
     if (pageId === 'regulatory-action-execution') return this.regulatoryActionExecutionFilter || {};
     if (pageId === 'cross-border-compliance') return this.cbFilter || {};
@@ -1756,6 +1940,11 @@ Object.assign(App, {
       : pageId === 'regulatory-risk-propagation' ? 'regulatoryRiskPropagationFilter'
       : pageId === 'regulatory-scenario-analysis' ? 'regulatoryScenarioAnalysisFilter'
       : pageId === 'regulatory-decision-recommendations' ? 'regulatoryDecisionRecommendationsFilter'
+      : pageId === 'regulatory-improvement-center' ? 'regulatoryImprovementCenterFilter'
+      : pageId === 'regulatory-root-cause-analysis' ? 'regulatoryRootCauseAnalysisFilter'
+      : pageId === 'regulatory-optimization-plans' ? 'regulatoryOptimizationPlansFilter'
+      : pageId === 'regulatory-improvement-execution' ? 'regulatoryImprovementExecutionFilter'
+      : pageId === 'regulatory-improvement-effectiveness' ? 'regulatoryImprovementEffectivenessFilter'
       : pageId === 'regulatory-actions' ? 'regulatoryActionFilter'
       : pageId === 'regulatory-action-execution' ? 'regulatoryActionExecutionFilter'
       : pageId === 'data-governance' ? 'dataGovFilter'
@@ -1804,6 +1993,11 @@ Object.assign(App, {
     else if (pageId === 'regulatory-risk-propagation') { this.regulatoryRiskPropagationFilter = {}; this.regulatoryPropagationFocusId = null; }
     else if (pageId === 'regulatory-scenario-analysis') { this.regulatoryScenarioAnalysisFilter = {}; this.regulatoryScenarioFocusId = null; }
     else if (pageId === 'regulatory-decision-recommendations') { this.regulatoryDecisionRecommendationsFilter = {}; this.regulatoryRecommendationFocusId = null; }
+    else if (pageId === 'regulatory-improvement-center') { this.regulatoryImprovementCenterFilter = {}; this.regulatoryOpportunityFocusId = null; }
+    else if (pageId === 'regulatory-root-cause-analysis') { this.regulatoryRootCauseAnalysisFilter = {}; this.regulatoryRootCauseFocusId = null; }
+    else if (pageId === 'regulatory-optimization-plans') { this.regulatoryOptimizationPlansFilter = {}; this.regulatoryOptimizationPlanFocusId = null; }
+    else if (pageId === 'regulatory-improvement-execution') { this.regulatoryImprovementExecutionFilter = {}; this.regulatoryImprovementExecutionFocusId = null; }
+    else if (pageId === 'regulatory-improvement-effectiveness') { this.regulatoryImprovementEffectivenessFilter = {}; this.regulatoryImprovementEffectivenessFocusId = null; }
     else if (pageId === 'regulatory-actions') { this.regulatoryActionFilter = {}; this.regulatoryActionFocusId = null; }
     else if (pageId === 'regulatory-action-execution') { this.regulatoryActionExecutionFilter = {}; this.regulatoryActionExecutionFocusId = null; this.regulatoryActionFeedbackFocusId = null; }
     else if (pageId === 'cross-border-compliance') { this.cbFilter = {}; this.cbFocusActivityId = null; }
@@ -2864,6 +3058,18 @@ Object.assign(App, {
           [recs.filter(r => r.recommendationType === 'REVIEW_DATA_QUALITY').length, '数据质量复核', `App.navigatePublic('regulatory-decision-recommendations')`],
           [recs.filter(r => r.recommendationType === 'REVIEW_KRI').length, 'KRI复核建议', `App.navigatePublic('regulatory-decision-recommendations')`],
           [recs.filter(r => r.recommendationType === 'ALLOCATE_RESOURCE').length, '资源配置建议', `App.navigatePublic('regulatory-decision-recommendations')`]
+        ].map(([v, l, nav]) => this.renderPublicKpiCard(l, v, nav)).join(''); })()}
+      </div>
+      <div class="card"><div class="card-title">持续改进健康度</div>
+        ${(() => { const cm = APP_DATA.regulatoryContinuousImprovementMetrics || {}; return [
+          [cm.pendingOpportunityCount, '待改进机会', `App.navigatePublic('regulatory-improvement-center')`],
+          [cm.highPriorityOpportunityCount, '高优先级问题', `App.navigatePublic('regulatory-improvement-center')`],
+          [cm.pendingRootCauseConfirmationCount, '待根因确认', `App.navigatePublic('regulatory-root-cause-analysis')`],
+          [cm.pendingPlanDecisionCount, '待优化决策', `App.navigatePublic('regulatory-optimization-plans')`],
+          [cm.implementingCount, '实施中', `App.navigatePublic('regulatory-improvement-execution')`],
+          [cm.pendingValidationCount, '待效果验证', `App.navigatePublic('regulatory-improvement-effectiveness')`],
+          [cm.improvementClosureRate != null ? cm.improvementClosureRate + '%' : '—', '改进闭环率', `App.navigatePublic('regulatory-improvement-center')`],
+          [cm.improvementEffectivenessRate != null ? cm.improvementEffectivenessRate + '%' : '—', '改进有效率', `App.navigatePublic('regulatory-improvement-effectiveness')`]
         ].map(([v, l, nav]) => this.renderPublicKpiCard(l, v, nav)).join(''); })()}
       </div>`;
   },
@@ -4529,6 +4735,21 @@ Object.assign(App, {
           ${(APP_DATA.regulatoryScenarioAnalysis || []).slice(0, 4).map(s => `<p class="insight-note clickable" onclick="App.navigatePublic('regulatory-scenario-analysis',{scenarioId:'${s.scenarioId}'})">${s.title}</p>`).join('') || this.renderPublicEmptyState('暂无')}
           <p>${this.renderPublicLinkButton('情景分析中心', `App.navigatePublic('regulatory-scenario-analysis')`)}</p>
         </div>
+      </div>
+      <div class="group-two">
+        <div class="card"><div class="card-title">我的改进事项</div>
+          ${(() => { const cm = APP_DATA.regulatoryContinuousImprovementMetrics || {}; return [
+            [cm.pendingOpportunityCount, '我的改进机会', `App.navigatePublic('regulatory-improvement-center')`],
+            [cm.pendingRootCauseConfirmationCount, '待确认根因', `App.navigatePublic('regulatory-root-cause-analysis')`],
+            [cm.pendingPlanDecisionCount, '待决策优化方案', `App.navigatePublic('regulatory-optimization-plans')`],
+            [cm.implementingCount, '实施中优化', `App.navigatePublic('regulatory-improvement-execution')`],
+            [cm.pendingValidationCount, '待效果验证', `App.navigatePublic('regulatory-improvement-effectiveness')`]
+          ].map(([v,l,n]) => this.renderPublicKpiCard(l,v,n)).join(''); })()}
+        </div>
+        <div class="card"><div class="card-title">效果不佳优化</div>
+          ${(APP_DATA.regulatoryImprovementEffectiveness || []).filter(e => e.effectiveness === 'INEFFECTIVE').length ? (APP_DATA.regulatoryImprovementEffectiveness || []).filter(e => e.effectiveness === 'INEFFECTIVE').map(e => `<p class="insight-note clickable" onclick="App.navigatePublic('regulatory-improvement-effectiveness',{effectivenessId:'${e.effectivenessId}'})">${e.effectivenessId}</p>`).join('') : this.renderPublicEmptyState('暂无')}
+          <p>${this.renderPublicLinkButton('持续改进中心', `App.navigatePublic('regulatory-improvement-center')`)}</p>
+        </div>
       </div>`;
   },
 
@@ -4780,6 +5001,31 @@ Object.assign(App, {
           const eConc = (APP_DATA.regulatoryRiskConcentration || []).filter(c => c.objectId === scopeId || c.entityId === scopeId);
           const eRect = (APP_DATA.rectificationTasks || []).filter(t => t.entityId === scopeId && t.status !== '已关闭');
           return `<p>本法人风险集中度 <b>${eConc.length}</b> · 待整改 <b>${eRect.length}</b></p>${this.renderPublicLinkButton('综合分析', `App.navigatePublic('regulatory-analysis-center')`)} ${this.renderPublicLinkButton('决策建议', `App.navigatePublic('regulatory-decision-recommendations')`)}`;
+        })()}
+      </div>
+      <div class="card"><div class="card-title">持续改进视图</div>
+        ${(() => {
+          const cm = APP_DATA.regulatoryContinuousImprovementMetrics || {};
+          const roleType = role.roleType;
+          if (roleType === 'GROUP_LEADER') return [
+            [cm.highPriorityOpportunityCount, '集团级重点改进', `App.navigatePublic('regulatory-improvement-center')`],
+            [cm.pendingPlanDecisionCount, '待决策优化方案', `App.navigatePublic('regulatory-optimization-plans')`],
+            [cm.improvementEffectivenessRate != null ? cm.improvementEffectivenessRate + '%' : '—', '改进投入产出', `App.navigatePublic('regulatory-improvement-effectiveness')`],
+            [cm.improvementClosureRate != null ? cm.improvementClosureRate + '%' : '—', '战略效果', `App.navigatePublic('regulatory-improvement-effectiveness')`]
+          ].map(([v,l,n]) => this.renderPublicKpiCard(l,v,n)).join('');
+          if (roleType === 'GROUP_REGULATORY') return [
+            [cm.pendingOpportunityCount, '监管体系问题', `App.navigatePublic('regulatory-improvement-center')`],
+            [cm.highPriorityOpportunityCount, '高优先级改进', `App.navigatePublic('regulatory-improvement-center')`],
+            [(APP_DATA.regulatoryImprovementOpportunities || []).filter(o => o.sourceCategory === '整改反复发生').length, '整改反复', `App.navigatePublic('regulatory-improvement-center')`],
+            [(APP_DATA.regulatoryImprovementOpportunities || []).filter(o => o.sourceCategory === '规则运行效果不足').length, '规则效果', `App.navigatePublic('regulatory-optimization-plans')`]
+          ].map(([v,l,n]) => this.renderPublicKpiCard(l,v,n)).join('');
+          if (roleType === 'DOMAIN_REGULATOR') {
+            const opps = this.filterImprovementByUserScope(APP_DATA.regulatoryImprovementOpportunities || [], o => o.entityId, o => o.domainId);
+            return `<p>领域优化方案 <b>${(APP_DATA.regulatoryOptimizationPlans || []).filter(p => opps.some(o => o.opportunityId === p.opportunityId)).length}</b></p>${this.renderPublicLinkButton('根因分析', `App.navigatePublic('regulatory-root-cause-analysis')`)} ${this.renderPublicLinkButton('优化方案', `App.navigatePublic('regulatory-optimization-plans')`)}`;
+          }
+          const eOpps = (APP_DATA.regulatoryImprovementOpportunities || []).filter(o => o.entityId === scopeId);
+          const eExec = (APP_DATA.regulatoryImprovementExecution || []).filter(e => e.entityId === scopeId);
+          return `<p>本法人问题 <b>${eOpps.length}</b> · 改进任务 <b>${eExec.filter(e => e.status === 'IMPLEMENTING').length}</b></p>${this.renderPublicLinkButton('持续改进', `App.navigatePublic('regulatory-improvement-center')`)} ${this.renderPublicLinkButton('效果验证', `App.navigatePublic('regulatory-improvement-effectiveness')`)}`;
         })()}
       </div>`;
   },
@@ -5523,6 +5769,164 @@ Object.assign(App, {
     }, '建议');
   },
 
+  renderRegulatoryImprovementCenter() {
+    const node = document.getElementById('regulatoryImprovementCenter');
+    if (!node) return;
+    const f = this.regulatoryImprovementCenterFilter || {};
+    let opps = this.filterImprovementByUserScope(APP_DATA.regulatoryImprovementOpportunities || [], o => o.entityId, o => o.domainId);
+    if (f.sourceCategory) opps = opps.filter(o => o.sourceCategory === f.sourceCategory);
+    if (f.priority) opps = opps.filter(o => o.priority === f.priority);
+    const cm = APP_DATA.regulatoryContinuousImprovementMetrics || {};
+    const cats = [...new Set((APP_DATA.regulatoryImprovementOpportunities || []).map(o => o.sourceCategory))];
+    const rows = opps.map(o => `<tr class="clickable" onclick="App.showRegulatoryOpportunityDetail('${o.opportunityId}')"><td>${o.opportunityId}</td><td>${o.sourceCategory}</td><td>${o.title}</td><td>${this.renderPublicPriorityBadge(o.priority)}</td><td>${o.status}</td><td>${o.problemManifestation?.slice(0, 30) || '—'}</td></tr>`).join('');
+    node.innerHTML = `${this.renderPublicBackButton('regulatory-improvement-center')}
+      <div class="group-hero"><div><span>持续改进</span><h2>集团监管持续改进中心</h2><p>发现问题 → 分析原因 → 形成改进方案 → 人工决策 → 实施优化 → 验证效果</p></div></div>
+      <div class="group-metrics">${[[cm.pendingOpportunityCount,'待分析机会'],[cm.highPriorityOpportunityCount,'高优先级'],[cm.pendingPlanDecisionCount,'待决策方案'],[cm.implementingCount,'实施中'],[cm.pendingValidationCount,'待验证'],[cm.validatedEffectiveCount,'已验证有效'],[cm.improvementClosureRate!=null?cm.improvementClosureRate+'%':'—','闭环率'],[cm.improvementEffectivenessRate!=null?cm.improvementEffectivenessRate+'%':'—','效果达成率']].map(([v,l])=>this.renderPublicKpiCard(l,v,`App.navigatePublic('regulatory-improvement-center')`)).join('')}</div>
+      <div class="filter-bar" style="margin-bottom:12px"><select onchange="App.regulatoryImprovementCenterFilter={...(App.regulatoryImprovementCenterFilter||{}),sourceCategory:this.value||null};App.renderRegulatoryImprovementCenter()"><option value="">全部来源</option>${cats.map(c=>`<option value="${c}" ${f.sourceCategory===c?'selected':''}>${c}</option>`).join('')}</select></div>
+      <div class="card"><div class="card-title">改进机会清单</div>${rows ? `<table class="data-table"><thead><tr><th>ID</th><th>来源</th><th>标题</th><th>优先级</th><th>状态</th><th>问题表现</th></tr></thead><tbody>${rows}</tbody></table>` : this.renderPublicEmptyState('暂无')}</div>
+      <div id="regulatoryOpportunityDetail"></div>`;
+    if (this.regulatoryOpportunityFocusId) setTimeout(() => this.showRegulatoryOpportunityDetail(this.regulatoryOpportunityFocusId), 0);
+  },
+
+  showRegulatoryOpportunityDetail(opportunityId) {
+    const o = (APP_DATA.regulatoryImprovementOpportunities || []).find(x => x.opportunityId === opportunityId);
+    const node = document.getElementById('regulatoryOpportunityDetail');
+    this.regulatoryOpportunityFocusId = opportunityId;
+    this.showPublicDetailOrNotFound(node, o, () => {
+      const rca = this.analyzeRegulatoryRootCause(opportunityId);
+      node.innerHTML = this.buildPublicDetailPanel({ objectType: '改进机会', objectName: o.title, objectId: o.opportunityId, status: o.status,
+        sections: [
+          { title: '一、问题来源', content: `<p>${o.sourceCategory} · ${o.sourceType} · ${o.sourceId}</p>` },
+          { title: '二、原始对象穿透', content: this.renderPublicImprovementSourceLinks(o) },
+          { title: '三、问题表现与影响', content: this.renderPublicMetaGrid([{ label: '问题表现', value: o.problemManifestation }, { label: '影响范围', value: o.impactScope }, { label: '潜在原因', value: o.potentialCause }, { label: '改进方向', value: o.suggestedDirection }]) },
+          { title: '四、根因分析', content: rca ? this.renderPublicLinkButton(rca.rootCauseId + ' · ' + rca.rootCauseStatus, `App.navigatePublic('regulatory-root-cause-analysis',{rootCauseId:'${rca.rootCauseId}'})`) : this.renderPublicEmptyState('待分析') }
+        ],
+        footer: `${this.renderPublicLinkButton('根因分析', `App.navigatePublic('regulatory-root-cause-analysis',{rootCauseId:'${rca?.rootCauseId||''}'})`)} ${this.renderPublicLinkButton('优化方案', `App.navigatePublic('regulatory-optimization-plans')`)}`
+      });
+    }, '改进机会');
+  },
+
+  renderRegulatoryRootCauseAnalysis() {
+    const node = document.getElementById('regulatoryRootCauseAnalysis');
+    if (!node) return;
+    const items = APP_DATA.regulatoryRootCauseAnalyses || [];
+    const rows = items.map(r => `<tr class="clickable" onclick="App.showRegulatoryRootCauseDetail('${r.rootCauseId}')"><td>${r.rootCauseId}</td><td>${r.opportunityId}</td><td>${r.rootCauseCategory}</td><td>${r.rootCauseStatus}</td><td>${r.confidence}</td><td>${r.requiresHumanConfirmation ? '是' : '否'}</td></tr>`).join('');
+    node.innerHTML = `${this.renderPublicBackButton('regulatory-root-cause-analysis')}
+      <div class="group-hero"><div><span>持续改进</span><h2>集团监管问题根因分析中心</h2><p>系统仅输出 POTENTIAL_ROOT_CAUSE，须经人工确认</p></div></div>
+      <div class="card insight-note">事实 → 证据 → 问题表现 → 可能原因 → 待人工确认根因</div>
+      <div class="card"><div class="card-title">根因分析清单</div>${rows ? `<table class="data-table"><thead><tr><th>ID</th><th>改进机会</th><th>分类</th><th>状态</th><th>置信度</th><th>需人审</th></tr></thead><tbody>${rows}</tbody></table>` : this.renderPublicEmptyState('暂无')}</div>
+      <div id="regulatoryRootCauseDetail"></div>`;
+    if (this.regulatoryRootCauseFocusId) setTimeout(() => this.showRegulatoryRootCauseDetail(this.regulatoryRootCauseFocusId), 0);
+  },
+
+  showRegulatoryRootCauseDetail(rootCauseId) {
+    const r = (APP_DATA.regulatoryRootCauseAnalyses || []).find(x => x.rootCauseId === rootCauseId);
+    const node = document.getElementById('regulatoryRootCauseDetail');
+    this.regulatoryRootCauseFocusId = rootCauseId;
+    const canConfirm = this.canRegulatoryAccess(this.getCurrentRegulatoryUser()?.userId, 'regulatoryRootCauseAnalyses', rootCauseId, 'CONFIRM').allowed;
+    this.showPublicDetailOrNotFound(node, r, () => {
+      const opp = (APP_DATA.regulatoryImprovementOpportunities || []).find(o => o.opportunityId === r.opportunityId);
+      node.innerHTML = this.buildPublicDetailPanel({ objectType: '根因分析', objectName: r.rootCauseCategory, objectId: r.rootCauseId, status: r.rootCauseStatus,
+        sections: [
+          { title: '一、事实与证据', content: `<p>${(r.facts || []).join('；')}</p><p>${(r.evidence || []).map(e => e.type + ':' + (e.id || (e.ids || []).join(','))).join(' · ')}</p>` },
+          { title: '二、问题表现', content: `<p>${r.problemManifestation}</p>` },
+          { title: '三、可能根因', content: `<p>${r.potentialRootCause}</p>${r.confirmedRootCause ? `<p>已确认: ${r.confirmedRootCause}</p>` : ''}` },
+          { title: '四、来源穿透', content: opp ? this.renderPublicImprovementSourceLinks(opp) : '—' }
+        ],
+        footer: `${r.rootCauseStatus === 'POTENTIAL_ROOT_CAUSE' && canConfirm ? `<button class="btn" onclick="App.confirmRegulatoryRootCause('${r.rootCauseId}','${this.escHtml(r.potentialRootCause)}');App.renderRegulatoryRootCauseAnalysis()">确认根因</button>` : ''}${this.renderPublicLinkButton('优化方案', `App.navigatePublic('regulatory-optimization-plans')`)}`
+      });
+    }, '根因');
+  },
+
+  renderRegulatoryOptimizationPlans() {
+    const node = document.getElementById('regulatoryOptimizationPlans');
+    if (!node) return;
+    const plans = this.filterImprovementByUserScope(APP_DATA.regulatoryOptimizationPlans || [], p => p.entityId, p => p.domainId);
+    const rows = plans.map(p => `<tr class="clickable" onclick="App.showRegulatoryOptimizationPlanDetail('${p.planId}')"><td>${p.planId}</td><td>${p.optimizationType}</td><td>${p.title}</td><td>${p.status}</td><td>${p.implementationPeriod}</td><td>${p.requiresHumanDecision ? '是' : '否'}</td></tr>`).join('');
+    node.innerHTML = `${this.renderPublicBackButton('regulatory-optimization-plans')}
+      <div class="group-hero"><div><span>持续改进</span><h2>集团监管优化方案中心</h2><p>所有优化方案 requiresHumanDecision: true，不得自动执行</p></div></div>
+      <div class="card"><div class="card-title">优化方案清单</div>${rows ? `<table class="data-table"><thead><tr><th>ID</th><th>类型</th><th>标题</th><th>状态</th><th>周期</th><th>人审</th></tr></thead><tbody>${rows}</tbody></table>` : this.renderPublicEmptyState('暂无')}</div>
+      <div id="regulatoryOptimizationPlanDetail"></div>`;
+    if (this.regulatoryOptimizationPlanFocusId) setTimeout(() => this.showRegulatoryOptimizationPlanDetail(this.regulatoryOptimizationPlanFocusId), 0);
+  },
+
+  showRegulatoryOptimizationPlanDetail(planId) {
+    const p = (APP_DATA.regulatoryOptimizationPlans || []).find(x => x.planId === planId);
+    const node = document.getElementById('regulatoryOptimizationPlanDetail');
+    this.regulatoryOptimizationPlanFocusId = planId;
+    const canApprove = this.canRegulatoryAccess(this.getCurrentRegulatoryUser()?.userId, 'regulatoryOptimizationPlans', planId, 'APPROVE').allowed;
+    this.showPublicDetailOrNotFound(node, p, () => {
+      node.innerHTML = this.buildPublicDetailPanel({ objectType: '优化方案', objectName: p.title, objectId: p.planId, status: p.status,
+        sections: [
+          { title: '一、方案要素', content: this.renderPublicMetaGrid([{ label: '类型', value: p.optimizationType }, { label: '目标', value: p.objective }, { label: '预期效果', value: p.expectedImpact }, { label: '责任', value: p.responsibleOrganization }, { label: '周期', value: p.implementationPeriod }, { label: '资源', value: p.resourceRequirement }]) },
+          { title: '二、措施', content: (p.actions || []).map(a => `<p>· ${a}</p>`).join('') },
+          { title: '三、验证指标', content: (p.validationMetrics || []).join('、') },
+          { title: '四、关联', content: `${this.renderPublicLinkButton('改进机会', `App.navigatePublic('regulatory-improvement-center',{opportunityId:'${p.opportunityId}'})`)} ${this.renderPublicLinkButton('根因', `App.navigatePublic('regulatory-root-cause-analysis',{rootCauseId:'${p.rootCauseId}'})`)}` }
+        ],
+        footer: `${p.status === 'PROPOSED' && canApprove ? `<button class="btn" onclick="const r=App.approveRegulatoryOptimizationPlan('${p.planId}');if(r.needRuleWorkflow){alert(r.message);App.navigatePublic(r.nextPageId)}else{App.renderRegulatoryOptimizationPlans()}">批准方案</button>` : ''}${p.status === 'APPROVED' ? `<button class="btn btn-outline" onclick="App.startRegulatoryImprovementExecution('${p.planId}');App.navigatePublic('regulatory-improvement-execution')">启动实施</button>` : ''}`
+      });
+    }, '方案');
+  },
+
+  renderRegulatoryImprovementExecution() {
+    const node = document.getElementById('regulatoryImprovementExecution');
+    if (!node) return;
+    const execs = this.filterImprovementByUserScope(APP_DATA.regulatoryImprovementExecution || [], e => e.entityId);
+    const rows = execs.map(e => `<tr class="clickable" onclick="App.showRegulatoryImprovementExecutionDetail('${e.executionId}')"><td>${e.executionId}</td><td>${e.planId}</td><td>${e.status}</td><td>${e.progress}%</td><td>${e.linkedSupervisionTaskId || '—'}</td><td>${e.linkedRectificationTaskId || '—'}</td></tr>`).join('');
+    node.innerHTML = `${this.renderPublicBackButton('regulatory-improvement-execution')}
+      <div class="group-hero"><div><span>持续改进</span><h2>集团监管改进实施中心</h2><p>通过索引关联监管任务与整改，不复制任务实体</p></div></div>
+      <div class="card"><div class="card-title">实施进度</div>${rows ? `<table class="data-table"><thead><tr><th>ID</th><th>方案</th><th>状态</th><th>进度</th><th>监管任务</th><th>整改任务</th></tr></thead><tbody>${rows}</tbody></table>` : this.renderPublicEmptyState('暂无')}</div>
+      <div id="regulatoryImprovementExecutionDetail"></div>`;
+    if (this.regulatoryImprovementExecutionFocusId) setTimeout(() => this.showRegulatoryImprovementExecutionDetail(this.regulatoryImprovementExecutionFocusId), 0);
+  },
+
+  showRegulatoryImprovementExecutionDetail(executionId) {
+    const e = (APP_DATA.regulatoryImprovementExecution || []).find(x => x.executionId === executionId);
+    const node = document.getElementById('regulatoryImprovementExecutionDetail');
+    this.regulatoryImprovementExecutionFocusId = executionId;
+    const canManage = this.canRegulatoryAccess(this.getCurrentRegulatoryUser()?.userId, 'regulatoryImprovementExecution', executionId, 'MANAGE').allowed;
+    this.showPublicDetailOrNotFound(node, e, () => {
+      node.innerHTML = this.buildPublicDetailPanel({ objectType: '改进实施', objectName: e.executionId, objectId: e.executionId, status: e.status,
+        sections: [
+          { title: '一、实施信息', content: this.renderPublicMetaGrid([{ label: '方案', value: e.planId }, { label: '进度', value: e.progress + '%' }, { label: '反馈', value: e.feedback || '—' }]) },
+          { title: '二、关联任务', content: `${e.linkedSupervisionTaskId ? this.renderPublicLinkButton('监管任务 ' + e.linkedSupervisionTaskId, `App.navigatePublic('regulatory-supervision-tasks',{supervisionTaskId:'${e.linkedSupervisionTaskId}'})`) : ''} ${e.linkedRectificationTaskId ? this.renderPublicLinkButton('整改 ' + e.linkedRectificationTaskId, `App.navigatePublic('rectification',{rectificationTaskId:'${e.linkedRectificationTaskId}'})`) : ''}` }
+        ],
+        footer: `${e.status === 'IMPLEMENTING' && canManage ? `<button class="btn" onclick="App.completeRegulatoryImprovementExecution('${e.executionId}');App.renderRegulatoryImprovementExecution()">完成实施</button>` : ''}${e.status === 'PENDING_VALIDATION' ? this.renderPublicLinkButton('效果验证', `App.navigatePublic('regulatory-improvement-effectiveness')`) : ''}`
+      });
+    }, '实施');
+  },
+
+  renderRegulatoryImprovementEffectiveness() {
+    const node = document.getElementById('regulatoryImprovementEffectiveness');
+    if (!node) return;
+    const items = APP_DATA.regulatoryImprovementEffectiveness || [];
+    const rows = items.map(e => `<tr class="clickable" onclick="App.showRegulatoryImprovementEffectivenessDetail('${e.effectivenessId}')"><td>${e.effectivenessId}</td><td>${e.executionId}</td><td>${e.effectiveness}</td><td>${e.dataStatus}</td><td>${e.validatedAt || '—'}</td></tr>`).join('');
+    node.innerHTML = `${this.renderPublicBackButton('regulatory-improvement-effectiveness')}
+      <div class="group-hero"><div><span>持续改进</span><h2>集团监管改进效果验证中心</h2><p>优化前 VS 优化后；历史不足时 INSUFFICIENT_HISTORY，不伪造趋势</p></div></div>
+      <div class="card"><div class="card-title">效果验证清单</div>${rows ? `<table class="data-table"><thead><tr><th>ID</th><th>实施</th><th>效果</th><th>数据状态</th><th>验证时间</th></tr></thead><tbody>${rows}</tbody></table>` : this.renderPublicEmptyState('暂无')}</div>
+      <div id="regulatoryImprovementEffectivenessDetail"></div>`;
+    if (this.regulatoryImprovementEffectivenessFocusId) setTimeout(() => this.showRegulatoryImprovementEffectivenessDetail(this.regulatoryImprovementEffectivenessFocusId), 0);
+  },
+
+  showRegulatoryImprovementEffectivenessDetail(effectivenessId) {
+    const e = (APP_DATA.regulatoryImprovementEffectiveness || []).find(x => x.effectivenessId === effectivenessId);
+    const node = document.getElementById('regulatoryImprovementEffectivenessDetail');
+    this.regulatoryImprovementEffectivenessFocusId = effectivenessId;
+    const canValidate = this.canRegulatoryAccess(this.getCurrentRegulatoryUser()?.userId, 'regulatoryImprovementEffectiveness', effectivenessId, 'VALIDATE').allowed;
+    const evalResult = this.evaluateImprovementEffectiveness(e?.executionId);
+    this.showPublicDetailOrNotFound(node, e, () => {
+      const compareHtml = e.dataStatus === 'INSUFFICIENT_HISTORY' ? this.renderPublicEmptyState('历史数据不足，暂无法评价优化效果') : `<p>优化前: ${JSON.stringify(e.before)}</p><p>优化后: ${JSON.stringify(e.after)}</p><p>变化: ${JSON.stringify(e.change)}</p>`;
+      node.innerHTML = this.buildPublicDetailPanel({ objectType: '效果验证', objectName: e.effectivenessId, objectId: e.effectivenessId, status: e.effectiveness,
+        sections: [
+          { title: '一、优化前后对比', content: compareHtml },
+          { title: '二、多维评价', content: `<p>风险效果: ${e.riskEffect?.status} · 监管效果: ${e.supervisionEffect?.status} · 数据效果: ${e.dataEffect?.status} · 运营效果: ${e.operationEffect?.status} · 战略效果: ${e.strategyEffect?.status}</p>` },
+          { title: '三、关联穿透', content: `${this.renderPublicLinkButton('实施', `App.navigatePublic('regulatory-improvement-execution',{executionId:'${e.executionId}'})`)} ${this.renderPublicLinkButton('改进机会', `App.navigatePublic('regulatory-improvement-center',{opportunityId:'${e.opportunityId}'})`)}` }
+        ],
+        footer: `${canValidate && e.effectiveness !== 'EFFECTIVE' ? `<button class="btn" onclick="App.validateRegulatoryImprovementEffectiveness('${e.effectivenessId}','PARTIALLY_EFFECTIVE');App.renderRegulatoryImprovementEffectiveness()">确认验证</button>` : ''}${e.effectiveness === 'INEFFECTIVE' || e.effectiveness === 'PARTIALLY_EFFECTIVE' ? this.renderPublicLinkButton('下一轮改进', `App.navigatePublic('regulatory-improvement-center')`) : ''}`
+      });
+    }, '效果');
+  },
+
   rerenderPublicPage(pageId) {
     const routeId = this.resolvePublicRouteId(pageId);
     const fn = {
@@ -5588,7 +5992,12 @@ Object.assign(App, {
       'regulatory-risk-concentration': 'renderRegulatoryRiskConcentration',
       'regulatory-risk-propagation': 'renderRegulatoryRiskPropagation',
       'regulatory-scenario-analysis': 'renderRegulatoryScenarioAnalysis',
-      'regulatory-decision-recommendations': 'renderRegulatoryDecisionRecommendations'
+      'regulatory-decision-recommendations': 'renderRegulatoryDecisionRecommendations',
+      'regulatory-improvement-center': 'renderRegulatoryImprovementCenter',
+      'regulatory-root-cause-analysis': 'renderRegulatoryRootCauseAnalysis',
+      'regulatory-optimization-plans': 'renderRegulatoryOptimizationPlans',
+      'regulatory-improvement-execution': 'renderRegulatoryImprovementExecution',
+      'regulatory-improvement-effectiveness': 'renderRegulatoryImprovementEffectiveness'
     }[routeId];
     if (fn && this[fn]) this[fn]();
   }

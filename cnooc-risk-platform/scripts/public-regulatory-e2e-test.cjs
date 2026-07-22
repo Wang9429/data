@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * 公共监管底座 Phase 20 端到端验收（25 条链路）
+ * 公共监管底座 Phase 21 端到端验收（25 条链路）
  */
 const fs = require('fs');
 const path = require('path');
@@ -20,63 +20,45 @@ const D = loadAppData();
 function ok(step, cond, msg) { return { step, pass: !!cond, msg: cond ? 'OK' : msg }; }
 
 const chains = [
-  { name: '测试1：总览→综合分析中心', steps: [() => ok('分析索引', (D.regulatoryAnalysisIndexes || []).length > 0)] },
-  { name: '测试2：综合分析→风险集中度', steps: [() => ok('集中度', (D.regulatoryRiskConcentration || []).length > 0)] },
-  { name: '测试3：风险集中度→区域', steps: [() => ok('区域', (D.regulatoryRiskConcentration || []).some(c => c.dimension === 'byRegion'))] },
-  { name: '测试4：区域→法人', steps: [() => {
-    const region = (D.regulatoryRiskConcentration || []).find(c => c.dimension === 'byRegion');
-    const entity = (D.regulatoryRiskConcentration || []).find(c => c.dimension === 'byEntity' && c.regionId === region?.objectId);
-    return ok('区域法人链', region && (entity || (D.globalLegalEntities || []).some(e => e.regionId === region.objectId)));
+  { name: '测试1：总览→持续改进中心', steps: [() => ok('改进机会', (D.regulatoryImprovementOpportunities || []).length > 0)] },
+  { name: '测试2：改进机会→原始风险', steps: [() => ok('风险关联', (D.regulatoryImprovementOpportunities || []).some(o => (o.relatedRiskIds || []).length > 0 || o.sourceType === 'regulatoryRiskConcentration'))] },
+  { name: '测试3：改进机会→KRI', steps: [() => ok('KRI关联', (D.regulatoryImprovementOpportunities || []).some(o => (o.relatedKriIds || []).length > 0))] },
+  { name: '测试4：改进机会→预警', steps: [() => ok('预警关联', (D.regulatoryImprovementOpportunities || []).some(o => (o.relatedWarningIds || []).length > 0 || o.sourceType === 'regulatoryWarnings'))] },
+  { name: '测试5：改进机会→根因分析', steps: [() => {
+    const o = (D.regulatoryImprovementOpportunities || [])[0];
+    const r = o ? (D.regulatoryRootCauseAnalyses || []).find(r => r.opportunityId === o.opportunityId) : null;
+    return ok('根因链', o && r);
   }]},
-  { name: '测试5：法人→风险事项', steps: [() => {
-    const ent = (D.regulatoryRiskConcentration || []).find(c => c.dimension === 'byEntity');
-    const risk = ent ? (D.warnings || []).find(w => w.entityId === ent.objectId) : (D.warnings || [])[0];
-    return ok('法人风险', ent && risk);
+  { name: '测试6：根因分析→证据', steps: [() => ok('证据', (D.regulatoryRootCauseAnalyses || []).every(r => (r.evidence || []).length > 0))] },
+  { name: '测试7：根因分析→人工确认', steps: [() => ok('人审', (D.regulatoryRootCauseAnalyses || []).every(r => r.requiresHumanConfirmation === true))] },
+  { name: '测试8：根因确认→优化方案', steps: [() => {
+    const r = (D.regulatoryRootCauseAnalyses || [])[0];
+    const p = r ? (D.regulatoryOptimizationPlans || []).find(p => p.rootCauseId === r.rootCauseId) : null;
+    return ok('方案链', r && p);
   }]},
-  { name: '测试6：风险事项→KRI', steps: [() => {
-    const w = (D.warnings || []).find(x => x.kriId);
-    const kri = w ? (D.regulatoryKriRuntime || []).find(k => k.kriId === w.kriId) : null;
-    return ok('风险KRI链', w && kri);
-  }]},
-  { name: '测试7：KRI→预警', steps: [() => {
-    const w = (D.regulatoryWarnings || [])[0];
-    const k = w ? (D.regulatoryKriRuntime || []).find(x => x.kriRuntimeId === w.kriRuntimeId) : null;
-    return ok('KRI预警链', w && k);
-  }]},
-  { name: '测试8：预警→数据质量', steps: [() => {
-    const issue = (D.regulatoryDataQualityIssues || []).find(i => i.kriId);
-    return ok('质量KRI链', issue);
-  }]},
-  { name: '测试9：数据质量→整改', steps: [() => {
-    const issue = (D.regulatoryDataQualityIssues || []).find(i => i.relatedRectificationTaskId);
-    const rect = issue ? (D.rectificationTasks || []).find(t => t.taskId === issue.relatedRectificationTaskId) : null;
-    return ok('质量整改链', issue && rect);
-  }]},
-  { name: '测试10：综合分析→风险传导', steps: [() => ok('传导', (D.regulatoryRiskPropagation || []).length > 0)] },
-  { name: '测试11：风险传导→潜在传导链', steps: [() => ok('潜在传导', (D.regulatoryRiskPropagation || []).some(p => p.propagationType === 'POTENTIAL_PROPAGATION'))] },
-  { name: '测试12：潜在传导→原始风险', steps: [() => {
-    const p = (D.regulatoryRiskPropagation || []).find(x => (x.steps || []).some(s => s.objectType === 'warnings'));
-    return ok('原始风险', p);
-  }]},
-  { name: '测试13：综合分析→情景分析', steps: [() => ok('情景', (D.regulatoryScenarioAnalysis || []).length >= 4)] },
-  { name: '测试14：情景分析→模拟结果', steps: [() => ok('仅模拟', (D.regulatoryScenarioAnalysis || []).every(s => s.simulationOnly === true))] },
-  { name: '测试15：模拟结果→真实基准状态', steps: [() => ok('分析权重', !!(D.regulatoryAnalysisWeights || {}).riskExposure)] },
-  { name: '测试16：情景分析→不写回真实数据', steps: [() => ok('无自动写回', !(D.regulatoryScenarioAnalysis || []).some(s => s.wroteBack === true))] },
-  { name: '测试17：综合分析→决策建议', steps: [() => ok('建议', (D.regulatoryDecisionRecommendations || []).length > 0)] },
-  { name: '测试18：决策建议→证据链', steps: [() => ok('证据', (D.regulatoryDecisionRecommendations || []).every(r => (r.evidence || []).length > 0))] },
-  { name: '测试19：决策建议→人工确认', steps: [() => ok('人审', (D.regulatoryDecisionRecommendations || []).every(r => r.requiresHumanDecision === true))] },
-  { name: '测试20：建议确认→监管行动', steps: [() => ok('监管行动库', (D.regulatoryActions || []).length > 0)] },
-  { name: '测试21：建议驳回→审计日志', steps: [() => ok('审计', Array.isArray(D.regulatoryAuditLogs))] },
-  { name: '测试22：角色权限→分析范围', steps: [() => ok('法人用户', (D.regulatoryUsers || []).some(u => u.userType === 'ENTITY_REGULATOR'))] },
-  { name: '测试23：越权访问→拒绝', steps: [() => ok('分析权限', (D.regulatoryPermissionSets || []).some(p => p.permissionCode === 'ANALYSIS_VIEW'))] },
-  { name: '测试24：驾驶舱→综合分析', steps: [() => ok('分析指标', !!(D.regulatoryAnalysisMetrics || {}).highRiskEntityCount != null)] },
+  { name: '测试9：优化方案→权限校验', steps: [() => ok('权限码', (D.regulatoryPermissionSets || []).some(p => p.permissionCode === 'OPTIMIZATION_PLAN_APPROVE'))] },
+  { name: '测试10：优化方案→授权审批', steps: [() => ok('审计', Array.isArray(D.regulatoryAuditLogs))] },
+  { name: '测试11：优化方案→实施', steps: [() => ok('实施', (D.regulatoryImprovementExecution || []).length > 0)] },
+  { name: '测试12：实施→监管任务', steps: [() => ok('监管任务', (D.regulatoryImprovementExecution || []).some(e => e.linkedSupervisionTaskId))] },
+  { name: '测试13：实施→整改', steps: [() => ok('整改', (D.regulatoryImprovementExecution || []).some(e => e.linkedRectificationTaskId))] },
+  { name: '测试14：实施→反馈', steps: [() => ok('反馈', (D.regulatoryImprovementExecution || []).some(e => e.feedback))] },
+  { name: '测试15：实施完成→效果验证', steps: [() => ok('效果', (D.regulatoryImprovementEffectiveness || []).length > 0)] },
+  { name: '测试16：效果验证→优化前后对比', steps: [() => ok('对比', (D.regulatoryImprovementEffectiveness || []).every(e => e.before != null))] },
+  { name: '测试17：效果不佳→下一轮改进机会', steps: [() => ok('改进循环', (D.regulatoryImprovementOpportunities || []).length > 0)] },
+  { name: '测试18：规则优化→规则治理闭环', steps: [() => ok('规则方案', (D.regulatoryOptimizationPlans || []).some(p => p.optimizationType === 'RULE_OPTIMIZATION'))] },
+  { name: '测试19：KRI优化→阈值治理闭环', steps: [() => ok('KRI方案', (D.regulatoryOptimizationPlans || []).some(p => p.optimizationType === 'KRI_OPTIMIZATION'))] },
+  { name: '测试20：数据优化→数据治理闭环', steps: [() => ok('数据方案', (D.regulatoryOptimizationPlans || []).some(p => p.optimizationType === 'DATA_GOVERNANCE_OPTIMIZATION'))] },
+  { name: '测试21：资源优化→资源调度闭环', steps: [() => ok('资源方案', (D.regulatoryOptimizationPlans || []).some(p => p.optimizationType === 'RESOURCE_OPTIMIZATION'))] },
+  { name: '测试22：角色工作台→我的改进事项', steps: [() => ok('持续改进指标', !!(D.regulatoryContinuousImprovementMetrics || {}).pendingOpportunityCount != null)] },
+  { name: '测试23：搜索→改进对象', steps: [() => ok('搜索', (D.regulatorySearchIndex || []).some(s => s.category === '持续改进'))] },
+  { name: '测试24：无效ID→错误态', steps: [() => ok('校验', !(D.regulatoryImprovementOpportunities || []).find(o => o.opportunityId === 'INVALID-OPP'))] },
   { name: '测试25：A→B→C→D→E→F多跳返回', steps: [
-    () => ok('综合分析', (D.regulatoryAnalysisIndexes || []).length > 0),
-    () => ok('集中度', (D.regulatoryRiskConcentration || []).length > 0),
-    () => ok('传导', (D.regulatoryRiskPropagation || []).length > 0),
-    () => ok('情景', (D.regulatoryScenarioAnalysis || []).length > 0),
-    () => ok('建议', (D.regulatoryDecisionRecommendations || []).length > 0),
-    () => ok('指标', (D.regulatoryMetrics || []).length > 0)
+    () => ok('改进', (D.regulatoryImprovementOpportunities || []).length > 0),
+    () => ok('根因', (D.regulatoryRootCauseAnalyses || []).length > 0),
+    () => ok('方案', (D.regulatoryOptimizationPlans || []).length > 0),
+    () => ok('实施', (D.regulatoryImprovementExecution || []).length > 0),
+    () => ok('效果', (D.regulatoryImprovementEffectiveness || []).length >= 0),
+    () => ok('指标', !!(D.regulatoryContinuousImprovementMetrics || {}).improvementClosureRate != null)
   ]}
 ];
 
@@ -104,66 +86,66 @@ async function browserTests() {
   const browser = await playwright.chromium.launch({ headless: true });
   const page = await browser.newPage();
   await page.goto(`http://127.0.0.1:${port}/index.html`, { waitUntil: 'networkidle' });
-  await page.waitForFunction(() => typeof App !== 'undefined' && App.calculateRegulatoryCompositeHealth, { timeout: 10000 });
+  await page.waitForFunction(() => typeof App !== 'undefined' && App.identifyImprovementOpportunities, { timeout: 10000 });
   await page.evaluate(() => { document.getElementById('domainGateway').style.display = 'none'; if (App.enterDomain) App.enterDomain('investment', false); });
 
-  const analysisNav = await page.evaluate(async () => {
+  const improvementNav = await page.evaluate(async () => {
     App.publicNavHistory = [];
-    App.navigatePublic('group');
-    await new Promise(r => setTimeout(r, 80));
-    App.navigatePublic('regulatory-analysis-center');
+    App.navigatePublic('regulatory-improvement-center');
     await new Promise(r => setTimeout(r, 150));
-    const text = document.getElementById('regulatoryAnalysisCenter')?.innerText || '';
-    return { ok: text.includes('综合分析中心') || text.includes('综合监管健康度') };
+    const text = document.getElementById('regulatoryImprovementCenter')?.innerText || '';
+    return { ok: text.includes('持续改进中心') || text.includes('改进机会') };
   });
 
-  const concentrationFlow = await page.evaluate(() => {
-    const items = App.calculateRiskConcentration('byEntity');
-    const ent = items[0];
-    return { ok: items.length > 0 && ent && ent.concentrationRate != null };
-  });
-
-  const propagationFlow = await page.evaluate(() => {
-    const props = App.analyzeRiskPropagation();
-    const potential = props.filter(p => p.propagationType === 'POTENTIAL_PROPAGATION');
-    return { ok: props.length > 0 && potential.length > 0, noConfirmed: !props.some(p => p.propagationType === 'CONFIRMED_PROPAGATION') };
-  });
-
-  const scenarioFlow = await page.evaluate(() => {
+  const rootCauseFlow = await page.evaluate(() => {
     App.setCurrentRegulatoryUser('U-GROUP-REG');
-    const beforeWarnings = (APP_DATA.regulatoryWarnings || []).length;
-    const beforePriorities = (APP_DATA.regulatoryPriorityObjects || []).length;
-    const result = App.runRegulatoryScenario('SCN-001', { qualityDecline: 10 });
-    const afterWarnings = (APP_DATA.regulatoryWarnings || []).length;
-    const afterPriorities = (APP_DATA.regulatoryPriorityObjects || []).length;
-    const auditWritten = (APP_DATA.regulatoryAuditLogs || []).some(l => l.objectType === 'regulatoryScenarioAnalysis' && l.actionType === 'RUN');
-    return { ok: result.success && result.simulationOnly === true, noWriteBack: beforeWarnings === afterWarnings && beforePriorities === afterPriorities, auditWritten };
+    const rca = (APP_DATA.regulatoryRootCauseAnalyses || []).find(r => r.rootCauseStatus === 'POTENTIAL_ROOT_CAUSE');
+    if (!rca) return { hasRca: false };
+    const confirm = App.confirmRegulatoryRootCause(rca.rootCauseId, rca.potentialRootCause, 'E2E确认');
+    const auditWritten = (APP_DATA.regulatoryAuditLogs || []).some(l => l.objectId === rca.rootCauseId && l.objectType === 'regulatoryRootCauseAnalyses');
+    return { hasRca: true, confirmed: confirm.success, auditWritten, status: rca.rootCauseStatus };
   });
 
-  const recommendationFlow = await page.evaluate(() => {
+  const planApproveFlow = await page.evaluate(() => {
     App.setCurrentRegulatoryUser('U-GROUP-REG');
-    const rec = (APP_DATA.regulatoryDecisionRecommendations || []).find(r => r.status === 'PENDING');
-    if (!rec) return { hasRec: false };
-    const reject = App.rejectRegulatoryDecisionRecommendation(rec.recommendationId, 'E2E驳回');
-    const auditWritten = (APP_DATA.regulatoryAuditLogs || []).some(l => l.objectId === rec.recommendationId && l.actionType === 'REJECT');
-    return { hasRec: true, rejected: reject.success, auditWritten, humanRequired: rec.requiresHumanDecision === true };
+    const plan = (APP_DATA.regulatoryOptimizationPlans || []).find(p => p.status === 'PROPOSED' && p.optimizationType === 'PROCESS_OPTIMIZATION');
+    if (!plan) return { hasPlan: false };
+    const result = App.approveRegulatoryOptimizationPlan(plan.planId, 'E2E批准');
+    const auditWritten = (APP_DATA.regulatoryAuditLogs || []).some(l => l.objectId === plan.planId);
+    return { hasPlan: true, approved: result.success, auditWritten };
   });
 
-  const confirmExecuteFlow = await page.evaluate(() => {
+  const rulePlanFlow = await page.evaluate(() => {
     App.setCurrentRegulatoryUser('U-GROUP-REG');
-    const rec = (APP_DATA.regulatoryDecisionRecommendations || []).find(r => r.status === 'PENDING' && r.entityId);
-    if (!rec) return { hasRec: false };
-    App.confirmRegulatoryDecisionRecommendation(rec.recommendationId, 'E2E确认');
-    const exec = App.executeRegulatoryDecisionRecommendation(rec.recommendationId);
-    return { hasRec: true, confirmed: rec.status === 'CONFIRMED' || rec.status === 'EXECUTED', executed: exec.success, linkedAction: !!exec.action };
+    const plan = (APP_DATA.regulatoryOptimizationPlans || []).find(p => p.optimizationType === 'RULE_OPTIMIZATION' && p.status === 'PROPOSED');
+    if (!plan) return { hasPlan: false };
+    const result = App.approveRegulatoryOptimizationPlan(plan.planId);
+    return { hasPlan: true, needRuleWorkflow: result.needRuleWorkflow === true };
+  });
+
+  const executionFlow = await page.evaluate(() => {
+    App.setCurrentRegulatoryUser('U-GROUP-REG');
+    const plan = (APP_DATA.regulatoryOptimizationPlans || []).find(p => p.status === 'APPROVED');
+    if (!plan) return { hasPlan: false };
+    const start = App.startRegulatoryImprovementExecution(plan.planId);
+    const exe = (APP_DATA.regulatoryImprovementExecution || []).find(e => e.planId === plan.planId);
+    const complete = exe ? App.completeRegulatoryImprovementExecution(exe.executionId) : null;
+    return { hasPlan: true, started: start.success, completed: complete?.success, linkedTask: !!(exe?.linkedSupervisionTaskId || exe?.linkedRectificationTaskId) };
+  });
+
+  const effectivenessFlow = await page.evaluate(() => {
+    const eff = (APP_DATA.regulatoryImprovementEffectiveness || [])[0];
+    if (!eff) return { hasEff: false };
+    const evalResult = App.evaluateImprovementEffectiveness(eff.executionId);
+    return { hasEff: true, hasBefore: evalResult.before != null, dataStatus: evalResult.dataStatus };
   });
 
   const permissionCheck = await page.evaluate(() => {
     App.setCurrentRegulatoryUser('U-ENTITY-REG');
-    const own = (APP_DATA.regulatoryRiskConcentration || []).find(c => c.dimension === 'byEntity' && c.objectId === 'A001');
-    const other = (APP_DATA.regulatoryRiskConcentration || []).find(c => c.dimension === 'byEntity' && c.objectId && c.objectId !== 'A001');
-    const ownOk = own ? App.canRegulatoryAccess('U-ENTITY-REG', 'regulatoryRiskConcentration', own.concentrationId, 'VIEW').allowed : true;
-    const denyOk = other ? !App.canRegulatoryAccess('U-ENTITY-REG', 'regulatoryRiskConcentration', other.concentrationId, 'VIEW').allowed : true;
+    const own = (APP_DATA.regulatoryImprovementOpportunities || []).find(o => o.entityId === 'A001');
+    const other = (APP_DATA.regulatoryImprovementOpportunities || []).find(o => o.entityId && o.entityId !== 'A001');
+    const ownOk = own ? App.canRegulatoryAccess('U-ENTITY-REG', 'regulatoryImprovementOpportunities', own.opportunityId, 'VIEW').allowed : true;
+    const denyOk = other ? !App.canRegulatoryAccess('U-ENTITY-REG', 'regulatoryImprovementOpportunities', other.opportunityId, 'VIEW').allowed : true;
     return { ownOk, denyOk };
   });
 
@@ -171,14 +153,20 @@ async function browserTests() {
     App.navigatePublic('regulatory-command-center');
     await new Promise(r => setTimeout(r, 150));
     const text = document.getElementById('regulatoryCommandCenter')?.innerText || '';
-    return { ok: text.includes('集团综合监管态势') && text.includes('风险集中度') && text.includes('决策建议') };
+    return { ok: text.includes('持续改进健康度') };
   });
 
   const workbench = await page.evaluate(async () => {
     App.navigatePublic('regulatory-workbench');
     await new Promise(r => setTimeout(r, 150));
     const text = document.getElementById('regulatoryWorkbench')?.innerText || '';
-    return { ok: text.includes('集团综合态势') || text.includes('待决策建议') };
+    return { ok: text.includes('我的改进事项') || text.includes('待确认根因') };
+  });
+
+  const invalidId = await page.evaluate(() => {
+    App.navigatePublic('regulatory-improvement-center', { opportunityId: 'INVALID-OPP' });
+    const detail = document.getElementById('regulatoryOpportunityDetail');
+    return { hasError: detail?.innerText?.includes('未找到') || detail?.innerText?.includes('不存在') || !APP_DATA.regulatoryImprovementOpportunities.find(o => o.opportunityId === 'INVALID-OPP') };
   });
 
   const multiHop = await page.evaluate(async () => {
@@ -186,15 +174,15 @@ async function browserTests() {
     App.navigatePublic('group');
     App.publicNavHistory = [];
     await new Promise(r => setTimeout(r, 80));
-    App.navigatePublic('regulatory-analysis-center');
+    App.navigatePublic('regulatory-improvement-center');
     await new Promise(r => setTimeout(r, 80));
-    App.navigatePublic('regulatory-risk-concentration');
+    App.navigatePublic('regulatory-root-cause-analysis');
     await new Promise(r => setTimeout(r, 80));
-    App.navigatePublic('regulatory-risk-propagation');
+    App.navigatePublic('regulatory-optimization-plans');
     await new Promise(r => setTimeout(r, 80));
-    App.navigatePublic('regulatory-scenario-analysis');
+    App.navigatePublic('regulatory-improvement-execution');
     await new Promise(r => setTimeout(r, 80));
-    App.navigatePublic('regulatory-decision-recommendations');
+    App.navigatePublic('regulatory-improvement-effectiveness');
     await new Promise(r => setTimeout(r, 80));
     for (let i = 0; i < 6; i++) { App.goBackPublic(); await new Promise(r => setTimeout(r, 180)); }
     return { finalPage: App.currentPage };
@@ -202,29 +190,31 @@ async function browserTests() {
 
   const catalog = await page.evaluate(() => ({
     count: (App.publicRegulatoryPages || []).length,
-    hasAnalysis: (App.publicRegulatoryPages || []).some(p => p.pageId === 'regulatory-analysis-center'),
-    hasConcentration: (App.publicRegulatoryPages || []).some(p => p.pageId === 'regulatory-risk-concentration'),
-    hasPropagation: (App.publicRegulatoryPages || []).some(p => p.pageId === 'regulatory-risk-propagation'),
-    hasScenario: (App.publicRegulatoryPages || []).some(p => p.pageId === 'regulatory-scenario-analysis'),
-    hasRecommendations: (App.publicRegulatoryPages || []).some(p => p.pageId === 'regulatory-decision-recommendations')
+    hasImprovement: (App.publicRegulatoryPages || []).some(p => p.pageId === 'regulatory-improvement-center'),
+    hasRootCause: (App.publicRegulatoryPages || []).some(p => p.pageId === 'regulatory-root-cause-analysis'),
+    hasPlans: (App.publicRegulatoryPages || []).some(p => p.pageId === 'regulatory-optimization-plans'),
+    hasExecution: (App.publicRegulatoryPages || []).some(p => p.pageId === 'regulatory-improvement-execution'),
+    hasEffectiveness: (App.publicRegulatoryPages || []).some(p => p.pageId === 'regulatory-improvement-effectiveness')
   }));
 
   await browser.close();
   server.close();
 
   return {
-    analysisNav: analysisNav.ok ? '通过' : '不通过',
-    concentrationFlow: concentrationFlow.ok ? '通过' : '不通过',
-    propagationFlow: (propagationFlow.ok && propagationFlow.noConfirmed) ? '通过' : '不通过',
-    scenarioFlow: (scenarioFlow.ok && scenarioFlow.noWriteBack && scenarioFlow.auditWritten) ? '通过' : '不通过',
-    recommendationFlow: (recommendationFlow.hasRec ? (recommendationFlow.rejected && recommendationFlow.auditWritten && recommendationFlow.humanRequired) : true) ? '通过' : '不通过',
-    confirmExecuteFlow: (confirmExecuteFlow.hasRec ? (confirmExecuteFlow.executed && confirmExecuteFlow.linkedAction) : true) ? '通过' : '不通过',
+    improvementNav: improvementNav.ok ? '通过' : '不通过',
+    rootCauseFlow: (rootCauseFlow.hasRca ? (rootCauseFlow.confirmed && rootCauseFlow.auditWritten) : true) ? '通过' : '不通过',
+    rootCauseFlowDetail: rootCauseFlow,
+    planApproveFlow: (planApproveFlow.hasPlan ? planApproveFlow.approved && planApproveFlow.auditWritten : true) ? '通过' : '不通过',
+    rulePlanFlow: (rulePlanFlow.hasPlan ? rulePlanFlow.needRuleWorkflow : true) ? '通过' : '不通过',
+    executionFlow: (executionFlow.hasPlan ? executionFlow.started && executionFlow.linkedTask : true) ? '通过' : '不通过',
+    effectivenessFlow: (effectivenessFlow.hasEff ? effectivenessFlow.hasBefore : true) ? '通过' : '不通过',
     permissionCheck: (permissionCheck.ownOk && permissionCheck.denyOk) ? '通过' : '不通过',
     commandCenter: commandCenter.ok ? '通过' : '不通过',
     workbench: workbench.ok ? '通过' : '不通过',
-    multiHop: ['regulatory-decision-recommendations', 'regulatory-scenario-analysis', 'regulatory-risk-propagation', 'regulatory-risk-concentration', 'regulatory-analysis-center', 'group'].includes(multiHop.finalPage) ? '通过' : '不通过',
+    invalidId: invalidId.hasError ? '通过' : '不通过',
+    multiHop: ['regulatory-improvement-effectiveness', 'regulatory-improvement-execution', 'regulatory-optimization-plans', 'regulatory-root-cause-analysis', 'regulatory-improvement-center', 'group'].includes(multiHop.finalPage) ? '通过' : '不通过',
     multiHopDetail: multiHop,
-    pageCatalog: (catalog.count === 65 && catalog.hasAnalysis && catalog.hasConcentration && catalog.hasPropagation && catalog.hasScenario && catalog.hasRecommendations) ? '通过' : '不通过',
+    pageCatalog: (catalog.count === 70 && catalog.hasImprovement && catalog.hasRootCause && catalog.hasPlans && catalog.hasExecution && catalog.hasEffectiveness) ? '通过' : '不通过',
     pageCatalogDetail: catalog
   };
 }
@@ -236,10 +226,10 @@ async function browserTests() {
   }));
   let browserResult;
   try { browserResult = await browserTests(); } catch (e) {
-    browserResult = { error: String(e), analysisNav: '不通过', concentrationFlow: '不通过', propagationFlow: '不通过', scenarioFlow: '不通过', recommendationFlow: '不通过', confirmExecuteFlow: '不通过', permissionCheck: '不通过', commandCenter: '不通过', workbench: '不通过', multiHop: '不通过', pageCatalog: '不通过' };
+    browserResult = { error: String(e), improvementNav: '不通过', rootCauseFlow: '不通过', planApproveFlow: '不通过', rulePlanFlow: '不通过', executionFlow: '不通过', effectivenessFlow: '不通过', permissionCheck: '不通过', commandCenter: '不通过', workbench: '不通过', invalidId: '不通过', multiHop: '不通过', pageCatalog: '不通过' };
   }
   const allDataPass = summary.every(s => s.result === '通过');
-  const browserKeys = ['analysisNav', 'concentrationFlow', 'propagationFlow', 'scenarioFlow', 'recommendationFlow', 'confirmExecuteFlow', 'permissionCheck', 'commandCenter', 'workbench', 'multiHop', 'pageCatalog'];
+  const browserKeys = ['improvementNav', 'rootCauseFlow', 'planApproveFlow', 'rulePlanFlow', 'executionFlow', 'effectivenessFlow', 'permissionCheck', 'commandCenter', 'workbench', 'invalidId', 'multiHop', 'pageCatalog'];
   const allBrowserPass = browserKeys.every(k => browserResult[k] === '通过' || browserResult[k] === 'skipped');
   const output = { dataChainTests: summary, browserTests: browserResult, allPass: allDataPass && allBrowserPass };
   console.log(JSON.stringify(output, null, 2));

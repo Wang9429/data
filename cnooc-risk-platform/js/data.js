@@ -5698,3 +5698,309 @@ Object.assign(APP_DATA, {
   });
   APP_DATA.regulatoryScopeMatrix = sm;
 })();
+
+(function () {
+  const TODAY = '2026-07-22';
+  const warnings = APP_DATA.warnings || [];
+  const regulatoryWarnings = APP_DATA.regulatoryWarnings || [];
+  const kriRuntime = APP_DATA.regulatoryKriRuntime || [];
+  const kriEvals = APP_DATA.regulatoryKriEvaluations || [];
+  const qualityIssues = APP_DATA.regulatoryDataQualityIssues || [];
+  const actions = APP_DATA.regulatoryActions || [];
+  const rects = APP_DATA.rectificationTasks || [];
+  const supTasks = APP_DATA.regulatorySupervisionTasks || [];
+  const dataGov = APP_DATA.regulatoryDataGovernanceMetrics || {};
+  const km = APP_DATA.regulatoryMetricKriMetrics || {};
+  const am = APP_DATA.regulatoryAnalysisMetrics || {};
+  const concentrations = APP_DATA.regulatoryRiskConcentration || [];
+  const propagations = APP_DATA.regulatoryRiskPropagation || [];
+  const perfMetrics = APP_DATA.regulatoryPerformanceMetrics || [];
+  const objectives = APP_DATA.regulatoryStrategicObjectives || [];
+  const ruleEffectiveness = APP_DATA.regulatoryRuleEffectiveness || [];
+  const entities = APP_DATA.globalLegalEntities || [];
+
+  const regulatoryImprovementOpportunities = [];
+  let oppSeq = 1;
+
+  const addOpp = (item) => {
+    regulatoryImprovementOpportunities.push({
+      opportunityId: 'OPP-' + String(oppSeq++).padStart(3, '0'),
+      sourceCategory: item.sourceCategory,
+      title: item.title,
+      description: item.description || '',
+      priority: item.priority || 'MEDIUM',
+      status: 'PENDING_ANALYSIS',
+      sourceType: item.sourceType,
+      sourceId: item.sourceId,
+      relatedRiskIds: item.relatedRiskIds || [],
+      relatedKriIds: item.relatedKriIds || [],
+      relatedWarningIds: item.relatedWarningIds || [],
+      relatedActionIds: item.relatedActionIds || [],
+      relatedRectificationTaskIds: item.relatedRectificationTaskIds || [],
+      entityId: item.entityId || null,
+      domainId: item.domainId || null,
+      problemManifestation: item.problemManifestation || '',
+      impactScope: item.impactScope || '',
+      potentialCause: item.potentialCause || '',
+      suggestedDirection: item.suggestedDirection || '',
+      requiresHumanDecision: true,
+      createdAt: TODAY + ' 08:00:00'
+    });
+  };
+
+  ruleEffectiveness.filter(r => r.effectivenessScore != null && r.effectivenessScore < 75).slice(0, 3).forEach(r => {
+    addOpp({ sourceCategory: '规则运行效果不足', title: '规则效果不足 · ' + (r.ruleName || r.ruleId), sourceType: 'regulatoryRuleEffectiveness', sourceId: r.effectivenessId || r.ruleId, problemManifestation: '规则运行效果得分偏低', impactScope: 'GROUP', potentialCause: '规则参数或触发条件可能不匹配现状', suggestedDirection: 'RULE_OPTIMIZATION', priority: 'HIGH' });
+  });
+
+  kriEvals.filter(e => e.dataStatus === 'INSUFFICIENT_HISTORY').slice(0, 2).forEach(e => {
+    addOpp({ sourceCategory: 'KRI有效性不足', title: 'KRI有效性数据不足 · ' + e.kriId, sourceType: 'regulatoryKriEvaluations', sourceId: e.evaluationId, relatedKriIds: [e.kriId], problemManifestation: '缺乏历史监测数据评价KRI有效性', impactScope: 'GROUP', suggestedDirection: 'KRI_OPTIMIZATION', priority: 'MEDIUM' });
+  });
+
+  const warnOppCandidates = regulatoryWarnings.filter(w =>
+    w.dataStatus === 'INSUFFICIENT_DATA' ||
+    w.status === 'PENDING_REVIEW' ||
+    (w.credibilityScore != null && w.credibilityScore < 70)
+  );
+  (warnOppCandidates.length ? warnOppCandidates : regulatoryWarnings).slice(0, 3).forEach(w => {
+    addOpp({ sourceCategory: '预警误报 / 漏报', title: '预警可信度不足 · ' + w.regulatoryWarningId, sourceType: 'regulatoryWarnings', sourceId: w.regulatoryWarningId, relatedWarningIds: [w.regulatoryWarningId], relatedKriIds: w.kriId ? [w.kriId] : [], entityId: w.entityId, problemManifestation: w.status === 'PENDING_REVIEW' ? '预警待研判，存在误报/漏报风险' : '预警判断可能受数据质量影响', suggestedDirection: 'DATA_GOVERNANCE_OPTIMIZATION', priority: 'HIGH' });
+  });
+
+  qualityIssues.filter(i => i.status !== 'CLOSED').slice(0, 4).forEach(i => {
+    addOpp({ sourceCategory: '数据质量问题', title: '数据质量异常 · ' + i.qualityIssueId, sourceType: 'regulatoryDataQualityIssues', sourceId: i.qualityIssueId, relatedKriIds: i.kriId ? [i.kriId] : [], problemManifestation: i.issueDescription || '数据质量异常', impactScope: i.dataSetId || 'GROUP', suggestedDirection: 'DATA_GOVERNANCE_OPTIMIZATION', priority: i.severity === 'HIGH' ? 'HIGH' : 'MEDIUM' });
+  });
+
+  concentrations.filter(c => c.concentrationLevel === 'HIGH_CONCENTRATION').slice(0, 4).forEach(c => {
+    addOpp({ sourceCategory: '风险集中度异常', title: '风险集中 · ' + c.objectName, sourceType: 'regulatoryRiskConcentration', sourceId: c.concentrationId, entityId: c.scopeType === 'ENTITY' ? c.objectId : c.entityId, problemManifestation: c.interpretation, impactScope: c.scopeType, suggestedDirection: 'SUPERVISION_STRATEGY_OPTIMIZATION', priority: 'HIGH' });
+  });
+
+  propagations.slice(0, 3).forEach(p => {
+    addOpp({ sourceCategory: '风险传导风险', title: p.title, sourceType: 'regulatoryRiskPropagation', sourceId: p.propagationId, relatedKriIds: p.kriId ? [p.kriId] : [], problemManifestation: p.description, impactScope: 'MULTI_ENTITY', suggestedDirection: 'PROCESS_OPTIMIZATION', priority: 'MEDIUM' });
+  });
+
+  actions.filter(a => a.status === 'OVERDUE' || (a.status !== 'VERIFIED' && a.status !== 'COMPLETED')).slice(0, 3).forEach(a => {
+    addOpp({ sourceCategory: '监管行动效果不足', title: '监管行动未闭环 · ' + a.actionId, sourceType: 'regulatoryActions', sourceId: a.actionId, relatedActionIds: [a.actionId], entityId: a.entityId, problemManifestation: '监管行动执行或验证不足', suggestedDirection: 'PROCESS_OPTIMIZATION', priority: a.priority === 'CRITICAL' ? 'HIGH' : 'MEDIUM' });
+  });
+
+  const entityRectCounts = {};
+  rects.filter(t => t.status !== '已关闭').forEach(t => { entityRectCounts[t.entityId] = (entityRectCounts[t.entityId] || 0) + 1; });
+  Object.keys(entityRectCounts).filter(eid => entityRectCounts[eid] >= 2).slice(0, 3).forEach(eid => {
+    const ent = entities.find(e => e.entityId === eid);
+    addOpp({ sourceCategory: '整改反复发生', title: '整改反复 · ' + (ent?.entityName || eid), sourceType: 'rectificationTasks', sourceId: rects.filter(t => t.entityId === eid && t.status !== '已关闭')[0]?.taskId, relatedRectificationTaskIds: rects.filter(t => t.entityId === eid).map(t => t.taskId).slice(0, 3), entityId: eid, problemManifestation: '同一法人多项整改未完成', impactScope: 'ENTITY', suggestedDirection: 'PROCESS_OPTIMIZATION', priority: 'HIGH' });
+  });
+
+  perfMetrics.filter(p => p.performanceLevel === 'POOR' || p.performanceLevel === 'AT_RISK' || (p.regulatoryEffectivenessScore != null && p.regulatoryEffectivenessScore < 60)).slice(0, 2).forEach(p => {
+    addOpp({ sourceCategory: '监管绩效偏差', title: '绩效偏差 · ' + (p.performanceId || p.metricName || 'PERF'), sourceType: 'regulatoryPerformanceMetrics', sourceId: p.performanceId || p.metricId, problemManifestation: '监管绩效指标偏离目标', impactScope: 'GROUP', suggestedDirection: 'RESOURCE_OPTIMIZATION', priority: 'MEDIUM' });
+  });
+
+  objectives.filter(o => o.status === 'BEHIND').slice(0, 2).forEach(o => {
+    addOpp({ sourceCategory: '战略目标未达成', title: '战略偏差 · ' + o.objectiveName, sourceType: 'regulatoryStrategicObjectives', sourceId: o.objectiveId, problemManifestation: '战略目标完成率不足', impactScope: 'GROUP', suggestedDirection: 'SUPERVISION_STRATEGY_OPTIMIZATION', priority: 'HIGH' });
+  });
+
+  if (dataGov.openIssueCount > 2 && !regulatoryImprovementOpportunities.find(o => o.sourceCategory === '数据质量问题')) {
+    addOpp({ sourceCategory: '数据质量问题', title: '集团数据质量待改进', sourceType: 'regulatoryDataGovernanceMetrics', sourceId: 'DG-METRICS', problemManifestation: '开放质量问题 ' + dataGov.openIssueCount, impactScope: 'GROUP', suggestedDirection: 'DATA_GOVERNANCE_OPTIMIZATION', priority: 'MEDIUM' });
+  }
+
+  const regulatoryRootCauseAnalyses = [];
+  let rcaSeq = 1;
+  const rootCauseCategories = ['DATA', 'RULE', 'PROCESS', 'CONTROL', 'RESPONSIBILITY', 'RESOURCE', 'SYSTEM', 'GOVERNANCE'];
+  const categoryMap = {
+    '数据质量问题': 'DATA', '规则运行效果不足': 'RULE', '监管行动效果不足': 'PROCESS', '整改反复发生': 'PROCESS',
+    'KRI有效性不足': 'CONTROL', '预警误报 / 漏报': 'DATA', '风险集中度异常': 'GOVERNANCE', '风险传导风险': 'PROCESS',
+    '监管绩效偏差': 'RESOURCE', '战略目标未达成': 'GOVERNANCE'
+  };
+
+  regulatoryImprovementOpportunities.forEach(opp => {
+    const cat = categoryMap[opp.sourceCategory] || 'PROCESS';
+    regulatoryRootCauseAnalyses.push({
+      rootCauseId: 'RCA-' + String(rcaSeq++).padStart(3, '0'),
+      opportunityId: opp.opportunityId,
+      rootCauseCategory: cat,
+      facts: [opp.problemManifestation, '来源: ' + opp.sourceCategory].filter(Boolean),
+      evidence: [{ type: opp.sourceType, id: opp.sourceId }, ...(opp.relatedRiskIds || []).map(id => ({ type: 'warnings', id }))],
+      problemManifestation: opp.problemManifestation,
+      potentialRootCause: opp.potentialCause || ('可能原因: ' + cat + ' 类问题导致 ' + opp.title),
+      rootCauseStatus: 'POTENTIAL_ROOT_CAUSE',
+      confidence: 0.65,
+      requiresHumanConfirmation: true,
+      confirmedRootCause: null,
+      createdAt: TODAY + ' 08:00:00'
+    });
+  });
+
+  const regulatoryOptimizationPlans = [];
+  let planSeq = 1;
+  const typeMap = {
+    RULE_OPTIMIZATION: 'RULE_OPTIMIZATION', KRI_OPTIMIZATION: 'KRI_OPTIMIZATION',
+    DATA_GOVERNANCE_OPTIMIZATION: 'DATA_GOVERNANCE_OPTIMIZATION', PROCESS_OPTIMIZATION: 'PROCESS_OPTIMIZATION',
+    RESOURCE_OPTIMIZATION: 'RESOURCE_OPTIMIZATION', SUPERVISION_STRATEGY_OPTIMIZATION: 'SUPERVISION_STRATEGY_OPTIMIZATION',
+    SYSTEM_OPTIMIZATION: 'SYSTEM_OPTIMIZATION'
+  };
+
+  const addPlan = (rca, opp, optType) => {
+    regulatoryOptimizationPlans.push({
+      planId: 'OPT-' + String(planSeq++).padStart(3, '0'),
+      opportunityId: rca.opportunityId,
+      rootCauseId: rca.rootCauseId,
+      optimizationType: optType,
+      title: '优化方案 · ' + (opp?.title || rca.rootCauseId),
+      objective: '解决 ' + (opp?.problemManifestation || '监管问题'),
+      actions: ['分析问题根因', '制定改进措施', '组织实施', '效果验证'],
+      expectedImpact: optType === 'RULE_OPTIMIZATION' ? '提升规则运行效果（须走规则治理闭环）' : optType === 'KRI_OPTIMIZATION' ? '提升KRI监测有效性（须走阈值治理闭环）' : optType === 'RESOURCE_OPTIMIZATION' ? '优化监管资源配置（须走资源调度闭环）' : '改善监管闭环能力',
+      responsibleOrganization: opp?.entityId || 'G001',
+      implementationPeriod: '90天',
+      resourceRequirement: optType === 'RESOURCE_OPTIMIZATION' ? '需调整监管资源' : '常规监管资源',
+      validationMetrics: ['风险事件数量', '预警有效率', '整改闭环率', '数据质量得分'],
+      status: 'PROPOSED',
+      requiresHumanDecision: true,
+      entityId: opp?.entityId || null,
+      domainId: opp?.domainId || null,
+      createdAt: TODAY + ' 08:00:00'
+    });
+  };
+
+  regulatoryRootCauseAnalyses.slice(0, 12).forEach(rca => {
+    const opp = regulatoryImprovementOpportunities.find(o => o.opportunityId === rca.opportunityId);
+    addPlan(rca, opp, typeMap[opp?.suggestedDirection] || 'PROCESS_OPTIMIZATION');
+  });
+
+  if (!regulatoryOptimizationPlans.some(p => p.optimizationType === 'RESOURCE_OPTIMIZATION')) {
+    const resOpp = regulatoryImprovementOpportunities.find(o => o.suggestedDirection === 'RESOURCE_OPTIMIZATION');
+    const resRca = resOpp ? regulatoryRootCauseAnalyses.find(r => r.opportunityId === resOpp.opportunityId) : null;
+    if (resOpp && resRca) addPlan(resRca, resOpp, 'RESOURCE_OPTIMIZATION');
+  }
+
+  const regulatoryImprovementExecution = [];
+  let execSeq = 1;
+  regulatoryOptimizationPlans.slice(0, 6).forEach((plan, idx) => {
+    const linkedSup = supTasks.find(t => t.entityId === plan.entityId && t.taskStatus !== 'CLOSED') || supTasks[idx % Math.max(supTasks.length, 1)];
+    const linkedRect = rects.find(t => t.entityId === plan.entityId && t.status !== '已关闭') || rects[idx % Math.max(rects.length, 1)];
+    const statusList = ['PROPOSED', 'APPROVED', 'IMPLEMENTING', 'PENDING_VALIDATION', 'VALIDATED', 'BLOCKED'];
+    const status = statusList[idx % statusList.length];
+    regulatoryImprovementExecution.push({
+      executionId: 'EXE-' + String(execSeq++).padStart(3, '0'),
+      planId: plan.planId,
+      opportunityId: plan.opportunityId,
+      rootCauseId: plan.rootCauseId,
+      status,
+      progress: status === 'IMPLEMENTING' ? 55 : status === 'VALIDATED' ? 100 : status === 'APPROVED' ? 20 : 0,
+      linkedSupervisionTaskId: linkedSup?.supervisionTaskId || null,
+      linkedRectificationTaskId: linkedRect?.taskId || null,
+      feedback: status === 'BLOCKED' ? '实施受阻，需升级处理' : status === 'IMPLEMENTING' ? '实施进行中' : '',
+      entityId: plan.entityId,
+      startedAt: ['IMPLEMENTING', 'PENDING_VALIDATION', 'VALIDATED', 'BLOCKED'].includes(status) ? TODAY : null,
+      completedAt: status === 'VALIDATED' ? TODAY : null
+    });
+    if (status !== 'PROPOSED') plan.status = status === 'VALIDATED' ? 'VALIDATED' : status === 'IMPLEMENTING' ? 'IMPLEMENTING' : status === 'APPROVED' ? 'APPROVED' : plan.status;
+  });
+
+  const regulatoryImprovementEffectiveness = [];
+  let effSeq = 1;
+  regulatoryImprovementExecution.filter(e => ['PENDING_VALIDATION', 'VALIDATED'].includes(e.status)).forEach(exe => {
+    const plan = regulatoryOptimizationPlans.find(p => p.planId === exe.planId);
+    const hasHistory = false;
+    regulatoryImprovementEffectiveness.push({
+      effectivenessId: 'EFF-' + String(effSeq++).padStart(3, '0'),
+      executionId: exe.executionId,
+      planId: exe.planId,
+      opportunityId: exe.opportunityId,
+      before: {
+        riskEventCount: warnings.length,
+        highRiskCount: warnings.filter(w => w.level === '重大' || w.level === '较大').length,
+        dataQualityScore: dataGov.overallQualityScore,
+        kriCredibility: km.avgCredibility,
+        actionClosureRate: am.actionClosureRate,
+        rectificationOverdueRate: rects.filter(t => t.deadline && t.deadline < TODAY && t.status !== '已关闭').length
+      },
+      after: hasHistory ? { riskEventCount: warnings.length - 1, dataQualityScore: (dataGov.overallQualityScore || 80) + 2 } : null,
+      change: hasHistory ? { riskEventCount: -1, dataQualityScore: 2 } : null,
+      effectiveness: hasHistory ? 'PARTIALLY_EFFECTIVE' : 'INSUFFICIENT_HISTORY',
+      dataStatus: hasHistory ? 'OK' : 'INSUFFICIENT_HISTORY',
+      riskEffect: { status: hasHistory ? 'OK' : 'INSUFFICIENT_HISTORY' },
+      supervisionEffect: { status: hasHistory ? 'OK' : 'INSUFFICIENT_HISTORY' },
+      dataEffect: { status: hasHistory ? 'OK' : 'INSUFFICIENT_HISTORY' },
+      operationEffect: { status: hasHistory ? 'OK' : 'INSUFFICIENT_HISTORY' },
+      strategyEffect: { status: 'INSUFFICIENT_HISTORY' },
+      validatedAt: exe.status === 'VALIDATED' ? TODAY : null
+    });
+  });
+
+  const pendingOpps = regulatoryImprovementOpportunities.filter(o => o.status === 'PENDING_ANALYSIS').length;
+  const highPriOpps = regulatoryImprovementOpportunities.filter(o => o.priority === 'HIGH' || o.priority === 'CRITICAL').length;
+  const proposedPlans = regulatoryOptimizationPlans.filter(p => p.status === 'PROPOSED').length;
+  const implementing = regulatoryImprovementExecution.filter(e => e.status === 'IMPLEMENTING').length;
+  const pendingValidation = regulatoryImprovementExecution.filter(e => e.status === 'PENDING_VALIDATION').length;
+  const validated = regulatoryImprovementEffectiveness.filter(e => e.effectiveness === 'EFFECTIVE' || e.effectiveness === 'PARTIALLY_EFFECTIVE').length;
+  const totalExec = regulatoryImprovementExecution.length || 1;
+  const closedLoop = regulatoryImprovementExecution.filter(e => ['VALIDATED', 'PENDING_VALIDATION'].includes(e.status)).length;
+
+  APP_DATA.regulatoryImprovementOpportunities = regulatoryImprovementOpportunities;
+  APP_DATA.regulatoryRootCauseAnalyses = regulatoryRootCauseAnalyses;
+  APP_DATA.regulatoryOptimizationPlans = regulatoryOptimizationPlans;
+  APP_DATA.regulatoryImprovementExecution = regulatoryImprovementExecution;
+  APP_DATA.regulatoryImprovementEffectiveness = regulatoryImprovementEffectiveness;
+  APP_DATA.regulatoryContinuousImprovementMetrics = {
+    pendingOpportunityCount: pendingOpps,
+    highPriorityOpportunityCount: highPriOpps,
+    pendingRootCauseConfirmationCount: regulatoryRootCauseAnalyses.filter(r => r.rootCauseStatus === 'POTENTIAL_ROOT_CAUSE').length,
+    pendingPlanDecisionCount: proposedPlans,
+    implementingCount: implementing,
+    pendingValidationCount: pendingValidation,
+    validatedEffectiveCount: validated,
+    improvementClosureRate: Math.round(closedLoop / totalExec * 1000) / 10,
+    improvementEffectivenessRate: regulatoryImprovementEffectiveness.length ? Math.round(validated / regulatoryImprovementEffectiveness.length * 1000) / 10 : null,
+    trendDataStatus: 'INSUFFICIENT_HISTORY'
+  };
+
+  let srSeq2 = (APP_DATA.regulatorySearchIndex || []).length + 1;
+  const addSearch2 = (item) => {
+    (APP_DATA.regulatorySearchIndex = APP_DATA.regulatorySearchIndex || []).push({
+      resultId: 'SR-' + String(srSeq2++).padStart(4, '0'),
+      objectType: item.objectType,
+      objectId: item.objectId,
+      title: item.title,
+      subtitle: item.subtitle || '',
+      entityId: item.entityId || null,
+      domainId: item.domainId || null,
+      priority: item.priority || null,
+      status: item.status || null,
+      matchedFields: ['title'],
+      targetPageId: item.targetPageId,
+      targetParams: item.targetParams || {},
+      category: item.category || '持续改进'
+    });
+  };
+
+  regulatoryImprovementOpportunities.slice(0, 15).forEach(o => addSearch2({ objectType: 'IMPROVEMENT_OPPORTUNITY', objectId: o.opportunityId, title: o.title, subtitle: o.sourceCategory, targetPageId: 'regulatory-improvement-center', targetParams: { opportunityId: o.opportunityId }, entityId: o.entityId, priority: o.priority, status: o.status }));
+  regulatoryRootCauseAnalyses.slice(0, 10).forEach(r => addSearch2({ objectType: 'ROOT_CAUSE_ANALYSIS', objectId: r.rootCauseId, title: '根因分析 · ' + r.rootCauseCategory, subtitle: r.rootCauseStatus, targetPageId: 'regulatory-root-cause-analysis', targetParams: { rootCauseId: r.rootCauseId } }));
+  regulatoryOptimizationPlans.slice(0, 10).forEach(p => addSearch2({ objectType: 'OPTIMIZATION_PLAN', objectId: p.planId, title: p.title, subtitle: p.optimizationType, targetPageId: 'regulatory-optimization-plans', targetParams: { planId: p.planId }, entityId: p.entityId, status: p.status }));
+  regulatoryImprovementExecution.slice(0, 8).forEach(e => addSearch2({ objectType: 'IMPROVEMENT_EXECUTION', objectId: e.executionId, title: '改进实施 · ' + e.executionId, subtitle: e.status, targetPageId: 'regulatory-improvement-execution', targetParams: { executionId: e.executionId }, entityId: e.entityId, status: e.status }));
+  regulatoryImprovementEffectiveness.forEach(e => addSearch2({ objectType: 'IMPROVEMENT_EFFECTIVENESS', objectId: e.effectivenessId, title: '效果验证 · ' + e.effectivenessId, subtitle: e.effectiveness, targetPageId: 'regulatory-improvement-effectiveness', targetParams: { effectivenessId: e.effectivenessId }, status: e.effectiveness }));
+
+  const phase21Perms = [
+    { permissionSetId: 'PS-041', permissionCode: 'IMPROVEMENT_VIEW', resourceType: 'regulatoryImprovementOpportunities', action: 'VIEW', riskLevel: 'LOW' },
+    { permissionSetId: 'PS-042', permissionCode: 'ROOT_CAUSE_VIEW', resourceType: 'regulatoryRootCauseAnalyses', action: 'VIEW', riskLevel: 'LOW' },
+    { permissionSetId: 'PS-043', permissionCode: 'ROOT_CAUSE_CONFIRM', resourceType: 'regulatoryRootCauseAnalyses', action: 'CONFIRM', riskLevel: 'HIGH' },
+    { permissionSetId: 'PS-044', permissionCode: 'OPTIMIZATION_PLAN_VIEW', resourceType: 'regulatoryOptimizationPlans', action: 'VIEW', riskLevel: 'LOW' },
+    { permissionSetId: 'PS-045', permissionCode: 'OPTIMIZATION_PLAN_APPROVE', resourceType: 'regulatoryOptimizationPlans', action: 'APPROVE', riskLevel: 'HIGH' },
+    { permissionSetId: 'PS-046', permissionCode: 'IMPROVEMENT_EXECUTION_VIEW', resourceType: 'regulatoryImprovementExecution', action: 'VIEW', riskLevel: 'LOW' },
+    { permissionSetId: 'PS-047', permissionCode: 'IMPROVEMENT_EXECUTION_MANAGE', resourceType: 'regulatoryImprovementExecution', action: 'MANAGE', riskLevel: 'HIGH' },
+    { permissionSetId: 'PS-048', permissionCode: 'EFFECTIVENESS_VIEW', resourceType: 'regulatoryImprovementEffectiveness', action: 'VIEW', riskLevel: 'LOW' },
+    { permissionSetId: 'PS-049', permissionCode: 'EFFECTIVENESS_VALIDATE', resourceType: 'regulatoryImprovementEffectiveness', action: 'VALIDATE', riskLevel: 'HIGH' }
+  ];
+  APP_DATA.regulatoryPermissionSets = [...(APP_DATA.regulatoryPermissionSets || []), ...phase21Perms];
+  const rpm4 = APP_DATA.regulatoryRolePermissionMap || {};
+  rpm4['ROLE-GROUP-LEADER'] = [...new Set([...(rpm4['ROLE-GROUP-LEADER'] || []), 'IMPROVEMENT_VIEW', 'OPTIMIZATION_PLAN_VIEW', 'EFFECTIVENESS_VIEW'])];
+  rpm4['ROLE-GROUP-REG'] = [...new Set([...(rpm4['ROLE-GROUP-REG'] || []), 'IMPROVEMENT_VIEW', 'ROOT_CAUSE_VIEW', 'ROOT_CAUSE_CONFIRM', 'OPTIMIZATION_PLAN_VIEW', 'OPTIMIZATION_PLAN_APPROVE', 'IMPROVEMENT_EXECUTION_VIEW', 'IMPROVEMENT_EXECUTION_MANAGE', 'EFFECTIVENESS_VIEW', 'EFFECTIVENESS_VALIDATE'])];
+  rpm4['ROLE-DOMAIN-REG'] = [...new Set([...(rpm4['ROLE-DOMAIN-REG'] || []), 'IMPROVEMENT_VIEW', 'ROOT_CAUSE_VIEW', 'OPTIMIZATION_PLAN_VIEW', 'IMPROVEMENT_EXECUTION_VIEW', 'EFFECTIVENESS_VIEW'])];
+  rpm4['ROLE-ENTITY-REG'] = [...new Set([...(rpm4['ROLE-ENTITY-REG'] || []), 'IMPROVEMENT_VIEW', 'ROOT_CAUSE_VIEW', 'OPTIMIZATION_PLAN_VIEW', 'IMPROVEMENT_EXECUTION_VIEW', 'EFFECTIVENESS_VIEW'])];
+  APP_DATA.regulatoryRolePermissionMap = rpm4;
+
+  const sm2 = APP_DATA.regulatoryScopeMatrix || [];
+  sm2.forEach(row => {
+    if (row.roleId === 'ROLE-GROUP-LEADER' || row.roleId === 'ROLE-GROUP-REG') row.improvement = '全部';
+    else if (row.roleId === 'ROLE-DOMAIN-REG') row.improvement = '本领域';
+    else if (row.roleId === 'ROLE-ENTITY-REG') row.improvement = '本法人';
+    else row.improvement = '查看';
+  });
+  APP_DATA.regulatoryScopeMatrix = sm2;
+})();

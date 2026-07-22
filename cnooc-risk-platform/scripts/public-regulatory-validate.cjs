@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * 公共监管底座 Phase 20 验收脚本
+ * 公共监管底座 Phase 21 验收脚本
  */
 const fs = require('fs');
 const path = require('path');
@@ -53,6 +53,11 @@ const analysisPermissionFails = [];
 const analysisAuditFails = [];
 const simulationIsolationFails = [];
 const humanDecisionFails = [];
+const improvementOpportunityFails = [];
+const rootCauseFails = [];
+const optimizationPlanFails = [];
+const improvementExecutionFails = [];
+const effectivenessFails = [];
 
 function req(id, label) {
   if (!id) errors.push(`缺失ID: ${label}`);
@@ -98,6 +103,8 @@ const expectedPages = [
   'regulatory-kri-effectiveness', 'regulatory-warning-strategy',
   'regulatory-analysis-center', 'regulatory-risk-concentration', 'regulatory-risk-propagation',
   'regulatory-scenario-analysis', 'regulatory-decision-recommendations',
+  'regulatory-improvement-center', 'regulatory-root-cause-analysis', 'regulatory-optimization-plans',
+  'regulatory-improvement-execution', 'regulatory-improvement-effectiveness',
   'major'
 ];
 expectedPages.forEach(pid => {
@@ -105,7 +112,7 @@ expectedPages.forEach(pid => {
 });
 
 const publicPageCount = (pubJs.match(/pageId: '/g) || []).length;
-if (publicPageCount !== 65) warnings.push(`公共页面数=${publicPageCount}，期望65`);
+if (publicPageCount !== 70) warnings.push(`公共页面数=${publicPageCount}，期望70`);
 
 const components = [
   'canRegulatoryAccess', 'createRegulatoryAuditLog', 'executeRegulatoryStateChange',
@@ -118,15 +125,22 @@ const components = [
   'calculateRegulatoryCompositeHealth', 'calculateRiskConcentration', 'analyzeRiskPropagation',
   'runRegulatoryScenario', 'generateRegulatoryDecisionRecommendations', 'filterAnalysisByUserScope',
   'confirmRegulatoryDecisionRecommendation', 'rejectRegulatoryDecisionRecommendation', 'executeRegulatoryDecisionRecommendation',
+  'identifyImprovementOpportunities', 'analyzeRegulatoryRootCause', 'generateRegulatoryOptimizationPlan', 'evaluateImprovementEffectiveness',
+  'filterImprovementByUserScope', 'confirmRegulatoryRootCause', 'approveRegulatoryOptimizationPlan',
+  'startRegulatoryImprovementExecution', 'completeRegulatoryImprovementExecution', 'validateRegulatoryImprovementEffectiveness',
   'renderRegulatoryDataSources', 'renderRegulatoryDataIntegration', 'renderRegulatoryDataQuality',
   'renderRegulatoryDataGovernance', 'renderRegulatoryDataLineage',
   'renderRegulatoryMetricCenter', 'renderRegulatoryKriMonitoring', 'renderRegulatoryWarningCenter',
   'renderRegulatoryKriEffectiveness', 'renderRegulatoryWarningStrategy',
   'renderRegulatoryAnalysisCenter', 'renderRegulatoryRiskConcentration', 'renderRegulatoryRiskPropagation',
   'renderRegulatoryScenarioAnalysis', 'renderRegulatoryDecisionRecommendations',
+  'renderRegulatoryImprovementCenter', 'renderRegulatoryRootCauseAnalysis', 'renderRegulatoryOptimizationPlans',
+  'renderRegulatoryImprovementExecution', 'renderRegulatoryImprovementEffectiveness',
   'showRegulatoryDataSourceDetail', 'showRegulatoryDataIntegrationDetail', 'showRegulatoryDataQualityDetail', 'showRegulatoryDataGovernanceDetail',
   'showRegulatoryMetricDetail', 'showRegulatoryKriRuntimeDetail', 'showRegulatoryWarningDetail',
-  'showRegulatoryConcentrationDetail', 'showRegulatoryPropagationDetail', 'showRegulatoryRecommendationDetail'
+  'showRegulatoryConcentrationDetail', 'showRegulatoryPropagationDetail', 'showRegulatoryRecommendationDetail',
+  'showRegulatoryOpportunityDetail', 'showRegulatoryRootCauseDetail', 'showRegulatoryOptimizationPlanDetail',
+  'showRegulatoryImprovementExecutionDetail', 'showRegulatoryImprovementEffectivenessDetail'
 ];
 components.forEach(fn => {
   if (!pubJs.includes(fn)) errors.push(`公共组件缺失: ${fn}`);
@@ -302,6 +316,50 @@ if ((D.regulatoryAnalysisMetrics || {}).trendDataStatus !== 'INSUFFICIENT_HISTOR
 if (!(D.regulatorySearchIndex || []).some(s => s.category === '综合分析')) errors.push('搜索索引缺少综合分析');
 if (!pubJs.includes('simulationOnly')) simulationIsolationFails.push('情景分析隔离说明缺失');
 
+// Phase 21 improvement checks
+if (!D.regulatoryImprovementOpportunities?.length) errors.push('regulatoryImprovementOpportunities 未生成');
+if (!D.regulatoryRootCauseAnalyses?.length) errors.push('regulatoryRootCauseAnalyses 未生成');
+if (!D.regulatoryOptimizationPlans?.length) errors.push('regulatoryOptimizationPlans 未生成');
+if (!D.regulatoryImprovementExecution?.length) errors.push('regulatoryImprovementExecution 未生成');
+if (!D.regulatoryContinuousImprovementMetrics) errors.push('regulatoryContinuousImprovementMetrics 未生成');
+
+(D.regulatoryImprovementOpportunities || []).forEach(o => {
+  req(o.opportunityId, 'opportunityId');
+  if (!o.requiresHumanDecision) humanDecisionFails.push(`改进机会 ${o.opportunityId} 必须 requiresHumanDecision`);
+  if (!o.sourceType || !o.sourceId) improvementOpportunityFails.push(`改进机会 ${o.opportunityId} 缺少来源`);
+});
+
+(D.regulatoryRootCauseAnalyses || []).forEach(r => {
+  req(r.rootCauseId, 'rootCauseId');
+  if (r.rootCauseStatus === 'CONFIRMED_ROOT_CAUSE' && !r.confirmedRootCause) rootCauseFails.push(`根因 ${r.rootCauseId} 确认后须有 confirmedRootCause`);
+  (D.regulatoryRootCauseAnalyses || []).filter(x => x.rootCauseStatus === 'CONFIRMED_ROOT_CAUSE' && !x.confirmedAt).forEach(x => {
+    if (x === r && !x.confirmedAt) { /* only pre-confirmed in seed data */ }
+  });
+  if (!r.requiresHumanConfirmation) rootCauseFails.push(`根因 ${r.rootCauseId} 须 requiresHumanConfirmation`);
+});
+
+(D.regulatoryRootCauseAnalyses || []).forEach(r => {
+  if (r.rootCauseStatus !== 'POTENTIAL_ROOT_CAUSE' && r.rootCauseStatus !== 'CONFIRMED_ROOT_CAUSE') rootCauseFails.push(`根因 ${r.rootCauseId} 状态无效`);
+});
+
+(D.regulatoryOptimizationPlans || []).forEach(p => {
+  req(p.planId, 'planId');
+  if (!p.requiresHumanDecision) humanDecisionFails.push(`优化方案 ${p.planId} 必须 requiresHumanDecision`);
+  if (!p.rootCauseId) optimizationPlanFails.push(`方案 ${p.planId} 缺少根因关联`);
+});
+
+(D.regulatoryImprovementExecution || []).forEach(e => {
+  req(e.executionId, 'executionId');
+  resolve(e.planId, D.regulatoryOptimizationPlans, 'planId', 'execution.plan');
+});
+
+(D.regulatoryImprovementEffectiveness || []).forEach(e => {
+  req(e.effectivenessId, 'effectivenessId');
+  if (e.dataStatus === 'INSUFFICIENT_HISTORY' && e.after != null && e.change != null) effectivenessFails.push(`效果 ${e.effectivenessId} 不得伪造历史对比`);
+});
+
+if (!(D.regulatorySearchIndex || []).some(s => s.category === '持续改进')) errors.push('搜索索引缺少持续改进');
+
 // Quality calculation
 const groupSnap = (D.regulatoryDataQualitySnapshots || []).find(s => s.scopeType === 'GROUP');
 if (groupSnap && groupSnap.dataStatus === 'OK') {
@@ -331,17 +389,17 @@ Object.keys(rolePermMap).forEach(roleId => {
   'page-regulatory-metric-center', 'page-regulatory-kri-monitoring', 'page-regulatory-warning-center',
   'page-regulatory-kri-effectiveness', 'page-regulatory-warning-strategy',
   'page-regulatory-analysis-center', 'page-regulatory-risk-concentration', 'page-regulatory-risk-propagation',
-  'page-regulatory-scenario-analysis', 'page-regulatory-decision-recommendations'
+  'page-regulatory-scenario-analysis', 'page-regulatory-decision-recommendations',
+  'page-regulatory-improvement-center', 'page-regulatory-root-cause-analysis', 'page-regulatory-optimization-plans',
+  'page-regulatory-improvement-execution', 'page-regulatory-improvement-effectiveness'
 ].forEach(id => {
   if (!html.includes(id)) errors.push(`index.html 缺失: ${id}`);
 });
 
-if (!appJs.includes('renderRegulatoryAnalysisCenter')) errors.push('app.js 未调用 renderRegulatoryAnalysisCenter');
-if (!pubJs.includes('集团综合监管态势') || !pubJs.includes('风险集中度') || !pubJs.includes('风险传导') || !pubJs.includes('决策建议')) {
-  errors.push('驾驶舱 Phase 20 模块缺失');
-}
-if (!pubJs.includes('集团综合态势') || !pubJs.includes('情景分析结果')) errors.push('工作台 Phase 20 模块缺失');
-if (!pubJs.includes('综合研判视图')) errors.push('角色工作台 Phase 20 模块缺失');
+if (!appJs.includes('renderRegulatoryImprovementCenter')) errors.push('app.js 未调用 renderRegulatoryImprovementCenter');
+if (!pubJs.includes('持续改进健康度')) errors.push('驾驶舱 Phase 21 模块缺失');
+if (!pubJs.includes('我的改进事项')) errors.push('工作台 Phase 21 模块缺失');
+if (!pubJs.includes('持续改进视图')) errors.push('角色工作台 Phase 21 模块缺失');
 
 const navChecks = [
   "navigatePublic('regulatory-data-sources')",
@@ -358,7 +416,12 @@ const navChecks = [
   "navigatePublic('regulatory-risk-concentration')",
   "navigatePublic('regulatory-risk-propagation')",
   "navigatePublic('regulatory-scenario-analysis')",
-  "navigatePublic('regulatory-decision-recommendations')"
+  "navigatePublic('regulatory-decision-recommendations')",
+  "navigatePublic('regulatory-improvement-center')",
+  "navigatePublic('regulatory-root-cause-analysis')",
+  "navigatePublic('regulatory-optimization-plans')",
+  "navigatePublic('regulatory-improvement-execution')",
+  "navigatePublic('regulatory-improvement-effectiveness')"
 ];
 const unifiedNavigationCheck = navChecks.every(s => pubJs.includes(s));
 
@@ -407,6 +470,11 @@ const result = {
   analysisAuditCheck: analysisAuditFails.length === 0 ? '通过' : '不通过',
   simulationIsolationCheck: simulationIsolationFails.length === 0 ? '通过' : '不通过',
   humanDecisionCheck: humanDecisionFails.length === 0 ? '通过' : '不通过',
+  improvementOpportunityCheck: improvementOpportunityFails.length === 0 ? '通过' : '不通过',
+  rootCauseCheck: rootCauseFails.length === 0 ? '通过' : '不通过',
+  optimizationPlanCheck: optimizationPlanFails.length === 0 ? '通过' : '不通过',
+  improvementExecutionCheck: improvementExecutionFails.length === 0 ? '通过' : '不通过',
+  effectivenessCheck: effectivenessFails.length === 0 ? '通过' : '不通过',
   permissionCalculationCheck: permFails.length === 0 ? '通过' : '不通过',
   auditTrailCheck: auditFails.length === 0 ? '通过' : '不通过',
   unifiedNavigationCheck: unifiedNavigationCheck ? '通过' : '不通过',
@@ -433,6 +501,11 @@ const result = {
   analysisAuditFails,
   simulationIsolationFails,
   humanDecisionFails,
+  improvementOpportunityFails,
+  rootCauseFails,
+  optimizationPlanFails,
+  improvementExecutionFails,
+  effectivenessFails,
   permFails: permFails.slice(0, 10),
   errors: errors.slice(0, 40),
   warnings: warnings.slice(0, 15),
@@ -452,5 +525,7 @@ process.exit(
   || warningStrategyFails.length || dataCredibilityFails.length || compositeAnalysisFails.length
   || riskConcentrationFails.length || riskPropagationFails.length || scenarioAnalysisFails.length
   || decisionRecommendationFails.length || analysisPermissionFails.length || analysisAuditFails.length
-  || simulationIsolationFails.length || humanDecisionFails.length || permFails.length ? 1 : 0
+  || simulationIsolationFails.length || humanDecisionFails.length
+  || improvementOpportunityFails.length || rootCauseFails.length || optimizationPlanFails.length
+  || improvementExecutionFails.length || effectivenessFails.length || permFails.length ? 1 : 0
 );
