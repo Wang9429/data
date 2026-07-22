@@ -51,7 +51,7 @@ const start = App.startDemoScenario('DEMO-01');
 step('START-01', '启动DEMO-01', start.success === true, start.startedAt);
 
 // UI panels
-step('UI-01', '集团总览Demo路径', App.renderDemoScenarioDashboardPanel().includes('集团监管平台 Demo 演示路径'));
+step('UI-01', '集团总览Demo路径', App.renderDemoScenarioDashboardPanel().includes('集团监管平台 Demo Final'));
 step('UI-02', '工作台Demo视图', App.renderDemoScenarioWorkbenchPanel().includes('我的 Demo 工作台视图'));
 step('UI-03', '角色Demo路径', App.renderDemoScenarioRolePanel('GROUP_LEADER').includes('DEMO-01'));
 step('UI-04', '状态诚实展示', App.renderDemoScenarioDashboardPanel().includes('INSUFFICIENT_HISTORY'));
