@@ -6343,3 +6343,36 @@ Object.assign(APP_DATA, {
   APP_DATA.regulatoryOperatingResultIndexes = APP_DATA.regulatoryOperatingResultIndexes || [];
   APP_DATA.regulatoryOperatingRuntimeMetrics = APP_DATA.regulatoryOperatingRuntimeMetrics || {};
 })();
+
+(function () {
+  APP_DATA.regulatoryCoordinationScenarios = [
+    { scenarioId: 'CO-01', name: '跨法人风险协同', roleType: 'GROUP_REGULATORY', startPage: 'regulatory-workbench', steps: ['法人A风险', '跨法人识别', '主责识别', '协同识别', '人工确认', '协同任务', '联合整改', '联合验证'], expectedResult: '跨法人协同链路可追溯', dataChain: 'coordinationCases → tasks → jointVerification' },
+    { scenarioId: 'CO-02', name: '跨领域风险协同', roleType: 'GROUP_REGULATORY', startPage: 'regulatory-analysis-center', steps: ['财务风险', '影响投资/境外', '跨领域协同', '共同研判', '监管行动'], expectedResult: '跨领域主责与协同可识别', dataChain: 'crossDomainRiskMatters → coordinationCases' },
+    { scenarioId: 'CO-03', name: '数据质量跨域影响', roleType: 'GROUP_REGULATORY', startPage: 'regulatory-data-quality', steps: ['数据源异常', '多KRI受影响', '预警可信度下降', '治理任务', '多领域协同'], expectedResult: '数据质量阻断触发协同', dataChain: 'dataQuality → coordinationCases' },
+    { scenarioId: 'CO-04', name: '超期任务升级', roleType: 'GROUP_REGULATORY', startPage: 'regulatory-supervision-tasks', steps: ['任务超期', '升级建议', '人工确认', '升级督办', '责任反馈'], expectedResult: '升级需人工确认', dataChain: 'escalationRecords' },
+    { scenarioId: 'CO-05', name: '多组织联合整改', roleType: 'GROUP_REGULATORY', startPage: 'rectification', steps: ['重大风险', '组织A整改', '组织B整改', '组织C整改', '联合验证', '结果确认'], expectedResult: '部分完成不自动关闭', dataChain: 'jointVerification' },
+    { scenarioId: 'CO-06', name: '协同反馈被拒绝', roleType: 'GROUP_REGULATORY', startPage: 'regulatory-workbench', steps: ['反馈提交', '审核', 'REJECTED', '补充材料', '重新提交'], expectedResult: '拒绝不写成最终结论', dataChain: 'coordinationFeedback' },
+    { scenarioId: 'CO-07', name: '跨组织权限隔离', roleType: 'ENTITY_REGULATOR', startPage: 'regulatory-role-workbench', steps: ['法人A', '不能查看法人B', '集团可看授权范围'], expectedResult: '权限隔离有效', dataChain: 'filterCoordinationCasesByScope' },
+    { scenarioId: 'CO-08', name: '协同结果评价', roleType: 'GROUP_LEADER', startPage: 'regulatory-performance', steps: ['协同事项', '任务执行', '整改', '验证', '效果评价', '改进建议'], expectedResult: '建议需人工决策', dataChain: 'coordinationEffectiveness' }
+  ];
+  APP_DATA.regulatoryCoordinationCases = APP_DATA.regulatoryCoordinationCases || [];
+  APP_DATA.regulatoryCoordinationResponsibilityIndex = APP_DATA.regulatoryCoordinationResponsibilityIndex || [];
+  APP_DATA.regulatoryCoordinationTasks = APP_DATA.regulatoryCoordinationTasks || [];
+  APP_DATA.regulatoryEscalationRecords = APP_DATA.regulatoryEscalationRecords || [];
+  APP_DATA.regulatoryCoordinationFeedbackIndex = APP_DATA.regulatoryCoordinationFeedbackIndex || [];
+  APP_DATA.regulatoryJointVerificationIndex = APP_DATA.regulatoryJointVerificationIndex || [];
+  APP_DATA.regulatoryCoordinationResultIndexes = APP_DATA.regulatoryCoordinationResultIndexes || [];
+  APP_DATA.regulatoryCoordinationMetrics = APP_DATA.regulatoryCoordinationMetrics || {};
+  const rpmCo = APP_DATA.regulatoryRolePermissionMap || {};
+  ['ROLE-GROUP-LEADER', 'ROLE-GROUP-REG', 'ROLE-DOMAIN-REG', 'ROLE-ENTITY-REG'].forEach(r => {
+    rpmCo[r] = [...new Set([...(rpmCo[r] || []), 'COORDINATION_VIEW'])];
+  });
+  rpmCo['ROLE-GROUP-REG'] = [...new Set([...(rpmCo['ROLE-GROUP-REG'] || []), 'COORDINATION_MANAGE'])];
+  rpmCo['ROLE-GROUP-LEADER'] = [...new Set([...(rpmCo['ROLE-GROUP-LEADER'] || []), 'COORDINATION_MANAGE', 'COORDINATION_ESCALATE'])];
+  APP_DATA.regulatoryRolePermissionMap = rpmCo;
+  APP_DATA.regulatoryPermissionSets = [...(APP_DATA.regulatoryPermissionSets || []),
+    { permissionSetId: 'PS-CO-01', permissionCode: 'COORDINATION_VIEW', resourceType: 'regulatoryCoordinationCases', action: 'VIEW', riskLevel: 'LOW' },
+    { permissionSetId: 'PS-CO-02', permissionCode: 'COORDINATION_MANAGE', resourceType: 'regulatoryCoordinationCases', action: 'MANAGE', riskLevel: 'MEDIUM' },
+    { permissionSetId: 'PS-CO-03', permissionCode: 'COORDINATION_ESCALATE', resourceType: 'regulatoryEscalationRecords', action: 'CONFIRM', riskLevel: 'HIGH' }
+  ];
+})();
