@@ -1968,7 +1968,8 @@ Object.assign(APP_DATA, {
     baseVersion: '1.0.0',
     createdAt: '2026-07-22',
     createdBy: '系统生成',
-    status: s.status
+    status: s.status,
+    simulationOnly: true
   }));
 
   APP_DATA.regulatorySimulationResults = simulations.map(s => runSim(s.simulationId, s.simulationName, s.overrides, s.status));
@@ -6003,4 +6004,65 @@ Object.assign(APP_DATA, {
     else row.improvement = '查看';
   });
   APP_DATA.regulatoryScopeMatrix = sm2;
+})();
+
+(function () {
+  const dataGov = APP_DATA.regulatoryDataGovernanceMetrics || {};
+  const km = APP_DATA.regulatoryMetricKriMetrics || {};
+  const execM = APP_DATA.regulatoryRuleExecutionMetrics || {};
+  const perfS = APP_DATA.regulatoryPerformanceSummary || {};
+  const cm = APP_DATA.regulatoryContinuousImprovementMetrics || {};
+  const am = APP_DATA.regulatoryAnalysisMetrics || {};
+  const hasHistory = dataGov.qualityTrendStatus !== 'INSUFFICIENT_HISTORY' && cm.trendDataStatus !== 'INSUFFICIENT_HISTORY';
+
+  const scoreOrNull = (v) => (v != null && !Number.isNaN(v) ? Math.round(v) : null);
+  const healthFrom = (score, insufficient) => {
+    if (insufficient) return { healthStatus: 'INSUFFICIENT_HISTORY', score: null };
+    if (score == null) return { healthStatus: 'WARNING', score: null };
+    if (score >= 80) return { healthStatus: 'HEALTHY', score };
+    if (score >= 60) return { healthStatus: 'WARNING', score };
+    return { healthStatus: 'CRITICAL', score };
+  };
+
+  const insufficientData = dataGov.qualityTrendStatus === 'INSUFFICIENT_HISTORY';
+  const dataHealth = healthFrom(dataGov.overallQualityScore, insufficientData);
+  const ruleHealth = healthFrom(execM.executionSuccessRate, false);
+  const kriHealth = healthFrom(km.avgCredibility, km.insufficientDataKriCount > km.kriCount / 2);
+  const warningHealth = healthFrom(100 - (km.pendingReviewCount || 0) * 5, false);
+  const actionHealth = healthFrom(perfS.regulatoryEffectivenessScore, false);
+  const rectHealth = healthFrom(Math.round((perfS.rectificationClosureRate || 0) * 100), false);
+  const decisionHealth = healthFrom(100 - (am.pendingRecommendationCount || 0) * 3, false);
+  const improvementHealth = healthFrom(cm.improvementClosureRate, cm.trendDataStatus === 'INSUFFICIENT_HISTORY');
+
+  const dimensions = { dataHealth, ruleHealth, kriHealth, warningHealth, actionHealth, rectificationHealth: rectHealth, decisionHealth, improvementHealth };
+  const scored = Object.values(dimensions).filter(d => d.score != null);
+  const avgScore = scored.length ? Math.round(scored.reduce((s, d) => s + d.score, 0) / scored.length) : null;
+  const anyInsufficient = Object.values(dimensions).some(d => d.healthStatus === 'INSUFFICIENT_HISTORY');
+
+  APP_DATA.platformHealth = {
+    healthStatus: anyInsufficient && !avgScore ? 'INSUFFICIENT_HISTORY' : healthFrom(avgScore, anyInsufficient && avgScore == null).healthStatus,
+    compositeScore: avgScore,
+    hasSufficientHistory: hasHistory,
+    dimensions,
+    calculatedAt: '2026-07-22T10:00:00',
+    note: anyInsufficient ? '部分维度历史数据不足，健康度仅供参考' : '集团监管平台运行健康度'
+  };
+
+  APP_DATA.regulatoryClosureChains = [
+    { chainId: 'CHAIN-DATA', name: '数据质量驱动监管', steps: ['regulatory-data-sources', 'regulatory-data-quality', 'regulatory-kri-monitoring', 'regulatory-warning-center', 'regulatory-analysis-center', 'regulatory-actions', 'rectification', 'regulatory-action-execution'] },
+    { chainId: 'CHAIN-RULE', name: '规则治理', steps: ['regulatory-rule-approvals', 'regulatory-simulation', 'regulatory-rule-impact', 'regulatory-rule-approvals', 'regulatory-rule-deployments', 'regulatory-rule-runtime', 'regulatory-rule-effectiveness'] },
+    { chainId: 'CHAIN-RISK', name: '重大风险监管', steps: ['global-legal-entities', 'regulatory-risk-concentration', 'regulatory-risk-propagation', 'regulatory-warning-center', 'regulatory-decision-recommendations', 'regulatory-actions'] },
+    { chainId: 'CHAIN-RESOURCE', name: '监管资源调度', steps: ['warnings', 'regulatory-resource-allocation', 'regulatory-supervision-tasks', 'rectification', 'regulatory-performance'] },
+    { chainId: 'CHAIN-STRATEGY', name: '战略执行', steps: ['regulatory-strategy-planning', 'regulatory-focus-management', 'regulatory-annual-plan', 'regulatory-plan-execution', 'regulatory-strategic-review'] },
+    { chainId: 'CHAIN-IMPROVE', name: '持续改进', steps: ['regulatory-performance', 'regulatory-improvement-center', 'regulatory-root-cause-analysis', 'regulatory-optimization-plans', 'regulatory-improvement-execution', 'regulatory-improvement-effectiveness'] },
+    { chainId: 'CHAIN-PERM', name: '权限审计', steps: ['regulatory-access-control', 'regulatory-role-workbench', 'regulatory-authorization', 'regulatory-audit-trail'] },
+    { chainId: 'CHAIN-LEADER', name: '集团领导决策', steps: ['global-group-overview', 'regulatory-analysis-center', 'warnings', 'regulatory-decision-recommendations', 'regulatory-resource-allocation', 'regulatory-strategic-review'] }
+  ];
+
+  APP_DATA.regulatoryRolePaths = [
+    { roleId: 'ROLE-GROUP-LEADER', roleName: '集团领导', path: ['global-group-overview', 'regulatory-analysis-center', 'warnings', 'regulatory-decision-recommendations', 'regulatory-resource-allocation', 'regulatory-strategic-review'] },
+    { roleId: 'ROLE-GROUP-REG', roleName: '集团监管部门', path: ['regulatory-role-workbench', 'regulatory-workbench', 'regulatory-analysis-center', 'regulatory-rule-runtime', 'regulatory-actions', 'rectification', 'regulatory-performance'] },
+    { roleId: 'ROLE-DOMAIN-REG', roleName: '专业领域监管', path: ['regulatory-role-workbench', 'regulatory-metric-center', 'regulatory-kri-monitoring', 'regulatory-warning-center', 'regulatory-risk-concentration', 'regulatory-supervision-tasks', 'regulatory-improvement-effectiveness'] },
+    { roleId: 'ROLE-ENTITY-REG', roleName: '法人监管', path: ['regulatory-role-workbench', 'regulatory-my-work', 'regulatory-warning-center', 'rectification', 'regulatory-data-quality', 'regulatory-kri-monitoring', 'regulatory-improvement-execution'] }
+  ];
 })();

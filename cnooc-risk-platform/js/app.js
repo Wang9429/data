@@ -128,6 +128,7 @@ const App = {
   },
 
   init() {
+    if (this.finalizeRegulatoryPlatform) this.finalizeRegulatoryPlatform();
     this.renderNav();
     this.renderGroupOverview();
     this.renderRegulatoryEvents();
