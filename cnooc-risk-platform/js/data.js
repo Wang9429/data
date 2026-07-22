@@ -249,9 +249,9 @@ Object.assign(APP_DATA, {
     ['数据源接入率','96.8%','98%','+1.6%','部分达标'],['境外法人接入率','91.5%','95%','+2.4%','部分达标'],['关键系统接入率','94.2%','95%','+1.8%','部分达标'],['数据完整率','97.1%','98%','+0.8%','正常'],['数据及时率','95.6%','97%','+1.2%','正常'],['KRI更新成功率','98.2%','99%','+0.5%','正常'],['规则执行率','99.1%','99%','+0.7%','正常'],['风险预警触达率','97.8%','98%','+1.1%','正常'],['异常处置及时率','88.4%','95%','+3.2%','部分达标'],['整改闭环率','76.4%','80%','+2.6%','部分达标']
   ],
   platformOperationAlerts: [
-    { alertId:'ALERT001', alertType:'接口中断', level:'高', sourceId:'SRC007', systemName:'经营分析系统', entityId:'D001', regionId:'AS', countryId:'AS-A', businessDomain:'境外业务', occurredAt:'2026-07-20 18:00', status:'处理中', responsibleDepartment:'区域信息管理岗', deadline:'2026-07-23', impactDesc:'影响KRI更新', kriId:'kri-filing', riskMatterId:'risk-5' },
-    { alertId:'ALERT002', alertType:'数据同步延迟', level:'中', sourceId:'SRC002', systemName:'财务系统', entityId:'B001', regionId:'ME', countryId:'ME-A', businessDomain:'投资管理', occurredAt:'2026-07-21 22:00', status:'待处理', responsibleDepartment:'区域财务部', deadline:'2026-07-24', impactDesc:'预警延迟', kriId:'kri-capex', riskMatterId:'risk-2' },
-    { alertId:'ALERT003', alertType:'数据质量异常', level:'中', sourceId:'SRC006', systemName:'项目系统', entityId:'C001', regionId:'ME', countryId:'ME-A', businessDomain:'工程项目', occurredAt:'2026-07-21 14:00', status:'处理中', responsibleDepartment:'项目管理部', deadline:'2026-07-25', impactDesc:'指标准确性不足', kriId:'kri-schedule', riskMatterId:null }
+    { alertId:'ALERT001', alertType:'接口中断', level:'高', sourceId:'SRC007', systemName:'经营分析系统', entityId:'D001', regionId:'AS', countryId:'AS-A', businessDomain:'境外业务', occurredAt:'2026-07-20 18:00', status:'处理中', responsibleDepartment:'区域信息管理岗', deadline:'2026-07-23', impactDesc:'影响KRI更新', objectId:'OBJ006', fieldId:null, qualityIssueId:'DQ005', indicatorId:null, kriId:'kri-filing', scenarioId:'scenario-filing', riskMatterId:'risk-5', rectificationTaskId:null },
+    { alertId:'ALERT002', alertType:'数据同步延迟', level:'中', sourceId:'SRC002', systemName:'财务系统', entityId:'B001', regionId:'ME', countryId:'ME-A', businessDomain:'投资管理', occurredAt:'2026-07-21 22:00', status:'待处理', responsibleDepartment:'区域财务部', deadline:'2026-07-24', impactDesc:'预警延迟', objectId:'OBJ004', fieldId:'FLD004', qualityIssueId:'DQ002', indicatorId:'IND002', kriId:'kri-capex', scenarioId:'scenario-capex', riskMatterId:'risk-2', rectificationTaskId:'RECT-202601001' },
+    { alertId:'ALERT003', alertType:'数据质量异常', level:'中', sourceId:'SRC003', systemName:'项目系统', entityId:'C001', regionId:'ME', countryId:'ME-A', businessDomain:'工程项目', occurredAt:'2026-07-21 14:00', status:'处理中', responsibleDepartment:'项目管理部', deadline:'2026-07-25', impactDesc:'指标准确性不足', objectId:'OBJ003', fieldId:'FLD005', qualityIssueId:null, indicatorId:'IND004', kriId:'kri-schedule', scenarioId:'scenario-capex', riskMatterId:null, rectificationTaskId:'RECT-202601003' }
   ],
   platformOperationHistory: [
     ['07-16','94.2%','95.1%','97.1%','98.3%','96.4%','86.2%','72.1%'],['07-18','95.0%','95.8%','97.6%','98.5%','96.8%','87.1%','73.4%'],['07-20','96.1%','96.4%','98.0%','98.8%','97.2%','87.8%','75.0%'],['07-22','96.8%','97.1%','98.2%','99.1%','97.8%','88.4%','76.4%']
@@ -264,6 +264,28 @@ Object.assign(APP_DATA, {
     { gapId:'GAP002', gapType:'项目现场', name:'某海外项目现场', entityId:'D001', projectId:'GP002', regionId:'AF', countryId:'AF-A', sourceId:'SRC007', objectId:'OBJ006', fieldId:null, indicatorId:null, kriId:'kri-schedule', scenarioId:'scenario-capex', controlRuleId:'CR-SCHEDULE-001', responsibleDepartment:'区域信息管理岗', rectificationTaskId:null, status:'数据异常', gaps:'接口同步、数据及时率', impact:'预警结果延迟' },
     { gapId:'GAP003', gapType:'法人', name:'D公司', entityId:'D001', projectId:null, regionId:'AS', countryId:'AS-A', sourceId:'SRC007', objectId:null, fieldId:null, indicatorId:'IND005', kriId:'kri-filing', scenarioId:'scenario-filing', controlRuleId:'CR-FILING-001', responsibleDepartment:'业务管理部', rectificationTaskId:null, status:'未覆盖', gaps:'风险场景、控制规则', impact:'合同风险无法自动识别' },
     { gapId:'GAP004', gapType:'跨境数据合规', name:'D公司境外项目经营数据', entityId:'D001', projectId:'GP002', regionId:'AS', countryId:'AS-A', sourceId:'SRC007', objectId:'OBJ006', fieldId:null, indicatorId:null, kriId:'KRI-CB-001', scenarioId:'CBR001', controlRuleId:'CBCTRL001', responsibleDepartment:'区域信息管理岗', rectificationTaskId:'RECT-CB-003', status:'未覆盖', gaps:'分类分级、跨境审批', impact:'跨境数据合规风险无法自动识别' }
+  ],
+  coverageMatrixCells: [
+    { cellId:'CM-001', objectType:'法人', entityId:'C001', projectId:null, regionId:'ME', countryId:'ME-A', domainId:null, coverageType:'系统接入', coverageStatus:'已覆盖', sourceId:'SRC003', objectId:'OBJ003', indicatorId:'IND004', kriId:null, scenarioId:null, gapId:'GAP001', rectificationTaskId:'RECT-202601003' },
+    { cellId:'CM-002', objectType:'法人', entityId:'C001', projectId:null, regionId:'ME', countryId:'ME-A', domainId:null, coverageType:'数据接入', coverageStatus:'部分覆盖', sourceId:'SRC003', objectId:'OBJ003', indicatorId:'IND004', kriId:null, scenarioId:null, gapId:'GAP001', rectificationTaskId:'RECT-202601003' },
+    { cellId:'CM-003', objectType:'法人', entityId:'C001', projectId:null, regionId:'ME', countryId:'ME-A', domainId:null, coverageType:'KRI覆盖', coverageStatus:'已覆盖', sourceId:'SRC003', objectId:'OBJ003', indicatorId:'IND004', kriId:'kri-schedule', scenarioId:'scenario-capex', gapId:null, rectificationTaskId:null },
+    { cellId:'CM-004', objectType:'法人', entityId:'C001', projectId:null, regionId:'ME', countryId:'ME-A', domainId:null, coverageType:'规则覆盖', coverageStatus:'部分覆盖', sourceId:'SRC003', objectId:'OBJ003', indicatorId:null, kriId:null, scenarioId:'scenario-capex', gapId:null, rectificationTaskId:null },
+    { cellId:'CM-005', objectType:'法人', entityId:'C001', projectId:null, regionId:'ME', countryId:'ME-A', domainId:null, coverageType:'整改闭环', coverageStatus:'部分覆盖', sourceId:'SRC003', objectId:'OBJ003', indicatorId:null, kriId:null, scenarioId:null, gapId:'GAP001', rectificationTaskId:'RECT-202601003' },
+    { cellId:'CM-006', objectType:'项目', entityId:'C001', projectId:'GP001', regionId:'ME', countryId:'ME-A', domainId:'investment', coverageType:'系统接入', coverageStatus:'已覆盖', sourceId:'SRC002', objectId:'OBJ004', indicatorId:'IND002', kriId:'kri-capex', scenarioId:'scenario-capex', gapId:null, rectificationTaskId:'RECT-202601001' },
+    { cellId:'CM-007', objectType:'项目', entityId:'C001', projectId:'GP001', regionId:'ME', countryId:'ME-A', domainId:'investment', coverageType:'数据接入', coverageStatus:'已覆盖', sourceId:'SRC002', objectId:'OBJ004', indicatorId:'IND002', kriId:'kri-capex', scenarioId:'scenario-capex', gapId:null, rectificationTaskId:null },
+    { cellId:'CM-008', objectType:'项目', entityId:'C001', projectId:'GP001', regionId:'ME', countryId:'ME-A', domainId:'investment', coverageType:'KRI覆盖', coverageStatus:'部分覆盖', sourceId:'SRC002', objectId:'OBJ004', indicatorId:'IND002', kriId:'kri-capex', scenarioId:'scenario-capex', gapId:null, rectificationTaskId:'RECT-202601001' },
+    { cellId:'CM-009', objectType:'项目', entityId:'C001', projectId:'GP001', regionId:'ME', countryId:'ME-A', domainId:'investment', coverageType:'规则覆盖', coverageStatus:'已覆盖', sourceId:'SRC002', objectId:'OBJ004', indicatorId:'IND002', kriId:'kri-capex', scenarioId:'scenario-capex', gapId:null, rectificationTaskId:null },
+    { cellId:'CM-010', objectType:'项目', entityId:'C001', projectId:'GP001', regionId:'ME', countryId:'ME-A', domainId:'investment', coverageType:'整改闭环', coverageStatus:'已覆盖', sourceId:'SRC002', objectId:'OBJ004', indicatorId:null, kriId:null, scenarioId:null, gapId:null, rectificationTaskId:'RECT-202601003' },
+    { cellId:'CM-011', objectType:'业务领域', entityId:null, projectId:null, regionId:null, countryId:null, domainId:'investment', coverageType:'系统接入', coverageStatus:'部分覆盖', sourceId:'SRC001', objectId:'OBJ001', indicatorId:'IND001', kriId:'kri-capex', scenarioId:'scenario-capex', gapId:null, rectificationTaskId:null },
+    { cellId:'CM-012', objectType:'业务领域', entityId:null, projectId:null, regionId:null, countryId:null, domainId:'investment', coverageType:'数据接入', coverageStatus:'已覆盖', sourceId:'SRC001', objectId:'OBJ001', indicatorId:'IND001', kriId:'kri-capex', scenarioId:'scenario-capex', gapId:null, rectificationTaskId:null },
+    { cellId:'CM-013', objectType:'业务领域', entityId:null, projectId:null, regionId:null, countryId:null, domainId:'investment', coverageType:'KRI覆盖', coverageStatus:'已覆盖', sourceId:'SRC001', objectId:'OBJ001', indicatorId:'IND001', kriId:'kri-capex', scenarioId:'scenario-capex', gapId:null, rectificationTaskId:null },
+    { cellId:'CM-014', objectType:'业务领域', entityId:null, projectId:null, regionId:null, countryId:null, domainId:'investment', coverageType:'规则覆盖', coverageStatus:'部分覆盖', sourceId:'SRC001', objectId:'OBJ001', indicatorId:'IND001', kriId:'kri-capex', scenarioId:'scenario-capex', gapId:null, rectificationTaskId:null },
+    { cellId:'CM-015', objectType:'业务领域', entityId:null, projectId:null, regionId:null, countryId:null, domainId:'investment', coverageType:'整改闭环', coverageStatus:'部分覆盖', sourceId:'SRC001', objectId:'OBJ001', indicatorId:null, kriId:null, scenarioId:null, gapId:null, rectificationTaskId:'RECT-202601004' },
+    { cellId:'CM-016', objectType:'区域/国家', entityId:'D001', projectId:'GP002', regionId:'AS', countryId:'AS-A', domainId:'overseas', coverageType:'系统接入', coverageStatus:'部分覆盖', sourceId:'SRC007', objectId:'OBJ006', indicatorId:null, kriId:'kri-schedule', scenarioId:'scenario-capex', gapId:'GAP002', rectificationTaskId:null },
+    { cellId:'CM-017', objectType:'区域/国家', entityId:'D001', projectId:'GP002', regionId:'AS', countryId:'AS-A', domainId:'overseas', coverageType:'数据接入', coverageStatus:'数据异常', sourceId:'SRC007', objectId:'OBJ006', indicatorId:null, kriId:'kri-schedule', scenarioId:'scenario-capex', gapId:'GAP002', rectificationTaskId:null },
+    { cellId:'CM-018', objectType:'区域/国家', entityId:'D001', projectId:'GP002', regionId:'AS', countryId:'AS-A', domainId:'overseas', coverageType:'KRI覆盖', coverageStatus:'已覆盖', sourceId:'SRC007', objectId:'OBJ006', indicatorId:null, kriId:'kri-filing', scenarioId:'scenario-filing', gapId:'GAP003', rectificationTaskId:null },
+    { cellId:'CM-019', objectType:'区域/国家', entityId:'D001', projectId:'GP002', regionId:'AS', countryId:'AS-A', domainId:'overseas', coverageType:'规则覆盖', coverageStatus:'部分覆盖', sourceId:'SRC007', objectId:'OBJ006', indicatorId:'IND005', kriId:'kri-filing', scenarioId:'scenario-filing', gapId:'GAP003', rectificationTaskId:null },
+    { cellId:'CM-020', objectType:'区域/国家', entityId:'D001', projectId:'GP002', regionId:'AS', countryId:'AS-A', domainId:'overseas', coverageType:'整改闭环', coverageStatus:'部分覆盖', sourceId:'SRC007', objectId:'OBJ006', indicatorId:null, kriId:null, scenarioId:null, gapId:'GAP004', rectificationTaskId:'RECT-CB-003' }
   ],
   globalRegions: [
     { regionId:'CN', regionName:'境内', regionType:'domestic', countryCount:1, legalEntityCount:86, entityCount:86, projectCount:926, riskCount:32, highRiskCount:5, rectificationCount:14, dataCoverageRate:'98.6%', dataCoverage:'98.6%', dataQualityStatus:'良好', riskLevel:'低', complianceStatus:'正常' },
@@ -558,4 +580,25 @@ Object.assign(APP_DATA, {
     crossDomainClosureRate: pct(closedTasks.length, cdTasks.length),
     multiKriAlertCount: multiKriAlerts.length
   };
+})();
+
+(function () {
+  const srcMap = {
+    'risk-1': { domainId: 'investment', relatedDataSourceIds: ['SRC005'], relatedDataObjectIds: ['OBJ004'], responsibleDepartment: '投资管理部' },
+    'risk-2': { domainId: 'investment', relatedDataSourceIds: ['SRC002'], relatedDataObjectIds: ['OBJ004'], responsibleDepartment: '投资管理部' },
+    'risk-3': { domainId: 'investment', relatedDataSourceIds: ['SRC003'], relatedDataObjectIds: ['OBJ003'], responsibleDepartment: '投资管理部' },
+    'risk-4': { domainId: 'investment', relatedDataSourceIds: ['SRC001'], relatedDataObjectIds: ['OBJ001'], responsibleDepartment: '战略发展部' },
+    'risk-5': { domainId: 'overseas', relatedDataSourceIds: ['SRC007'], relatedDataObjectIds: ['OBJ006'], responsibleDepartment: '区域信息管理岗' },
+    'risk-cb-001': { domainId: 'overseas', relatedDataSourceIds: ['SRC007'], relatedDataObjectIds: ['OBJ006'], responsibleDepartment: '区域信息管理岗' },
+    'risk-cb-002': { domainId: 'overseas', relatedDataSourceIds: ['SRC002'], relatedDataObjectIds: ['OBJ004'], responsibleDepartment: '区域财务部' },
+    'risk-cb-003': { domainId: 'overseas', relatedDataSourceIds: ['SRC007'], relatedDataObjectIds: ['OBJ006'], responsibleDepartment: '区域信息管理岗' }
+  };
+  (APP_DATA.warnings || []).forEach(w => {
+    if (!w.riskMatterId) w.riskMatterId = w.id;
+    const ext = srcMap[w.id] || {};
+    if (!w.domainId && ext.domainId) w.domainId = ext.domainId;
+    if (!w.relatedDataSourceIds && ext.relatedDataSourceIds) w.relatedDataSourceIds = ext.relatedDataSourceIds;
+    if (!w.relatedDataObjectIds && ext.relatedDataObjectIds) w.relatedDataObjectIds = ext.relatedDataObjectIds;
+    if (!w.responsibleDepartment && ext.responsibleDepartment) w.responsibleDepartment = ext.responsibleDepartment;
+  });
 })();
