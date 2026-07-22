@@ -114,6 +114,21 @@ const riskToResponsibilityTraceability = html.includes('renderGroupResponsibilit
 const rectificationVerificationTraceability = html.includes('整改证据')
   && html.includes('验证结果')
   && html.includes('renderPenetrationGroupSupervisionOverlay');
+const upwardTraceability = html.includes('向上追溯')
+  && html.includes('renderGroupPenetrationSupervisionChain')
+  && html.includes("direction === 'up'");
+const domainNavLabels = ['财务管理驾驶舱', '合同管理驾驶舱', '供应链管理驾驶舱', '境外业务驾驶舱', '产权管理驾驶舱', '金融业务驾驶舱', '薪酬分配驾驶舱', '科技创新驾驶舱'];
+const allDomainNavigationPreserved = domainNavLabels.every(l => appJsSource.includes(l))
+  && appJsSource.includes('buildDomainSidebarMenu')
+  && appJsSource.includes('getDomainMenuDefinitions')
+  && !/return base;/.test(appJsSource);
+const allDomainHomePagesPreserved = appJsSource.includes('财务管理驾驶舱')
+  && appJsSource.includes('领域专业管理首页')
+  && !appJsSource.includes('集团监管驾驶舱');
+const allDomainBusinessLogicPreserved = appJsSource.includes('renderNonInvestmentDomainPage')
+  && appJsSource.includes('领域业务运行')
+  && appJsSource.includes('本领域原有业务逻辑')
+  && appJsSource.includes('不混入投资管理专题数据');
 const penetrationNotInMenu = !html.includes("{id:'penetration',icon:'↳',label:'　风险监测 · 投资穿透分析'}")
   && !html.includes('风险监测 · 投资穿透分析');
 const penetrationParentEntry = (() => {
@@ -147,6 +162,10 @@ check(groupRegulatoryPerspectiveAdded, 'groupRegulatoryPerspectiveAdded');
 check(groupToRiskTraceability, 'groupToRiskTraceability');
 check(riskToResponsibilityTraceability, 'riskToResponsibilityTraceability');
 check(rectificationVerificationTraceability, 'rectificationVerificationTraceability');
+check(upwardTraceability, 'upwardTraceability');
+check(allDomainNavigationPreserved, 'allDomainNavigationPreserved');
+check(allDomainHomePagesPreserved, 'allDomainHomePagesPreserved');
+check(allDomainBusinessLogicPreserved, 'allDomainBusinessLogicPreserved');
 check(demoScenarioEntryAdded, 'demoScenarioEntryAdded');
 check(penetrationNotInMenu, 'penetrationNotInMenu');
 check(penetrationParentEntry, 'penetrationParentEntry');
@@ -187,6 +206,10 @@ const result = {
   groupToRiskTraceability,
   riskToResponsibilityTraceability,
   rectificationVerificationTraceability,
+  upwardTraceability,
+  allDomainNavigationPreserved,
+  allDomainHomePagesPreserved,
+  allDomainBusinessLogicPreserved,
   demoScenarioEntryAdded,
   systemName: '集团穿透式监管平台',
   systemNameCheck: html.includes('<title>集团穿透式监管平台</title>'),

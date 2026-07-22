@@ -4962,13 +4962,15 @@ Object.assign(App, {
 
   renderGroupFocusObjectsTable() {
     const rows = [
-      ['中东区域', '区域', '风险集中度较高', '8项重大风险 · 占集团42%', `App.navigate('warnings')`],
-      ['沙特阿拉伯', '国家', 'KRI连续异常', '投资收益率连续2期低于阈值', `App.navigate('warnings')`],
-      ['B公司', '法人', '同一法人关联多个风险事项', '关联风险事项5项 · 整改超期2项', `App.navigate('portfolio')`],
-      ['某境外能源项目', '项目', '重大事项影响范围较大', '集团督办 · 收益偏离重大', `App.openInvestmentPenetrationFromWarnings('risk-2')`],
-      ['投资收益未达预期风险', '风险事项', 'KRI超阈值 + 整改超期', '红色预警 · 整改中', `App.showWarningDetail('risk-2')`]
+      ['中东区域', '区域', '集团总部', '风险集中度偏高', '8项重大风险占集团42%', '区域风险指数', '红色预警', '集团投资管理部', '区域专项督办', '整改中', '待验证', `App.navigate('warnings')`],
+      ['沙特阿拉伯', '国家', '中东区域', 'KRI连续异常', '收益率连续2期低于阈值', '投资收益率', '橙色预警', 'B公司投资管理部', '国别风险复核', '整改中', '待验证', `App.navigate('warnings')`],
+      ['B公司', '法人', '中东区域 / 沙特', '多风险事项关联', '关联风险事项5项 · 整改超期2项', '综合风险评分', '红色预警', 'B公司投资管理部', '法人专项监管', '整改中', '待验证', `App.navigate('portfolio')`],
+      ['某境外能源项目', '项目', 'B公司', '重大事项影响较大', '集团督办 · 收益偏离重大', '投资收益率', '红色预警', '项目公司', '集团专项督办', '整改中', '待验证', `App.openInvestmentPenetrationFromWarnings('risk-2')`],
+      ['投后经营跟踪', '投资事项', '某境外能源项目', '重大事项流程异常', '投后跟踪频率不足', '利润下降率', '黄色预警', 'B公司境外事业部', '加强投后监测', '整改中', '待验证', `App.navigate('process',{stageId:'post-invest'})`],
+      ['投资收益未达预期风险', '风险事项', '投后经营跟踪', 'KRI超阈值', '红色预警 · 影响集团整体风险判断', '投资收益率 3.2%', '红色预警', 'B公司投资管理部 → 项目公司', '集团投资管理部督办', '整改中', '待验证', `App.showWarningDetail('risk-2')`]
     ];
-    return `<table class="data-table"><thead><tr><th>重点监管对象</th><th>层级</th><th>为什么关注</th><th>监管信号</th><th>操作</th></tr></thead><tbody>${rows.map(r => `<tr><td><b>${r[0]}</b></td><td>${r[1]}</td><td>${r[2]}</td><td>${r[3]}</td><td><button class="btn btn-outline" style="padding:4px 10px;font-size:12px" onclick="${r[4]}">向下穿透</button></td></tr>`).join('')}</tbody></table>`;
+    const headers = ['监管对象', '层级', '所属上级', '风险信号', '触发原因', '关联KRI', '预警状态', '责任组织', '监管行动', '整改状态', '验证状态', '操作'];
+    return `<div style="overflow-x:auto"><table class="data-table"><thead><tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr></thead><tbody>${rows.map(r => `<tr><td><b>${r[0]}</b></td><td>${r[1]}</td><td>${r[2]}</td><td>${r[3]}</td><td>${r[4]}</td><td>${r[5]}</td><td><span class="badge ${r[6].includes('红') ? 'badge-danger' : r[6].includes('橙') ? 'badge-warning' : 'badge-info'}">${r[6]}</span></td><td>${r[7]}</td><td>${r[8]}</td><td>${r[9]}</td><td>${r[10]}</td><td><button class="btn btn-outline" style="padding:4px 10px;font-size:12px;white-space:nowrap" onclick="${r[11]}">向下穿透</button></td></tr>`).join('')}</tbody></table></div>`;
   },
 
   renderGroupResponsibilityClosureTrace(riskId = 'risk-2') {
@@ -5010,7 +5012,7 @@ Object.assign(App, {
     ];
     return `<div class="card" style="margin-bottom:20px;border:2px solid #c9daf5;background:linear-gradient(180deg,#f8fbff 0%,#fff 100%)">
       <div class="card-title">集团穿透式监管视角 · 投资风险态势与重点对象</div>
-      <p class="insight-note"><b>集团现在重点关注哪里？</b> 从集团整体投资风险出发，识别区域、国家、法人、项目与风险事项等重点监管对象，并说明<b>为什么需要关注</b>，支持向下穿透定位底层风险与向上追溯影响。</p>
+      <p class="insight-note"><b>集团现在重点关注哪里？</b> 从集团整体投资风险出发，识别区域、国家、法人、项目、投资事项与风险事项等重点监管对象，并说明<b>为什么需要关注</b>、<b>关联 KRI 与预警</b>、<b>责任组织与整改验证状态</b>，支持向下穿透与向上追溯。</p>
       <div class="group-metrics">${focusMetrics.map(([v, l, sub, nav]) => `<button class="metric-card" onclick="${nav}"><div class="value">${v}</div><div class="label">${l}</div><div class="sub-items">${sub}</div></button>`).join('')}</div>
       ${this.renderGroupFocusObjectsTable()}
       <div style="margin-top:16px"><div class="card-title" style="font-size:14px;border:0;padding-bottom:4px">监管穿透主链路</div>
