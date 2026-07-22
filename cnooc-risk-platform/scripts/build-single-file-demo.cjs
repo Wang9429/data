@@ -47,15 +47,15 @@ function buildHtml(options = {}) {
 
   html = html.replace(
     /<title>[^<]*<\/title>/i,
-    '<title>集团穿透式监管平台 · 集团监管视角 Demo</title>'
+    '<title>集团穿透式监管平台</title>'
   );
 
   const headInject = [
     forGitHubPages
-      ? `<!-- 集团穿透式监管平台 · 集团监管视角 Demo · GitHub Pages · ${PAGES_URL} -->`
-      : '<!-- 集团穿透式监管平台 · 集团监管视角 Demo · 单文件离线版 -->',
+      ? `<!-- 集团穿透式监管平台 · GitHub Pages · ${PAGES_URL} -->`
+      : '<!-- 集团穿透式监管平台 · 单文件离线版 -->',
     '<meta name="generator" content="regulatory-single-file-demo-build">',
-    '<meta name="application-name" content="集团监管视角 Demo">',
+    '<meta name="application-name" content="集团穿透式监管平台">',
     forGitHubPages
       ? `<link rel="canonical" href="${PAGES_URL}">`
       : '',

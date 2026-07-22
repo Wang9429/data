@@ -33,6 +33,19 @@ const App = {
   _navigatingBack: false,
   cdrTrendPeriod: '7日',
 
+  investmentPageMeta: {
+    penetration: { pageId: 'penetration', label: '风险监测投资穿透分析', parentEntry: 'warnings', parentLabel: '投资风险监测', showInMenu: false }
+  },
+
+  getInvestmentPageMeta(pageId) {
+    return (this.investmentPageMeta || {})[pageId] || null;
+  },
+
+  openInvestmentPenetrationFromWarnings(riskId = 'risk-2') {
+    const target = 'penetration';
+    this.navigate(target, { riskId, detail: true });
+  },
+
   menuItems: [
     { id: 'dashboard', icon: '📊', label: '驾驶舱' },
     { id: 'process', icon: '🔄', label: '监管对象与价值链' },
@@ -47,8 +60,8 @@ const App = {
     dashboard: '集团穿透式监管驾驶舱',
     process: '监管对象与价值链',
     scenarios: '风险场景',
-    warnings: '风险预警中心',
-    penetration: '风险穿透分析',
+    warnings: '投资风险监测',
+    penetration: '风险监测投资穿透分析',
     controls: 'KRI与控制规则',
     matters: '投资事项及股东权利管理',
     rectification: '整改闭环管理',
@@ -248,14 +261,15 @@ const App = {
     document.getElementById('pageTitle').textContent = this.pageTitles[pageId] || pageId;
 
     document.querySelectorAll('.nav-item').forEach(item => {
-      item.classList.toggle('active', !params.detail && item.dataset.page === pageId);
+      const activePage = pageId === 'penetration' ? 'warnings' : pageId;
+      item.classList.toggle('active', !params.detail && item.dataset.page === activePage);
     });
 
     if (pageId === 'penetration') {
       this.selectedRiskId = params.riskId || this.selectedRiskId || 'risk-2';
       this.renderPenetration(this.selectedRiskId);
       document.getElementById('penetrationBack').style.display = 'block';
-      if (params.detail) document.getElementById('pageTitle').textContent = '风险事项详细穿透分析';
+      document.getElementById('pageTitle').textContent = '风险监测投资穿透分析';
     }
 
     if (pageId === 'process' && params.activityId) {
@@ -729,7 +743,6 @@ const App = {
         {id:'warnings',icon:'🔔',label:'投资风险监测'},
         {id:'controls',icon:'🛡️',label:'投资场景规则执行'},
         {id:'major',icon:'◆',label:'投资重大事项监管'},
-        {id:'penetration',icon:'↳',label:'　风险监测 · 投资穿透分析'},
         {id:'rectification',icon:'✅',label:'投资整改闭环'}
       ];
     }
@@ -2190,6 +2203,10 @@ const App = {
   },
 
   renderWarnings() {
+    const entryNode = document.getElementById('warningsPenetrationEntry');
+    if (entryNode) {
+      entryNode.innerHTML = `<div class="card" style="margin-bottom:16px"><div class="card-title">投资风险监测 · 穿透分析</div><p class="insight-note">从风险监测总览、风险预警与风险事项详情进入穿透分析；「风险监测投资穿透分析」为二级详情页，不在左侧菜单独立展示。</p><button class="btn btn-primary" onclick="App.openInvestmentPenetrationFromWarnings('risk-2')">进入投资穿透分析</button></div>`;
+    }
     document.getElementById('warningSummary').innerHTML = `
       <button class="warning-stat total" onclick="App.filterWarnings('')"><div class="num">46</div><div class="label">风险事项</div></button>
       <button class="warning-stat red" onclick="App.filterWarnings('红色')"><div class="num">8</div><div class="label">重大风险</div></button>

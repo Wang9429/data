@@ -39,7 +39,8 @@ externalHits = [...new Set(externalHits)];
 check(externalHits.length === 0, `external:${externalHits.join(',')}`);
 check(!/<script[^>]+src=/i.test(html), 'external script');
 check(html.includes('window.__GITHUB_PAGES_DEMO__=true'), 'github pages marker');
-check(html.includes('集团监管视角 Demo'), 'groupRegulatoryDemoMarker');
+check(html.includes('<title>集团穿透式监管平台</title>'), 'systemNameTitle');
+check(!html.includes('集团监管平台 Demo') && !html.includes('集团监管视角 Demo') && !html.includes('集团监管平台 Demo Final'), 'noInconsistentSystemName');
 
 const scriptBlocks = [...html.matchAll(/<script[^>]*data-inline-from="([^"]+)"[^>]*>([\s\S]*?)<\/script>/gi)];
 check(scriptBlocks.length === 3, `inlineScripts=${scriptBlocks.length}`);
@@ -72,7 +73,7 @@ codes.forEach(code => {
   check(trace.hitCount > 0, `trace:${code}`);
 });
 
-check(html.includes('renderDemoScenarioDashboardPanel') || html.includes('集团监管视角 Demo'), 'demo panel');
+check(html.includes('renderDemoScenarioDashboardPanel') || html.includes('集团监管演示'), 'demo panel');
 check((D.regulatoryDemoScenarioIndexes || []).find(s => s.demoCode === 'DEMO-03')?.simulationOnly === true, 'simulationOnly');
 check((D.regulatoryDemoScenarioIndexes || []).find(s => s.demoCode === 'DEMO-05')?.requiresHumanDecision === true, 'humanDecision');
 check((D.regulatoryDemoScenarioMetrics || {}).noFakeHistory === true, 'noFakeHistory');
@@ -100,7 +101,19 @@ const originalDataDisplayPreserved = html.includes('dashboardMetrics')
   && html.includes('dashboardHeatmap');
 const groupRegulatoryPerspectiveAdded = html.includes('集团监管总览')
   && html.includes('renderDashboardGroupRegulatoryEntry')
-  && html.includes('集团监管视角 Demo');
+  && html.includes('集团监管演示');
+const penetrationNotInMenu = !html.includes("{id:'penetration',icon:'↳',label:'　风险监测 · 投资穿透分析'}")
+  && !html.includes('风险监测 · 投资穿透分析');
+const penetrationParentEntry = (() => {
+  try {
+    const appCode = byFile['js/app.js'] || '';
+    return /parentEntry:\s*'warnings'/.test(appCode)
+      && /parentLabel:\s*'投资风险监测'/.test(appCode)
+      && /getInvestmentPageMeta/.test(appCode);
+  } catch { return false; }
+})();
+const warningsPenetrationEntry = html.includes('进入投资穿透分析')
+  && html.includes('warningsPenetrationEntry');
 const demoScenarioEntryAdded = codes.every(c => html.includes(c))
   && html.includes('startDemoScenario')
   && html.includes('renderDemoScenarioDashboardPanel');
@@ -120,6 +133,9 @@ check(originalBusinessScenesPreserved, 'originalBusinessScenesPreserved');
 check(originalDataDisplayPreserved, 'originalDataDisplayPreserved');
 check(groupRegulatoryPerspectiveAdded, 'groupRegulatoryPerspectiveAdded');
 check(demoScenarioEntryAdded, 'demoScenarioEntryAdded');
+check(penetrationNotInMenu, 'penetrationNotInMenu');
+check(penetrationParentEntry, 'penetrationParentEntry');
+check(warningsPenetrationEntry, 'warningsPenetrationEntry');
 check(!html.includes('getDemoFinalMenu'), 'noRegulatoryPlatformNavOverride');
 check(!html.includes('bootstrapSingleFileDemo'), 'noDemoBootstrapOverride');
 check(!hasExternalScript && !hasDisallowedLink, 'singleFileCheck');
@@ -154,6 +170,12 @@ const result = {
   originalDataDisplayPreserved,
   groupRegulatoryPerspectiveAdded,
   demoScenarioEntryAdded,
+  systemName: '集团穿透式监管平台',
+  systemNameCheck: html.includes('<title>集团穿透式监管平台</title>'),
+  penetrationNotInMenu,
+  penetrationParentEntry,
+  warningsPenetrationEntry,
+  originalInvestmentBusinessLogicPreserved: penetrate === 3 && (D.regulatoryDemoFinalFreezeIndex || {}).investmentFreeze === true,
   allDemoScenariosReachable: codes.every(c => demoPaths[c].reachable),
   demoScenarioReachabilityCheck: codes.every(c => demoPaths[c].reachable),
   demoTraceabilityCheck: codes.every(c => demoPaths[c].traceable),

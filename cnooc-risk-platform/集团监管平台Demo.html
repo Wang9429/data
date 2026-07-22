@@ -1,14 +1,14 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-  <!-- 集团穿透式监管平台 · 集团监管视角 Demo · 单文件离线版 -->
+  <!-- 集团穿透式监管平台 · 单文件离线版 -->
   <meta name="generator" content="regulatory-single-file-demo-build">
-  <meta name="application-name" content="集团监管视角 Demo">
+  <meta name="application-name" content="集团穿透式监管平台">
   <script>window.__SINGLE_FILE_DEMO__=true;window.__OFFLINE_DEMO__=true;window.__GITHUB_PAGES_DEMO__=false;</script>
 
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>集团穿透式监管平台 · 集团监管视角 Demo</title>
+  <title>集团穿透式监管平台</title>
   <style id="inline-demo-styles">
 :root {
   --primary: #003d7a;
@@ -1266,6 +1266,7 @@ body {
         <!-- 风险预警监测 -->
         <div class="page" id="page-warnings">
           <div class="warning-summary" id="warningSummary"></div>
+          <div id="warningsPenetrationEntry"></div>
           <div class="warning-charts" id="warningCharts"></div>
           <div class="card">
             <div class="card-title">风险事件池</div>
@@ -1290,7 +1291,7 @@ body {
         <!-- 风险穿透分析 -->
         <div class="page" id="page-penetration">
           <div class="page-actions" id="penetrationBack" style="display:none;">
-            <button class="btn btn-outline" onclick="App.navigate('warnings')">← 返回风险预警列表</button>
+            <button class="btn btn-outline" onclick="App.navigate('warnings')">← 返回投资风险监测</button>
           </div>
           <div id="penetrationContent">
             <div class="card">
@@ -8042,6 +8043,19 @@ const App = {
   _navigatingBack: false,
   cdrTrendPeriod: '7日',
 
+  investmentPageMeta: {
+    penetration: { pageId: 'penetration', label: '风险监测投资穿透分析', parentEntry: 'warnings', parentLabel: '投资风险监测', showInMenu: false }
+  },
+
+  getInvestmentPageMeta(pageId) {
+    return (this.investmentPageMeta || {})[pageId] || null;
+  },
+
+  openInvestmentPenetrationFromWarnings(riskId = 'risk-2') {
+    const target = 'penetration';
+    this.navigate(target, { riskId, detail: true });
+  },
+
   menuItems: [
     { id: 'dashboard', icon: '📊', label: '驾驶舱' },
     { id: 'process', icon: '🔄', label: '监管对象与价值链' },
@@ -8056,8 +8070,8 @@ const App = {
     dashboard: '集团穿透式监管驾驶舱',
     process: '监管对象与价值链',
     scenarios: '风险场景',
-    warnings: '风险预警中心',
-    penetration: '风险穿透分析',
+    warnings: '投资风险监测',
+    penetration: '风险监测投资穿透分析',
     controls: 'KRI与控制规则',
     matters: '投资事项及股东权利管理',
     rectification: '整改闭环管理',
@@ -8257,14 +8271,15 @@ const App = {
     document.getElementById('pageTitle').textContent = this.pageTitles[pageId] || pageId;
 
     document.querySelectorAll('.nav-item').forEach(item => {
-      item.classList.toggle('active', !params.detail && item.dataset.page === pageId);
+      const activePage = pageId === 'penetration' ? 'warnings' : pageId;
+      item.classList.toggle('active', !params.detail && item.dataset.page === activePage);
     });
 
     if (pageId === 'penetration') {
       this.selectedRiskId = params.riskId || this.selectedRiskId || 'risk-2';
       this.renderPenetration(this.selectedRiskId);
       document.getElementById('penetrationBack').style.display = 'block';
-      if (params.detail) document.getElementById('pageTitle').textContent = '风险事项详细穿透分析';
+      document.getElementById('pageTitle').textContent = '风险监测投资穿透分析';
     }
 
     if (pageId === 'process' && params.activityId) {
@@ -8738,7 +8753,6 @@ const App = {
         {id:'warnings',icon:'🔔',label:'投资风险监测'},
         {id:'controls',icon:'🛡️',label:'投资场景规则执行'},
         {id:'major',icon:'◆',label:'投资重大事项监管'},
-        {id:'penetration',icon:'↳',label:'　风险监测 · 投资穿透分析'},
         {id:'rectification',icon:'✅',label:'投资整改闭环'}
       ];
     }
@@ -10199,6 +10213,10 @@ const App = {
   },
 
   renderWarnings() {
+    const entryNode = document.getElementById('warningsPenetrationEntry');
+    if (entryNode) {
+      entryNode.innerHTML = `<div class="card" style="margin-bottom:16px"><div class="card-title">投资风险监测 · 穿透分析</div><p class="insight-note">从风险监测总览、风险预警与风险事项详情进入穿透分析；「风险监测投资穿透分析」为二级详情页，不在左侧菜单独立展示。</p><button class="btn btn-primary" onclick="App.navigate('penetration',{riskId:'risk-2',detail:true})">进入投资穿透分析</button></div>`;
+    }
     document.getElementById('warningSummary').innerHTML = `
       <button class="warning-stat total" onclick="App.filterWarnings('')"><div class="num">46</div><div class="label">风险事项</div></button>
       <button class="warning-stat red" onclick="App.filterWarnings('红色')"><div class="num">8</div><div class="label">重大风险</div></button>
@@ -15600,7 +15618,7 @@ Object.assign(App, {
     if (!scenarios.length) return '';
     const chips = scenarios.map(s => `<button class="matter-card" style="text-align:left" onclick="App.startDemoScenario('${s.demoCode}')"><span class="type">${s.demoCode}</span><div class="type" style="margin-top:6px;font-size:13px">${s.name}</div></button>`).join('');
     return `<div class="card" style="margin-bottom:20px;border:1px solid #c9daf5;background:linear-gradient(180deg,#f8fbff 0%,#fff 100%)">
-      <div class="card-title">集团监管视角 Demo · 演示入口</div>
+      <div class="card-title">集团监管演示入口</div>
       <p class="insight-note">在原版投资管理 Demo 基础上叠加集团层面监管视角。6 条演示路径均跳转至平台<strong>已有页面</strong>（驾驶舱、预警、整改、集团监管总览等），不替代原有首页与业务模块。</p>
       <div class="matter-types">${chips}</div>
       <p style="margin-top:12px">${this.renderPublicLinkButton('进入集团监管总览', `App.navigate('group')`)} ${this.renderPublicLinkButton('查看完整演示说明', `App.navigate('group')`)}</p>
@@ -15613,7 +15631,7 @@ Object.assign(App, {
     const humanItems = (APP_DATA.regulatoryOperatingRecommendations || []).filter(r => r.requiresHumanDecision && r.status === 'OPEN').length;
     const freeze = APP_DATA.regulatoryDemoFinalFreezeIndex || {};
     const rows = scenarios.map(s => `<tr class="clickable" onclick="App.startDemoScenario('${s.demoCode}')"><td>${s.demoCode}</td><td>${s.name}</td><td>${this.renderPublicUnifiedStatusBadge(s.demoStatus)}</td><td>${this.renderPublicUnifiedStatusBadge(s.traceabilityStatus)}</td><td>${s.requiresHumanDecision ? '是' : '否'}</td><td>${s.simulationOnly ? 'simulationOnly' : '—'}</td></tr>`).join('');
-    return `<div class="card" style="border:2px solid var(--accent,#2563eb)"><div class="card-title">集团监管视角 Demo · 演示路径 ${this.renderPublicUnifiedStatusBadge(m.overallStatus || 'READY_WITH_GAPS')}</div>
+    return `<div class="card" style="border:2px solid var(--accent,#2563eb)"><div class="card-title">集团监管演示路径 ${this.renderPublicUnifiedStatusBadge(m.overallStatus || 'READY_WITH_GAPS')}</div>
       <p class="insight-note"><b>Demo 定位：</b>以集团整体视角，展示从数据、指标、KRI、预警、风险、协同、监管行动、整改验证到持续改进的穿透式监管能力。<b>不新增页面，仅提供导航入口</b>，演示将跳转至平台已有页面与原有业务内容。</p>
       <p class="insight-note">能力状态：已验证 <b>${m.fullTraceableCount || 0}</b> · 部分可追溯 <b>${m.partialTraceableCount || 0}</b> · 数据缺口 <b>${(scenarios.filter(s => s.demoStatus === 'READY_WITH_GAPS' || s.demoStatus === 'DATA_REQUIRED').length)}</b> · 待人工决策 <b>${humanItems}</b> · ${this.renderPublicUnifiedStatusBadge('INSUFFICIENT_HISTORY')} <code>INSUFFICIENT_HISTORY</code> — 不伪造历史趋势</p>
       <div class="group-metrics">${[
