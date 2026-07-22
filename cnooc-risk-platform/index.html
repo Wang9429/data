@@ -3,17 +3,17 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>集团监管平台 Demo</title>
+  <title>集团穿透式监管平台</title>
   <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
   <section class="domain-gateway" id="domainGateway">
     <div class="gateway-header">
       <div class="gateway-mark">集团</div>
-      <div><h1>集团监管平台 Demo Final</h1><p>集团总部视角 · 70个公共监管页面 · 6条演示路径</p></div>
+      <div><h1>集团穿透式监管平台</h1><p>面向集团总部的分领域、分法人主体监管工作台</p></div>
     </div>
     <div class="gateway-main">
-      <div class="gateway-intro"><span>集团监管平台 Demo Final</span><h2>从集团监管总览进入完整演示</h2><p>默认进入集团监管总览，可通过左侧导航访问驾驶舱、统一工作台、综合分析、数据治理、KRI 监测、预警中心与 6 条 Demo 演示路径。</p></div>
+      <div class="gateway-intro"><span>请选择监管领域</span><h2>从监管领域进入专项工作台</h2><p>领域是系统一级入口。进入领域后，可使用驾驶舱、业务流程监测、预警中心、风险穿透、整改闭环和组合分析等模块开展集团级监管。</p></div>
       <div class="gateway-domains" id="gatewayDomains"></div>
     </div>
     <div class="gateway-footer">监管穿透路径：监管领域 → 法人主体 → 监管事项 → KRI / 控制规则 → 风险预警 → 整改闭环</div>
@@ -23,26 +23,26 @@
       <div class="sidebar-header">
         <div class="sidebar-logo">
           <div class="logo-icon">集团</div>
-          <div class="sidebar-title">集团监管平台<br>Demo Final</div>
+          <div class="sidebar-title">集团穿透式监管平台<br>投资管理专题监管</div>
         </div>
-        <div class="sidebar-subtitle">集团总部视角 · 8大能力域 · 70个公共监管页面 · 6条演示路径</div>
+        <div class="sidebar-subtitle">面向集团总部与出资人监管要求的分领域、分法人主体穿透监管演示平台</div>
       </div>
       <nav class="nav-menu" id="navMenu"></nav>
     </aside>
 
     <main class="main-content">
       <header class="top-header">
-        <div class="header-title" id="pageTitle">集团监管总览</div>
+        <div class="header-title" id="pageTitle">集团穿透式监管驾驶舱</div>
         <div class="header-meta">
           <span>数据更新时间：2026-07-20</span>
           <span>|</span>
-          <span>集团监管平台 Demo Final</span>
+          <span>模拟数据演示版</span>
         </div>
       </header>
       <div class="domain-tabs-bar" id="domainTabs"></div>
 
       <div class="page-content">
-        <div class="page active" id="page-group">
+        <div class="page" id="page-group">
           <div id="groupOverview"></div>
         </div>
         <div class="page" id="page-regulatory-events">
@@ -254,7 +254,7 @@
           <div id="foundationWorkbench"></div>
         </div>
         <!-- 首页驾驶舱 -->
-        <div class="page" id="page-dashboard">
+        <div class="page active" id="page-dashboard">
           <div class="metrics-grid" id="dashboardMetrics"></div>
           <div class="dashboard-drilldown-row">
             <div class="card">

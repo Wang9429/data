@@ -4937,14 +4937,26 @@ Object.assign(App, {
     return `<div class="kri-lineage" style="flex-wrap:wrap;margin:8px 0">${steps}</div>`;
   },
 
+  renderDashboardGroupRegulatoryEntry() {
+    const scenarios = APP_DATA.regulatoryDemoScenarioIndexes || [];
+    if (!scenarios.length) return '';
+    const chips = scenarios.map(s => `<button class="matter-card" style="text-align:left" onclick="App.startDemoScenario('${s.demoCode}')"><span class="type">${s.demoCode}</span><div class="type" style="margin-top:6px;font-size:13px">${s.name}</div></button>`).join('');
+    return `<div class="card" style="margin-bottom:20px;border:1px solid #c9daf5;background:linear-gradient(180deg,#f8fbff 0%,#fff 100%)">
+      <div class="card-title">集团监管视角 Demo · 演示入口</div>
+      <p class="insight-note">在原版投资管理 Demo 基础上叠加集团层面监管视角。6 条演示路径均跳转至平台<strong>已有页面</strong>（驾驶舱、预警、整改、集团监管总览等），不替代原有首页与业务模块。</p>
+      <div class="matter-types">${chips}</div>
+      <p style="margin-top:12px">${this.renderPublicLinkButton('进入集团监管总览', `App.navigate('group')`)} ${this.renderPublicLinkButton('查看完整演示说明', `App.navigate('group')`)}</p>
+    </div>`;
+  },
+
   renderDemoScenarioDashboardPanel() {
     const m = APP_DATA.regulatoryDemoScenarioMetrics || {};
     const scenarios = APP_DATA.regulatoryDemoScenarioIndexes || [];
     const humanItems = (APP_DATA.regulatoryOperatingRecommendations || []).filter(r => r.requiresHumanDecision && r.status === 'OPEN').length;
     const freeze = APP_DATA.regulatoryDemoFinalFreezeIndex || {};
     const rows = scenarios.map(s => `<tr class="clickable" onclick="App.startDemoScenario('${s.demoCode}')"><td>${s.demoCode}</td><td>${s.name}</td><td>${this.renderPublicUnifiedStatusBadge(s.demoStatus)}</td><td>${this.renderPublicUnifiedStatusBadge(s.traceabilityStatus)}</td><td>${s.requiresHumanDecision ? '是' : '否'}</td><td>${s.simulationOnly ? 'simulationOnly' : '—'}</td></tr>`).join('');
-    return `<div class="card" style="border:2px solid var(--accent,#2563eb)"><div class="card-title">集团监管平台 Demo Final ${this.renderPublicUnifiedStatusBadge(freeze.version || 'Demo Final')} ${this.renderPublicUnifiedStatusBadge(m.overallStatus || 'READY_WITH_GAPS')}</div>
-      <p class="insight-note"><b>Demo 定位：</b>展示集团监管理念与监管闭环逻辑（非生产系统）。视角：<b>${freeze.groupPerspectiveChain || '集团→区域→国家→法人→项目'}</b> · 主链路：<b>${freeze.regulatoryChain || '集团→区域→国家→法人→项目→风险→KRI→预警→监管行动→整改→验证→绩效→持续改进'}</b></p>
+    return `<div class="card" style="border:2px solid var(--accent,#2563eb)"><div class="card-title">集团监管视角 Demo · 演示路径 ${this.renderPublicUnifiedStatusBadge(m.overallStatus || 'READY_WITH_GAPS')}</div>
+      <p class="insight-note"><b>Demo 定位：</b>以集团整体视角，展示从数据、指标、KRI、预警、风险、协同、监管行动、整改验证到持续改进的穿透式监管能力。<b>不新增页面，仅提供导航入口</b>，演示将跳转至平台已有页面与原有业务内容。</p>
       <p class="insight-note">能力状态：已验证 <b>${m.fullTraceableCount || 0}</b> · 部分可追溯 <b>${m.partialTraceableCount || 0}</b> · 数据缺口 <b>${(scenarios.filter(s => s.demoStatus === 'READY_WITH_GAPS' || s.demoStatus === 'DATA_REQUIRED').length)}</b> · 待人工决策 <b>${humanItems}</b> · ${this.renderPublicUnifiedStatusBadge('INSUFFICIENT_HISTORY')} <code>INSUFFICIENT_HISTORY</code> — 不伪造历史趋势</p>
       <div class="group-metrics">${[
         [scenarios.length, '核心演示路径', `App.navigatePublic('regulatory-workbench')`],
@@ -7624,7 +7636,7 @@ Object.assign(App, {
       [m.crossDomainMatterCount, '跨领域风险', `App.navigatePublic('cross-domain-risks')`]
     ];
     node.innerHTML = `${this.renderPublicBackButton()}
-      <div class="group-hero"><div><span>集团监管平台 Demo Final</span><h2>集团监管总览</h2><p>集团 → 区域 → 国家 → 法人 → 项目 → 风险 → KRI → 预警 → 监管行动 → 整改 → 验证 → 绩效 → 持续改进</p></div><div>数据覆盖率 <b>${m.dataCoverageRate}</b></div></div>
+      <div class="group-hero"><div><span>集团总部监管视角</span><h2>集团监管总览</h2><p>统一入口：监管对象、数据覆盖、风险事项、跨境合规、跨领域风险与整改闭环。作为原版 Demo 的集团层面补充视角，不替代投资管理驾驶舱等原有模块。</p></div><div>数据覆盖率 <b>${m.dataCoverageRate}</b></div></div>
       ${this.renderGroupOverviewFilterBar()}
       <div class="group-metrics" id="groupOverviewMetrics">${metricCards.map(([v, l, nav]) => `<button class="metric-card" onclick="${nav}"><div class="value">${v}</div><div class="label">${l}</div></button>`).join('')}</div>
       ${this.renderGroupOverviewRegulatoryChain(m)}

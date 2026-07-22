@@ -39,7 +39,7 @@ externalHits = [...new Set(externalHits)];
 check(externalHits.length === 0, `external:${externalHits.join(',')}`);
 check(!/<script[^>]+src=/i.test(html), 'external script');
 check(html.includes('window.__GITHUB_PAGES_DEMO__=true'), 'github pages marker');
-check(html.includes('集团监管平台 Demo Final'), 'demo final marker');
+check(html.includes('集团监管视角 Demo'), 'groupRegulatoryDemoMarker');
 
 const scriptBlocks = [...html.matchAll(/<script[^>]*data-inline-from="([^"]+)"[^>]*>([\s\S]*?)<\/script>/gi)];
 check(scriptBlocks.length === 3, `inlineScripts=${scriptBlocks.length}`);
@@ -72,46 +72,38 @@ codes.forEach(code => {
   check(trace.hitCount > 0, `trace:${code}`);
 });
 
-check(html.includes('Demo Final') || html.includes('renderDemoScenarioDashboardPanel'), 'demo panel');
+check(html.includes('renderDemoScenarioDashboardPanel') || html.includes('集团监管视角 Demo'), 'demo panel');
 check((D.regulatoryDemoScenarioIndexes || []).find(s => s.demoCode === 'DEMO-03')?.simulationOnly === true, 'simulationOnly');
 check((D.regulatoryDemoScenarioIndexes || []).find(s => s.demoCode === 'DEMO-05')?.requiresHumanDecision === true, 'humanDecision');
 check((D.regulatoryDemoScenarioMetrics || {}).noFakeHistory === true, 'noFakeHistory');
 check((D.regulatoryDemoScenarioMetrics || {}).noFakeClosedLoop === true, 'noFakeClosedLoop');
 check((D.regulatoryDemoFinalFreezeIndex || {}).investmentFreeze === true, 'investmentFreeze');
 
-const forbiddenBranding = [
-  '集团穿透式监管平台（离线演示版）',
-  '集团穿透式监管平台',
-  '投资专题 Demo',
-  '投资管理专题监管',
-  '离线演示版'
-];
-const allowedContextPatterns = [
-  /不混入投资管理专题数据/,
-  /投资管理领域已配置/
-];
-const brandingHits = forbiddenBranding.filter(text => {
-  if (!html.includes(text)) return false;
-  if (text === '集团穿透式监管平台') {
-    const re = /集团穿透式监管平台/g;
-    let match;
-    while ((match = re.exec(html)) !== null) {
-      const start = Math.max(0, match.index - 40);
-      const end = Math.min(html.length, match.index + 40);
-      const snippet = html.slice(start, end);
-      if (!allowedContextPatterns.some(p => p.test(snippet))) return true;
-    }
-    return false;
-  }
-  return true;
-});
-check(brandingHits.length === 0, `oldBranding:${brandingHits.join(',')}`);
-check(html.includes('<title>集团监管平台 Demo</title>'), 'systemNameTitle');
-check(/集团监管平台 Demo Final/.test(html), 'systemNameFinal');
-check(!html.includes('集团穿透式监管平台（离线演示版）'), 'oldOfflineTitle');
-check(html.includes('集团监管总览') && html.includes('集团 → 区域 → 国家 → 法人 → 项目 → 风险 → KRI → 预警'), 'groupRegulatoryHome');
-check(html.includes('DEMO-01') && html.includes('DEMO-06') && html.includes('startDemoScenario'), 'demoEntry');
-check(html.includes('getDemoFinalMenu') || html.includes('统一监管工作台'), 'demoNav');
+const originalDemoContentPreserved = html.includes('id="page-dashboard"')
+  && html.includes('投资管理驾驶舱')
+  && html.includes('投资价值链风险热力地图')
+  && html.includes('投资组合与整改闭环概览')
+  && html.includes('domainGateway');
+const originalNavigationPreserved = html.includes('投资结构与组合')
+  && html.includes('投资价值链监测')
+  && html.includes('投资穿透分析')
+  && !html.includes('getDemoFinalMenu');
+const originalVisualStructurePreserved = html.includes('sidebar-title')
+  && html.includes('集团穿透式监管平台')
+  && html.includes('投资管理专题监管')
+  && html.includes('domain-tabs-bar');
+const originalBusinessScenesPreserved = html.includes('国资监管主题落实情况')
+  && html.includes('投资管理领域运行')
+  && html.includes('重大投资事项');
+const originalDataDisplayPreserved = html.includes('dashboardMetrics')
+  && html.includes('groupKriBoard')
+  && html.includes('dashboardHeatmap');
+const groupRegulatoryPerspectiveAdded = html.includes('集团监管总览')
+  && html.includes('renderDashboardGroupRegulatoryEntry')
+  && html.includes('集团监管视角 Demo');
+const demoScenarioEntryAdded = codes.every(c => html.includes(c))
+  && html.includes('startDemoScenario')
+  && html.includes('renderDemoScenarioDashboardPanel');
 const hasExternalScript = /<script[^>]+src=/i.test(html);
 const hasDisallowedLink = (() => {
   const re = /<link[^>]+href=["'](https?:[^"']+)["']/gi;
@@ -121,6 +113,15 @@ const hasDisallowedLink = (() => {
   }
   return false;
 })();
+check(originalDemoContentPreserved, 'originalDemoContentPreserved');
+check(originalNavigationPreserved, 'originalNavigationPreserved');
+check(originalVisualStructurePreserved, 'originalVisualStructurePreserved');
+check(originalBusinessScenesPreserved, 'originalBusinessScenesPreserved');
+check(originalDataDisplayPreserved, 'originalDataDisplayPreserved');
+check(groupRegulatoryPerspectiveAdded, 'groupRegulatoryPerspectiveAdded');
+check(demoScenarioEntryAdded, 'demoScenarioEntryAdded');
+check(!html.includes('getDemoFinalMenu'), 'noRegulatoryPlatformNavOverride');
+check(!html.includes('bootstrapSingleFileDemo'), 'noDemoBootstrapOverride');
 check(!hasExternalScript && !hasDisallowedLink, 'singleFileCheck');
 check(html.includes('window.__SINGLE_FILE_DEMO__=true'), 'singleFileMarker');
 
@@ -146,10 +147,14 @@ const result = {
   publicPageCount,
   navigatePenetration: penetrate,
   investmentFreeze: true,
-  systemNameCheck: html.includes('<title>集团监管平台 Demo</title>') && /集团监管平台 Demo Final/.test(html),
-  oldInvestmentDemoTextCheck: brandingHits.length === 0,
-  groupRegulatoryHomeCheck: html.includes('集团监管总览') && html.includes('集团 → 区域 → 国家 → 法人 → 项目 → 风险 → KRI → 预警'),
-  demoEntryCheck: codes.every(c => html.includes(c)),
+  originalDemoContentPreserved,
+  originalNavigationPreserved,
+  originalVisualStructurePreserved,
+  originalBusinessScenesPreserved,
+  originalDataDisplayPreserved,
+  groupRegulatoryPerspectiveAdded,
+  demoScenarioEntryAdded,
+  allDemoScenariosReachable: codes.every(c => demoPaths[c].reachable),
   demoScenarioReachabilityCheck: codes.every(c => demoPaths[c].reachable),
   demoTraceabilityCheck: codes.every(c => demoPaths[c].traceable),
   simulationIsolationCheck: (D.regulatoryDemoScenarioMetrics || {}).simulationIsolationOk === true,
