@@ -10,6 +10,15 @@
 
 文件大小约 1.7 MB，可复制到 U 盘直接使用。
 
+GitHub Pages 在线版（无需下载）
+--------------------------------
+浏览器直接访问：
+
+https://wang9429.github.io/data/offline-demo.html
+
+推送代码后 GitHub Actions 自动部署，约 1-3 分钟生效。
+使用 Microsoft Edge 或 Chrome 打开即可演示。
+
 Node.js 本地服务版（备选）
 --------------------------
 1. 确保电脑已安装 Node.js（建议 18 或更高版本）

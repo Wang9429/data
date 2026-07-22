@@ -1,19 +1,24 @@
 #!/usr/bin/env node
 /**
  * 构建单文件离线集团监管平台 Demo
- * 输出：cnooc-risk-platform/集团监管平台Demo.html
+ * 输出：
+ *   - 集团监管平台Demo.html（本地双击）
+ *   - offline-demo.html（GitHub Pages: /data/offline-demo.html）
  */
 const fs = require('fs');
 const path = require('path');
 
 const ROOT = path.join(__dirname, '..');
-const OUT = path.join(ROOT, '集团监管平台Demo.html');
+const OUT_LOCAL = path.join(ROOT, '集团监管平台Demo.html');
+const OUT_PAGES = path.join(ROOT, 'offline-demo.html');
+const PAGES_URL = 'https://wang9429.github.io/data/offline-demo.html';
 
 function read(p) {
   return fs.readFileSync(path.join(ROOT, p), 'utf8');
 }
 
-function build() {
+function buildHtml(options = {}) {
+  const { forGitHubPages = false } = options;
   let html = read('index.html');
   const css = read('css/styles.css');
   const dataJs = read('js/data.js');
@@ -46,21 +51,36 @@ function build() {
   );
 
   const headInject = [
-    '<!-- 集团监管平台 Demo Final · 单文件离线版 · 无需 Node.js / 本地服务 / 互联网 -->',
+    forGitHubPages
+      ? `<!-- 集团监管平台 Demo Final · GitHub Pages 在线版 · ${PAGES_URL} -->`
+      : '<!-- 集团监管平台 Demo Final · 单文件离线版 · 无需 Node.js / 本地服务 / 互联网 -->',
     '<meta name="generator" content="regulatory-single-file-demo-build">',
     '<meta name="application-name" content="集团监管平台 Demo Final">',
-    '<script>window.__SINGLE_FILE_DEMO__=true;window.__OFFLINE_DEMO__=true;</script>'
-  ].join('\n  ');
+    forGitHubPages
+      ? `<link rel="canonical" href="${PAGES_URL}">`
+      : '',
+    `<script>window.__SINGLE_FILE_DEMO__=true;window.__OFFLINE_DEMO__=true;window.__GITHUB_PAGES_DEMO__=${forGitHubPages};</script>`
+  ].filter(Boolean).join('\n  ');
 
   html = html.replace(/<head>/i, `<head>\n  ${headInject}\n`);
+  return html;
+}
 
-  fs.writeFileSync(OUT, html, 'utf8');
-  const stat = fs.statSync(OUT);
+function writeOutputs() {
+  const localHtml = buildHtml({ forGitHubPages: false });
+  const pagesHtml = buildHtml({ forGitHubPages: true });
+  fs.writeFileSync(OUT_LOCAL, localHtml, 'utf8');
+  fs.writeFileSync(OUT_PAGES, pagesHtml, 'utf8');
+  const statLocal = fs.statSync(OUT_LOCAL);
+  const statPages = fs.statSync(OUT_PAGES);
   return {
-    output: OUT,
-    bytes: stat.size,
-    mb: (stat.size / 1024 / 1024).toFixed(2)
+    local: { output: OUT_LOCAL, bytes: statLocal.size, mb: (statLocal.size / 1024 / 1024).toFixed(2) },
+    pages: { output: OUT_PAGES, bytes: statPages.size, mb: (statPages.size / 1024 / 1024).toFixed(2), url: PAGES_URL }
   };
+}
+
+function build() {
+  return writeOutputs();
 }
 
 if (require.main === module) {
@@ -68,10 +88,10 @@ if (require.main === module) {
     const result = build();
     console.log(JSON.stringify({
       success: true,
-      file: path.basename(result.output),
-      path: result.output,
-      bytes: result.bytes,
-      sizeMB: result.mb
+      files: [
+        { file: path.basename(result.local.output), bytes: result.local.bytes, sizeMB: result.local.mb },
+        { file: path.basename(result.pages.output), bytes: result.pages.bytes, sizeMB: result.pages.mb, url: result.pages.url }
+      ]
     }, null, 2));
   } catch (err) {
     console.error(JSON.stringify({ success: false, error: err.message }, null, 2));
@@ -79,4 +99,4 @@ if (require.main === module) {
   }
 }
 
-module.exports = { build, OUT };
+module.exports = { build, OUT: OUT_LOCAL, OUT_PAGES, PAGES_URL, buildHtml };
