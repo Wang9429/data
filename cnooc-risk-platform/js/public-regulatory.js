@@ -4886,6 +4886,37 @@ Object.assign(App, {
     return APP_DATA.regulatoryDemoScenarioMetrics;
   },
 
+  finalizeRegulatoryDemoFreeze() {
+    const pageCount = (this.publicRegulatoryPages || []).length;
+    const scenarios = APP_DATA.regulatoryDemoScenarioIndexes || [];
+    const metrics = APP_DATA.regulatoryDemoScenarioMetrics || {};
+    const results = APP_DATA.regulatoryDemoScenarioResultIndexes || [];
+    const orphans = this.getOrphanPages ? this.getOrphanPages() : [];
+    const freeze = {
+      version: 'Demo Final',
+      scope: 'DEMO_ONLY',
+      productionReady: false,
+      frozenAt: '2026-07-22',
+      publicPageCount: pageCount,
+      investmentFreeze: true,
+      penetrateCount: 3,
+      demoScenarioCount: scenarios.length,
+      allDemoScenariosReachable: scenarios.length === 6 && scenarios.every(s => s.reachable),
+      allDemoScenariosTraceable: results.length === 6 && results.every(r => r.hitCount > 0),
+      simulationIsolationOk: metrics.simulationIsolationOk === true,
+      humanDecisionOk: scenarios.find(s => s.demoCode === 'DEMO-05')?.requiresHumanDecision === true,
+      noFakeHistory: metrics.noFakeHistory === true,
+      noFakeClosedLoop: metrics.noFakeClosedLoop === true,
+      orphanPageCount: orphans.length,
+      groupPerspectiveChain: '集团→区域→国家→法人→项目',
+      regulatoryChain: '数据→指标/KRI→风险→预警→监管行动→整改→验证→持续改进',
+      overallDemoStatus: metrics.overallStatus || 'READY_WITH_GAPS',
+      dataStatus: 'DERIVED'
+    };
+    APP_DATA.regulatoryDemoFinalFreezeIndex = freeze;
+    return freeze;
+  },
+
   startDemoScenario(demoCode) {
     const s = (APP_DATA.regulatoryDemoScenarioIndexes || []).find(x => x.demoCode === demoCode);
     if (!s || !s.pagePath?.length) return { success: false, message: '演示路径不存在' };
@@ -4910,9 +4941,10 @@ Object.assign(App, {
     const m = APP_DATA.regulatoryDemoScenarioMetrics || {};
     const scenarios = APP_DATA.regulatoryDemoScenarioIndexes || [];
     const humanItems = (APP_DATA.regulatoryOperatingRecommendations || []).filter(r => r.requiresHumanDecision && r.status === 'OPEN').length;
+    const freeze = APP_DATA.regulatoryDemoFinalFreezeIndex || {};
     const rows = scenarios.map(s => `<tr class="clickable" onclick="App.startDemoScenario('${s.demoCode}')"><td>${s.demoCode}</td><td>${s.name}</td><td>${this.renderPublicUnifiedStatusBadge(s.demoStatus)}</td><td>${this.renderPublicUnifiedStatusBadge(s.traceabilityStatus)}</td><td>${s.requiresHumanDecision ? '是' : '否'}</td><td>${s.simulationOnly ? 'simulationOnly' : '—'}</td></tr>`).join('');
-    return `<div class="card" style="border:2px solid var(--accent,#2563eb)"><div class="card-title">集团监管平台 Demo 演示路径 ${this.renderPublicUnifiedStatusBadge(m.overallStatus || 'READY_WITH_GAPS')}</div>
-      <p class="insight-note"><b>Demo 定位：</b>以集团整体视角，展示从数据、指标、KRI、预警、风险、协同、监管行动、整改验证到持续改进的完整穿透式监管能力。不新增页面，仅提供导航入口。</p>
+    return `<div class="card" style="border:2px solid var(--accent,#2563eb)"><div class="card-title">集团监管平台 Demo Final ${this.renderPublicUnifiedStatusBadge(freeze.version || 'Demo Final')} ${this.renderPublicUnifiedStatusBadge(m.overallStatus || 'READY_WITH_GAPS')}</div>
+      <p class="insight-note"><b>Demo 定位：</b>展示集团穿透式监管理念与监管闭环逻辑（非生产系统）。视角：<b>${freeze.groupPerspectiveChain || '集团→区域→国家→法人→项目'}</b> · 主链路：<b>${freeze.regulatoryChain || '数据→指标/KRI→风险→预警→监管行动→整改→验证→持续改进'}</b></p>
       <p class="insight-note">能力状态：已验证 <b>${m.fullTraceableCount || 0}</b> · 部分可追溯 <b>${m.partialTraceableCount || 0}</b> · 数据缺口 <b>${(scenarios.filter(s => s.demoStatus === 'READY_WITH_GAPS' || s.demoStatus === 'DATA_REQUIRED').length)}</b> · 待人工决策 <b>${humanItems}</b> · ${this.renderPublicUnifiedStatusBadge('INSUFFICIENT_HISTORY')} <code>INSUFFICIENT_HISTORY</code> — 不伪造历史趋势</p>
       <div class="group-metrics">${[
         [scenarios.length, '核心演示路径', `App.navigatePublic('regulatory-workbench')`],
@@ -7592,7 +7624,7 @@ Object.assign(App, {
       [m.crossDomainMatterCount, '跨领域风险', `App.navigatePublic('cross-domain-risks')`]
     ];
     node.innerHTML = `${this.renderPublicBackButton()}
-      <div class="group-hero"><div><span>集团总部监管视角</span><h2>集团监管总览</h2><p>统一入口：监管对象、数据覆盖、风险事项、跨境合规、跨领域风险与整改闭环。</p></div><div>数据覆盖率 <b>${m.dataCoverageRate}</b></div></div>
+      <div class="group-hero"><div><span>集团总部监管视角 · Demo Final</span><h2>集团监管总览</h2><p>集团穿透式监管 Demo：集团→区域→国家→法人→项目。主链路：风险 → KRI → 预警 → 监管行动 → 整改 → 验证。</p></div><div>数据覆盖率 <b>${m.dataCoverageRate}</b></div></div>
       ${this.renderGroupOverviewFilterBar()}
       <div class="group-metrics" id="groupOverviewMetrics">${metricCards.map(([v, l, nav]) => `<button class="metric-card" onclick="${nav}"><div class="value">${v}</div><div class="label">${l}</div></button>`).join('')}</div>
       ${this.renderGroupOverviewRegulatoryChain(m)}

@@ -6541,3 +6541,22 @@ Object.assign(APP_DATA, {
     { permissionSetId: 'PS-DEMO-01', permissionCode: 'DEMO_SCENARIO_VIEW', resourceType: 'regulatoryDemoScenarioIndexes', action: 'VIEW', riskLevel: 'LOW' }
   ];
 })();
+
+(function () {
+  APP_DATA.regulatoryDemoFinalFreezeIndex = APP_DATA.regulatoryDemoFinalFreezeIndex || {
+    version: 'Demo Final',
+    scope: 'DEMO_ONLY',
+    productionReady: false,
+    frozenAt: '2026-07-22',
+    groupPerspectiveChain: '集团→区域→国家→法人→项目',
+    regulatoryChain: '数据→指标/KRI→风险→预警→监管行动→整改→验证→持续改进',
+    constraints: {
+      publicPageCount: 70,
+      investmentFreeze: true,
+      noNewPages: true,
+      noFakeHistory: true,
+      noFakeClosedLoop: true
+    },
+    dataStatus: 'DERIVED'
+  };
+})();
