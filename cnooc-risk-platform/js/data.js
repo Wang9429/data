@@ -242,6 +242,24 @@ const APP_DATA = {
 };
 
 Object.assign(APP_DATA, {
+  coverageMetrics: [
+    ['全级次法人覆盖率','96.8%','98.0%','+1.2%','4家'],
+    ['境外法人接入率','91.5%','95.0%','+2.4%','5家'],
+    ['项目接入率','94.2%','96.0%','+1.8%','18项'],
+    ['关键系统覆盖率','93.6%','95.0%','+3.1%','6个'],
+    ['数据源接入率','92.8%','95.0%','+2.6%','8个'],
+    ['指标覆盖率','89.4%','92.0%','+4.2%','14项'],
+    ['KRI覆盖率','87.6%','90.0%','+3.8%','18项'],
+    ['风险场景覆盖率','91.2%','93.0%','+2.1%','11项'],
+    ['控制规则覆盖率','86.5%','90.0%','+4.5%','16项'],
+    ['责任主体覆盖率','97.1%','98.0%','+0.9%','5项'],
+    ['整改闭环率','76.4%','80.0%','+2.6%','18项']
+  ],
+  coverageGaps: [
+    { name:'C项目公司', type:'法人', region:'中东', country:'中东某国', parent:'B公司', domain:'境外/投资', status:'部分覆盖', gaps:'数据接入、KRI更新', impact:'经营风险无法持续监测', owner:'信息化管理部', rectification:'待整改' },
+    { name:'某海外项目现场', type:'项目现场', region:'非洲', country:'非洲某国', parent:'D公司', domain:'工程/供应链', status:'数据异常', gaps:'接口同步、数据及时率', impact:'预警结果延迟', owner:'区域信息管理岗', rectification:'整改中' },
+    { name:'某境外法人', type:'法人', region:'亚洲', country:'东南亚某国', parent:'A公司', domain:'合同/供应链', status:'未覆盖', gaps:'风险场景、控制规则', impact:'合同风险无法自动识别', owner:'业务管理部', rectification:'待建立' }
+  ],
   globalRegions: [
     { regionId:'CN', regionName:'境内', regionType:'domestic', countryCount:1, legalEntityCount:86, projectCount:926, riskCount:32, highRiskCount:5, rectificationCount:14, dataCoverageRate:'98.6%', complianceStatus:'正常' },
     { regionId:'ME', regionName:'中东', regionType:'overseas', countryCount:4, legalEntityCount:12, projectCount:126, riskCount:18, highRiskCount:6, rectificationCount:8, dataCoverageRate:'92.1%', complianceStatus:'关注' },

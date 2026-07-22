@@ -51,6 +51,7 @@ const App = {
     ,matter: '投资重大事项详情',
     'global-legal-entities': '全球法人监管',
     'global-regions': '全球区域/国别监管'
+    ,'coverage-gaps': '监管对象覆盖与盲区'
   },
 
   init() {
@@ -58,6 +59,7 @@ const App = {
     this.renderGroupOverview();
     this.renderGlobalLegalEntities();
     this.renderGlobalRegions();
+    this.renderCoverageGaps();
     this.renderMajorMatters();
     this.renderFoundationWorkbench();
     this.renderDashboardMetrics();
@@ -152,6 +154,7 @@ const App = {
       { id:'group', icon:'◉', label:'集团监管总览' },
       { id:'global-legal-entities', icon:'◎', label:'全球法人监管' },
       { id:'global-regions', icon:'◉', label:'全球区域/国别监管' },
+      { id:'coverage-gaps', icon:'◌', label:'监管对象覆盖与盲区' },
       { id:'dashboard', icon:'▦', label:'分领域监管' },
       { id:'major', icon:'◆', label:'重大事项监管' },
       { id:'warnings', icon:'🔔', label:'集团风险预警' },
@@ -220,7 +223,7 @@ const App = {
     const fields=APP_DATA.regulationDomains.slice(0,8);
     node.innerHTML=`<div class="group-hero"><div><span>集团总部监管视角</span><h2>集团监管总览</h2><p>聚焦重点领域、重点法人、重大事项、重大风险和集团督办事项。</p></div><div>数据覆盖率 <b>92.6%</b></div></div>
     <div class="group-metrics">${[['126','纳入监管法人'],['8','纳入监管领域'],['3,286','重点监管事项'],['28','当前重大风险'],['126','当前重点预警'],['43','整改未闭环'],['18','集团重点督办'],['92.6%','数据覆盖率']].map(x=>`<button class="metric-card" onclick="App.navigate('dashboard')"><div class="value">${x[0]}</div><div class="label">${x[1]}</div></button>`).join('')}</div>
-    <div class="card"><div class="card-title">公共监管底座入口</div><div class="field-status-grid"><button onclick="App.navigate('global-legal-entities')"><b>全球法人监管</b><span>全级次法人、项目公司、海外法人</span><em>高风险法人12家</em></button><button onclick="App.navigate('global-regions')"><b>全球区域/国别监管</b><span>区域、国家/地区、项目和风险</span><em>覆盖24个国家/地区</em></button></div></div>
+    <div class="card"><div class="card-title">公共监管底座入口</div><div class="field-status-grid"><button onclick="App.navigate('global-legal-entities')"><b>全球法人监管</b><span>全级次法人、项目公司、海外法人</span><em>高风险法人12家</em></button><button onclick="App.navigate('global-regions')"><b>全球区域/国别监管</b><span>区域、国家/地区、项目和风险</span><em>覆盖24个国家/地区</em></button><button onclick="App.navigate('coverage-gaps')"><b>监管对象覆盖与盲区</b><span>法人、系统、数据、KRI、规则覆盖</span><em>覆盖盲区18项</em></button></div></div>
     <div class="card"><div class="card-title">分领域监管态势</div><div class="field-status-grid">${fields.map((f,i)=>`<button onclick="App.selectRegulationDomain('${f.id}')"><b>${f.name}</b><span>重点事项：${[1286,486,238,426,512,186,328,412][i]}项</span><em>重大风险：${[12,3,2,4,5,2,6,4][i]}项</em><small>整改中：${[18,6,4,8,9,3,11,7][i]}项</small></button>`).join('')}</div></div>
     <div class="group-three"><div class="card"><div class="card-title">重点法人监管画像</div><table class="data-table"><thead><tr><th>法人</th><th>高风险领域</th><th>综合关注度</th></tr></thead><tbody><tr><td>A公司</td><td>投资、境外、合同</td><td><span class="badge badge-danger">高</span></td></tr><tr><td>B公司</td><td>投资、财务</td><td><span class="badge badge-warning">较高</span></td></tr><tr><td>D公司</td><td>境外、供应链</td><td><span class="badge badge-warning">较高</span></td></tr></tbody></table></div><div class="card"><div class="card-title">集团重点督办事项</div><div class="supervision-list"><p><b>01</b> 某境外投资项目收益持续偏离 <span class="badge badge-danger">L4</span></p><p><b>02</b> 固定资产项目追加投资接近审批边界 <span class="badge badge-warning">L3</span></p><p><b>03</b> 重大合同履约延期事项 <span class="badge badge-warning">L3</span></p></div></div></div>
     <div class="card"><div class="card-title">全级次法人监管态势</div><table class="data-table"><thead><tr><th>法人层级</th><th>法人数量</th><th>重大风险</th><th>重点预警</th><th>重大事项</th><th>控制规则异常</th><th>整改未闭环</th></tr></thead><tbody><tr><td>集团总部</td><td>1</td><td>0</td><td>0</td><td>18</td><td>0</td><td>6</td></tr><tr><td>一级子企业</td><td>12</td><td>8</td><td>32</td><td>86</td><td>4</td><td>15</td></tr><tr><td>二级子企业</td><td>38</td><td>12</td><td>58</td><td>164</td><td>7</td><td>18</td></tr><tr><td>三级子企业</td><td>52</td><td>6</td><td>29</td><td>73</td><td>3</td><td>4</td></tr><tr><td>四级及以下企业</td><td>23</td><td>2</td><td>7</td><td>21</td><td>1</td><td>0</td></tr></tbody></table></div>
@@ -253,6 +256,12 @@ const App = {
     const countries=APP_DATA.globalCountries.filter(c=>c.regionId===regionId);
     const entities=APP_DATA.globalLegalEntities.filter(e=>e.regionId===regionId && (!countryId||e.countryId===countryId));
     node.innerHTML=`<div class="card"><div class="card-title">${countryId?(countries.find(c=>c.countryId===countryId)||{}).countryName:region.regionName} · 区域/国别监管详情</div><div class="info-grid"><div class="info-item"><div class="info-label">区域监管</div><div class="info-value">国家${region.countryCount}个 · 法人${region.legalEntityCount}家 · 项目${region.projectCount}项</div></div><div class="info-item"><div class="info-label">风险与整改</div><div class="info-value">风险${region.riskCount} · 高风险${region.highRiskCount} · 未闭环整改${region.rectificationCount}</div></div><div class="info-item full"><div class="info-label">数据与跨境合规</div><div class="info-value">数据接入率${region.dataCoverageRate}；跨境合规状态：${region.complianceStatus}；国家、法人、项目均使用统一 regionId/countryId/entityId 关联。</div></div></div><p class="insight-note">法人：${entities.map(e=>e.entityName).join('、')||'待补充'}；国家：${countries.map(c=>c.countryName).join('、')}。后续可继续穿透业务系统、数据源、项目和公共风险事项。</p></div>`;
+  },
+
+  renderCoverageGaps() {
+    const node=document.getElementById('coverageGaps'); if(!node)return;
+    const matrix=[['法人','系统接入','已覆盖','数据接入','部分覆盖','KRI覆盖','已覆盖','规则覆盖','部分覆盖','整改闭环','部分覆盖'],['项目','系统接入','已覆盖','数据接入','已覆盖','KRI覆盖','部分覆盖','规则覆盖','已覆盖','整改闭环','已覆盖'],['业务领域','系统接入','部分覆盖','数据接入','已覆盖','KRI覆盖','已覆盖','规则覆盖','部分覆盖','整改闭环','已覆盖'],['区域/国家','系统接入','部分覆盖','数据接入','数据异常','KRI覆盖','已覆盖','规则覆盖','部分覆盖','整改闭环','部分覆盖']];
+    node.innerHTML=`<div class="group-hero"><div><span>集团级公共监管底座</span><h2>监管对象覆盖与盲区</h2><p>判断集团是否真正看得到、监得到、管得到、追得上监管对象。</p></div><div>覆盖盲区 <b>18项</b></div></div><div class="group-metrics">${APP_DATA.coverageMetrics.map(m=>`<div class="metric-card"><div class="value">${m[1]}</div><div class="label">${m[0]}</div><div class="sub-items">目标${m[2]} · 较上期${m[3]}<br>异常对象：${m[4]}</div></div>`).join('')}</div><div class="card"><div class="card-title">监管覆盖矩阵</div><table class="data-table"><thead><tr><th>监管对象</th><th>系统接入</th><th>数据接入</th><th>KRI覆盖</th><th>规则覆盖</th><th>整改闭环</th></tr></thead><tbody>${matrix.map(r=>`<tr><td>${r[0]}</td><td>${r[2]}</td><td>${r[4]}</td><td>${r[6]}</td><td>${r[8]}</td><td>${r[10]}</td></tr>`).join('')}</tbody></table></div><div class="card"><div class="card-title">监管盲区清单</div><table class="data-table"><thead><tr><th>对象</th><th>类型</th><th>区域/国家</th><th>上级法人</th><th>领域</th><th>覆盖状态</th><th>缺失环节</th><th>风险影响</th><th>责任部门</th><th>整改状态</th></tr></thead><tbody>${APP_DATA.coverageGaps.map(g=>`<tr><td>${g.name}</td><td>${g.type}</td><td>${g.region}/${g.country}</td><td>${g.parent}</td><td>${g.domain}</td><td><span class="badge ${g.status==='已覆盖'?'badge-success':'badge-warning'}">${g.status}</span></td><td>${g.gaps}</td><td>${g.impact}</td><td>${g.owner}</td><td>${g.rectification}</td></tr>`).join('')}</tbody></table></div><div class="card"><div class="card-title">统一监管覆盖链路</div><div class="kri-lineage"><span>法人</span><i>→</i><span>系统</span><i>→</i><span>数据</span><i>→</i><span>指标</span><i>→</i><span>KRI</span><i>→</i><span>规则</span><i>→</i><span>风险监测</span><i>→</i><span>责任与整改</span></div></div>`;
   },
 
   renderMajorMatters() {
