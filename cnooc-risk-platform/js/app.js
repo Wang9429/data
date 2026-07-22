@@ -100,6 +100,22 @@ const App = {
     }, 120);
   },
 
+  goToRectificationWithDemoContext(riskId = 'risk-2') {
+    const w = (APP_DATA.warnings || []).find(x => x.id === riskId) || (APP_DATA.warnings || [])[0] || {};
+    this.groupRegulatoryDemoContext = {
+      ...(this.groupRegulatoryDemoContext || {}),
+      objectName: w.name || '投资收益未达预期风险',
+      objectLevel: '风险事项',
+      parentOrg: w.project || '某境外能源项目',
+      riskSignal: this.groupRegulatoryDemoContext?.riskSignal || 'KRI超阈值',
+      whyFocus: this.groupRegulatoryDemoContext?.whyFocus || '红色预警 · 影响集团整体风险判断',
+      riskId,
+      source: '穿透分析 → 整改闭环',
+      status: '整改验证中'
+    };
+    this.navigate('rectification');
+  },
+
   openDemoMainPathStep(stepIndex = 0) {
     const steps = this.getDemoMainPathDefinition ? this.getDemoMainPathDefinition() : [];
     const i = Math.max(0, Math.min(stepIndex, steps.length - 1));

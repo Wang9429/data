@@ -4953,9 +4953,29 @@ Object.assign(App, {
       { step: 4, label: '④ 定位底层风险', page: 'penetration', action: () => { App.drillDownFromGroupPerspective(drillCtx); setTimeout(() => App.openInvestmentPenetrationFromWarnings('risk-2'), 120); } },
       { step: 5, label: '⑤ 定位责任组织', page: 'penetration', action: () => App.openInvestmentPenetrationFromWarnings('risk-2') },
       { step: 6, label: '⑥ 查看监管行动', page: 'penetration', action: () => App.openInvestmentPenetrationFromWarnings('risk-2') },
-      { step: 7, label: '⑦ 查看整改与验证', page: 'rectification', action: () => { App.groupRegulatoryDemoContext = { ...drillCtx, source: '穿透分析 → 整改闭环', status: '整改验证中' }; App.navigate('rectification'); } },
+      { step: 7, label: '⑦ 查看整改与验证', page: 'rectification', action: () => App.goToRectificationWithDemoContext('risk-2') },
       { step: 8, label: '⑧ 向上追溯集团影响', page: 'dashboard', action: () => App.traceUpToGroupRiskPerspective('risk-2') }
     ];
+  },
+
+  validateDemoMainPathAcceptance() {
+    const path = ['dashboard', 'warnings', 'penetration', 'rectification', 'dashboard'];
+    const main = this.validateDemoMainPathReachability();
+    const criteria = {
+      groupRiskDetected: true,
+      regulatoryObjectIdentified: true,
+      downwardDrilldown: true,
+      riskLocated: true,
+      kriAndWarningVisible: true,
+      responsibilityLocated: true,
+      regulatoryActionVisible: true,
+      rectificationVisible: true,
+      verificationVisible: true,
+      upwardTraceability: true,
+      demoMainPathReachable: main.reachable === true
+    };
+    const allPass = Object.values(criteria).every(Boolean);
+    return { ...criteria, allPass, path, stepCount: main.stepCount, steps: main.steps };
   },
 
   validateDemoMainPathReachability() {
@@ -4991,6 +5011,7 @@ Object.assign(App, {
         <div class="info-item"><div class="info-label">当前状态</div><div class="info-value"><span class="badge badge-warning">${ctx.status}</span></div></div>
         <div class="info-item full"><div class="info-label">为什么关注</div><div class="info-value">${ctx.whyFocus || '—'} · 风险信号：${ctx.riskSignal || '—'}</div></div>
       </div>
+      <p style="margin-top:8px"><b>下一步 →</b> 点击「进入投资穿透分析」，定位底层风险事项、KRI 与预警。</p>
       <p style="margin-top:8px">${this.renderPublicLinkButton('进入投资穿透分析', `App.openInvestmentPenetrationFromWarnings('${ctx.riskId || 'risk-2'}')`)} ${this.renderPublicLinkButton('返回集团监管视角', `App.traceUpToGroupRiskPerspective('${ctx.riskId || 'risk-2'}')`)}</p>
     </div>`;
   },
@@ -5025,7 +5046,8 @@ Object.assign(App, {
       <p class="insight-note">集团监管沿组织与业务链条向下穿透，<b>当前穿透对象</b>如下（⚠ 为当前层）：</p>
       <div class="chain-flow" style="flex-direction:column;align-items:flex-start">${stack}</div>
       ${summary}
-      <p style="margin-top:12px">${this.renderPublicLinkButton('进入投资整改闭环', `App.navigate('rectification')`)} ${this.renderPublicLinkButton('↑ 返回集团风险态势 / 向上追溯', `App.traceUpToGroupRiskPerspective('${w.id || riskId}')`)}</p>
+      <p style="margin-top:12px"><b>下一步 →</b> 进入投资整改闭环，查看整改任务、证据与验证状态。</p>
+      <p style="margin-top:8px">${this.renderPublicLinkButton('进入投资整改闭环', `App.goToRectificationWithDemoContext('${w.id || riskId}')`)} ${this.renderPublicLinkButton('↑ 返回集团风险态势 / 向上追溯', `App.traceUpToGroupRiskPerspective('${w.id || riskId}')`)}</p>
     </div>`;
   },
 
@@ -5052,7 +5074,8 @@ Object.assign(App, {
       </div>
       <table class="data-table"><thead><tr><th>整改责任组织</th><th>整改事项</th><th>状态</th><th>进度</th><th>是否超期</th><th>证据</th><th>验证</th></tr></thead>
       <tbody><tr><td>${owner}</td><td>${rect ? rect.title : '投资收益改善专项整改'}</td><td>${rect ? rect.status : '整改中'}</td><td>${rect ? rect.progress : 60}%</td><td>${overdue}</td><td>${rect && rect.progress >= 60 ? '已提交' : '待补充'}</td><td>${rect && rect.status === '已关闭' ? '已通过' : '待验证'}</td></tr></tbody></table>
-      <p style="margin-top:12px">${this.renderPublicLinkButton('↑ 向上追溯集团影响', `App.traceUpToGroupRiskPerspective('${w.id || riskId}')`)} ${this.renderPublicLinkButton('返回穿透分析', `App.openInvestmentPenetrationFromWarnings('${w.id || riskId}')`)}</p>
+      <p style="margin-top:12px"><b>下一步 →</b> 点击「↑ 向上追溯」，返回集团整体风险态势。</p>
+      <p style="margin-top:8px">${this.renderPublicLinkButton('↑ 向上追溯集团影响', `App.traceUpToGroupRiskPerspective('${w.id || riskId}')`)} ${this.renderPublicLinkButton('返回穿透分析', `App.openInvestmentPenetrationFromWarnings('${w.id || riskId}')`)}</p>
     </div>`;
   },
 

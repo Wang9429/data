@@ -170,7 +170,49 @@ check(originalVisualStructurePreserved, 'originalVisualStructurePreserved');
 check(originalBusinessScenesPreserved, 'originalBusinessScenesPreserved');
 check(originalDataDisplayPreserved, 'originalDataDisplayPreserved');
 check(groupRegulatoryPerspectiveAdded, 'groupRegulatoryPerspectiveAdded');
-check(demoMainPathReachable, 'demoMainPathReachable');
+const demoMainPathAcceptance = (() => {
+  try {
+    const a = App.validateDemoMainPathAcceptance();
+    return a;
+  } catch { return { allPass: false }; }
+})();
+const groupRiskDetected = html.includes('集团穿透式监管视角')
+  && html.includes('集团重大风险')
+  && html.includes('集团现在重点关注');
+const regulatoryObjectIdentified = html.includes('groupFocusObjectsSection')
+  && html.includes('renderGroupFocusObjectsTable')
+  && html.includes('为什么关注');
+const downwardDrilldown = html.includes('向下穿透')
+  && html.includes('drillDownFromGroupPerspective')
+  && appJsSource.includes('refreshWarningsDemoChrome');
+const riskLocated = html.includes('renderPenetrationCurrentLevelStack')
+  && html.includes('当前已定位到「风险事项」层');
+const kriAndWarningVisible = html.includes('关联 KRI')
+  && html.includes('预警状态');
+const responsibilityLocated = html.includes('责任组织')
+  && html.includes('renderGroupResponsibilityClosureTrace');
+const regulatoryActionVisible = html.includes('监管行动')
+  && html.includes('集团投资管理部专项督办');
+const rectificationVisible = html.includes('renderRectificationGroupSupervisionClosure')
+  && html.includes('整改任务');
+const verificationVisible = html.includes('验证状态')
+  && html.includes('验证结果')
+  && html.includes('待验证');
+const demoMainPathAcceptanceChecks = {
+  groupRiskDetected,
+  regulatoryObjectIdentified,
+  downwardDrilldown,
+  riskLocated,
+  kriAndWarningVisible,
+  responsibilityLocated,
+  regulatoryActionVisible,
+  rectificationVisible,
+  verificationVisible,
+  upwardTraceability,
+  demoMainPathReachable
+};
+Object.entries(demoMainPathAcceptanceChecks).forEach(([k, v]) => check(v, k));
+check(demoMainPathAcceptance.allPass === true, 'demoMainPathAcceptanceAllPass');
 check(groupToRiskTraceability, 'groupToRiskTraceability');
 check(riskToResponsibilityTraceability, 'riskToResponsibilityTraceability');
 check(rectificationVerificationTraceability, 'rectificationVerificationTraceability');
@@ -216,6 +258,17 @@ const result = {
   originalDataDisplayPreserved,
   groupRegulatoryPerspectiveAdded,
   demoMainPathReachable,
+  demoMainPathAcceptance: demoMainPathAcceptanceChecks,
+  demoMainPathAcceptanceAllPass: demoMainPathAcceptance.allPass === true,
+  groupRiskDetected,
+  regulatoryObjectIdentified,
+  downwardDrilldown,
+  riskLocated,
+  kriAndWarningVisible,
+  responsibilityLocated,
+  regulatoryActionVisible,
+  rectificationVisible,
+  verificationVisible,
   groupToRiskTraceability,
   riskToResponsibilityTraceability,
   rectificationVerificationTraceability,
