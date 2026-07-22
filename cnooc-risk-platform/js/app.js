@@ -144,8 +144,11 @@ const App = {
     const ctx = this.groupRegulatoryDemoContext;
     const riskId = (ctx && ctx.riskId) || 'risk-2';
     if (entryNode) {
-      const ctxLine = ctx ? `<p class="insight-note" style="margin-top:8px"><b>当前监管对象：</b>${ctx.objectName}（${ctx.objectLevel}） · <b>来源：</b>${ctx.source} · <b>状态：</b>${ctx.status}</p>` : '';
-      entryNode.innerHTML = `<div class="card" style="margin-bottom:16px"><div class="card-title">投资风险监测 · 穿透分析入口</div><p class="insight-note">从集团监管视角向下穿透后，在本页继续定位底层风险事项，并进入「风险监测投资穿透分析」详情页（非左侧菜单）。</p>${ctxLine}<button class="btn btn-primary" onclick="App.openInvestmentPenetrationFromWarnings('${riskId}')">进入投资穿透分析</button></div>`;
+      if (ctx) {
+        entryNode.innerHTML = this.renderWarningsDemoContextBanner(ctx);
+      } else {
+        entryNode.innerHTML = `<div class="card" style="margin-bottom:16px"><button class="btn btn-primary" onclick="App.openInvestmentPenetrationFromWarnings('${riskId}')">进入投资穿透分析</button></div>`;
+      }
     }
   },
 
