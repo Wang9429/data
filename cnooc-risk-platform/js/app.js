@@ -100,7 +100,11 @@ const App = {
     'regulatory-decision-room': '集团监管决策工作室',
     'regulatory-role-workbench': '监管角色工作台',
     'regulatory-my-work': '我的监管工作',
-    'regulatory-search': '集团监管统一搜索'
+    'regulatory-search': '集团监管统一搜索',
+    'regulatory-access-control': '集团监管访问控制中心',
+    'regulatory-authorization': '集团监管授权审批中心',
+    'regulatory-audit-trail': '集团监管操作审计中心',
+    'regulatory-system-settings': '集团监管平台系统配置中心'
   },
 
   init() {
@@ -141,6 +145,10 @@ const App = {
     this.renderRegulatoryRoleWorkbench();
     this.renderRegulatoryMyWork();
     this.renderRegulatorySearch();
+    this.renderRegulatoryAccessControl();
+    this.renderRegulatoryAuthorization();
+    this.renderRegulatoryAuditTrail();
+    this.renderRegulatorySystemSettings();
     this.renderGlobalLegalEntities();
     this.renderGlobalRegions();
     this.renderCoverageGaps();
@@ -208,7 +216,7 @@ const App = {
       this.renderKriDetail(params.kriId, params.scenarioId);
     }
 
-    if (['global-group-overview', 'group', 'global-legal-entities', 'global-regions', 'coverage-gaps', 'platform-operations', 'data-governance', 'cross-border-compliance', 'cross-domain-risks', 'warnings', 'rectification', 'regulatory-events', 'rectification-operations', 'regulatory-evaluation', 'regulatory-command-center', 'regulatory-actions', 'regulatory-action-execution', 'regulatory-strategy', 'regulatory-maturity', 'regulatory-optimization', 'regulatory-rule-config', 'regulatory-simulation', 'regulatory-rule-history', 'regulatory-rule-versions', 'regulatory-rule-approvals', 'regulatory-rule-impact', 'regulatory-rule-effectiveness', 'regulatory-rule-runtime', 'regulatory-rule-executions', 'regulatory-rule-deployments', 'regulatory-performance', 'regulatory-resource-allocation', 'regulatory-supervision-tasks', 'regulatory-benchmarking', 'regulatory-strategy-planning', 'regulatory-annual-plan', 'regulatory-target-management', 'regulatory-focus-management', 'regulatory-plan-execution', 'regulatory-strategic-review', 'regulatory-workbench', 'regulatory-queue', 'regulatory-decision-room', 'regulatory-role-workbench', 'regulatory-my-work', 'regulatory-search'].includes(pageId) && Object.keys(params).length) {
+    if (['global-group-overview', 'group', 'global-legal-entities', 'global-regions', 'coverage-gaps', 'platform-operations', 'data-governance', 'cross-border-compliance', 'cross-domain-risks', 'warnings', 'rectification', 'regulatory-events', 'rectification-operations', 'regulatory-evaluation', 'regulatory-command-center', 'regulatory-actions', 'regulatory-action-execution', 'regulatory-strategy', 'regulatory-maturity', 'regulatory-optimization', 'regulatory-rule-config', 'regulatory-simulation', 'regulatory-rule-history', 'regulatory-rule-versions', 'regulatory-rule-approvals', 'regulatory-rule-impact', 'regulatory-rule-effectiveness', 'regulatory-rule-runtime', 'regulatory-rule-executions', 'regulatory-rule-deployments', 'regulatory-performance', 'regulatory-resource-allocation', 'regulatory-supervision-tasks', 'regulatory-benchmarking', 'regulatory-strategy-planning', 'regulatory-annual-plan', 'regulatory-target-management', 'regulatory-focus-management', 'regulatory-plan-execution', 'regulatory-strategic-review', 'regulatory-workbench', 'regulatory-queue', 'regulatory-decision-room', 'regulatory-role-workbench', 'regulatory-my-work', 'regulatory-search', 'regulatory-access-control', 'regulatory-authorization', 'regulatory-audit-trail', 'regulatory-system-settings'].includes(pageId) && Object.keys(params).length) {
       setTimeout(() => this.applyPublicNavigationContext(pageId, params), 50);
     }
   },
@@ -322,6 +330,9 @@ const App = {
     if (pageId === 'regulatory-role-workbench' && ctx.roleId) this.setRegulatoryRole(ctx.roleId, ctx.scopeType, ctx.scopeId);
     if (pageId === 'regulatory-my-work' && ctx.queueItemId) this.showRegulatoryQueueDetail(ctx.queueItemId);
     if (pageId === 'regulatory-search' && ctx.searchQuery) this.regulatorySearchFilter = { ...(this.regulatorySearchFilter || {}), query: ctx.searchQuery };
+    if (pageId === 'regulatory-access-control' && ctx.userId) this.showRegulatoryAccessControlUserDetail(ctx.userId);
+    if (pageId === 'regulatory-authorization' && ctx.authorizationId) this.showRegulatoryAuthorizationDetail(ctx.authorizationId);
+    if (pageId === 'regulatory-audit-trail' && ctx.auditId) this.showRegulatoryAuditDetail(ctx.auditId);
   },
 
   applyPublicNavigationContext(pageId, params) {
@@ -510,6 +521,26 @@ const App = {
       if (params.category) this.regulatorySearchFilter = { ...(this.regulatorySearchFilter || {}), category: params.category };
       if (params.resultId) this.navigateSearchResult(params.resultId);
       else this.renderRegulatorySearch();
+    }
+    if (pageId === 'regulatory-access-control') {
+      if (params.userId) { this.regulatoryAccessControlFocusUserId = params.userId; this.showRegulatoryAccessControlUserDetail(params.userId); }
+      else this.renderRegulatoryAccessControl();
+    }
+    if (pageId === 'regulatory-authorization') {
+      if (params.status) this.regulatoryAuthorizationFilter = { ...(this.regulatoryAuthorizationFilter || {}), status: params.status };
+      if (params.requestType) this.regulatoryAuthorizationFilter = { ...(this.regulatoryAuthorizationFilter || {}), requestType: params.requestType };
+      if (params.authorizationId) { this.regulatoryAuthorizationFocusId = params.authorizationId; this.showRegulatoryAuthorizationDetail(params.authorizationId); }
+      else this.renderRegulatoryAuthorization();
+    }
+    if (pageId === 'regulatory-audit-trail') {
+      if (params.userId) this.regulatoryAuditTrailFilter = { ...(this.regulatoryAuditTrailFilter || {}), userId: params.userId };
+      if (params.actionType) this.regulatoryAuditTrailFilter = { ...(this.regulatoryAuditTrailFilter || {}), actionType: params.actionType };
+      if (params.auditId) { this.regulatoryAuditFocusId = params.auditId; this.showRegulatoryAuditDetail(params.auditId); }
+      else this.renderRegulatoryAuditTrail();
+    }
+    if (pageId === 'regulatory-system-settings') {
+      if (params.configId) this.regulatorySystemConfigFocusId = params.configId;
+      this.renderRegulatorySystemSettings();
     }
   },
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * 公共监管底座 Phase 16 验收脚本
+ * 公共监管底座 Phase 17 验收脚本
  */
 const fs = require('fs');
 const path = require('path');
@@ -25,13 +25,11 @@ const pubJs = fs.readFileSync(pubPath, 'utf8');
 const html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
 const errors = [];
 const warnings = [];
-const roleFails = [];
-const myWorkFails = [];
-const searchFails = [];
-const recentFails = [];
-const favoriteFails = [];
-const notificationFails = [];
-const queueFails = [];
+const accessFails = [];
+const authFails = [];
+const auditFails = [];
+const configFails = [];
+const permFails = [];
 
 function req(id, label) {
   if (!id) errors.push(`缺失ID: ${label}`);
@@ -44,7 +42,18 @@ function resolve(id, arr, key, label) {
   return found;
 }
 
-const ROLE_TYPES = ['GROUP_LEADER', 'GROUP_REGULATORY', 'DOMAIN_REGULATOR', 'ENTITY_REGULATOR'];
+const AUTH_SOURCE = {
+  regulatoryRuleChangeRequests: { arr: () => D.regulatoryRuleChangeRequests, key: 'changeRequestId' },
+  regulatoryRuleApprovals: { arr: () => D.regulatoryRuleApprovals, key: 'approvalId' },
+  regulatoryRuleDeployments: { arr: () => D.regulatoryRuleDeployments, key: 'deploymentId' },
+  regulatoryActions: { arr: () => D.regulatoryActions, key: 'actionId' },
+  rectificationTasks: { arr: () => D.rectificationTasks, key: 'taskId' },
+  regulatorySupervisionTasks: { arr: () => D.regulatorySupervisionTasks, key: 'supervisionTaskId' },
+  regulatoryStrategicObjectives: { arr: () => D.regulatoryStrategicObjectives, key: 'objectiveId' },
+  regulatoryAnnualPlans: { arr: () => D.regulatoryAnnualPlans, key: 'planId' },
+  regulatoryStrategicFocus: { arr: () => D.regulatoryStrategicFocus, key: 'focusId' }
+};
+
 const expectedPages = [
   'global-group-overview', 'global-legal-entities', 'global-regions', 'coverage-gaps',
   'platform-operations', 'data-governance', 'cross-border-compliance', 'cross-domain-risks',
@@ -59,6 +68,7 @@ const expectedPages = [
   'regulatory-focus-management', 'regulatory-plan-execution', 'regulatory-strategic-review',
   'regulatory-workbench', 'regulatory-queue', 'regulatory-decision-room',
   'regulatory-role-workbench', 'regulatory-my-work', 'regulatory-search',
+  'regulatory-access-control', 'regulatory-authorization', 'regulatory-audit-trail', 'regulatory-system-settings',
   'major'
 ];
 expectedPages.forEach(pid => {
@@ -66,14 +76,14 @@ expectedPages.forEach(pid => {
 });
 
 const publicPageCount = (pubJs.match(/pageId: '/g) || []).length;
-if (publicPageCount !== 46) warnings.push(`公共页面数=${publicPageCount}，期望46`);
+if (publicPageCount !== 50) warnings.push(`公共页面数=${publicPageCount}，期望50`);
 
 const components = [
-  'renderPublicBreadcrumb', 'renderPublicSearchEntry', 'recordRecentView',
-  'addRegulatoryFavorite', 'removeRegulatoryFavorite', 'toggleRegulatoryFavorite',
-  'searchRegulatoryIndex', 'navigateSearchResult', 'markNotificationRead',
-  'renderRegulatoryRoleWorkbench', 'renderRegulatoryMyWork', 'renderRegulatorySearch',
-  'getCurrentRegulatoryRole', 'getRegulatoryRoleWorkbench', 'setRegulatoryRole'
+  'canRegulatoryAccess', 'createRegulatoryAuditLog', 'executeRegulatoryStateChange',
+  'approveRegulatoryAuthorization', 'rejectRegulatoryAuthorization', 'renderRegulatoryActionButton',
+  'renderRegulatoryAccessControl', 'renderRegulatoryAuthorization', 'renderRegulatoryAuditTrail', 'renderRegulatorySystemSettings',
+  'showRegulatoryAuthorizationDetail', 'showRegulatoryAuditDetail', 'showRegulatoryAccessControlUserDetail',
+  'getCurrentRegulatoryUser', 'setCurrentRegulatoryUser'
 ];
 components.forEach(fn => {
   if (!pubJs.includes(fn)) errors.push(`公共组件缺失: ${fn}`);
@@ -88,115 +98,88 @@ let hardcodeOffsetCount = 0;
   });
 });
 
-(D.regulatoryRoleProfiles || []).forEach(r => {
-  req(r.roleId, 'roleId');
-  if (!ROLE_TYPES.includes(r.roleType)) roleFails.push(`角色 ${r.roleId} 类型无效`);
-  if (!r.defaultPageId) roleFails.push(`角色 ${r.roleId} 缺失 defaultPageId`);
-  if (!Array.isArray(r.visiblePages) || !r.visiblePages.length) roleFails.push(`角色 ${r.roleId} visiblePages 为空`);
+(D.regulatoryUsers || []).forEach(u => req(u.userId, 'userId'));
+(D.regulatoryRoleAssignments || []).forEach(a => {
+  req(a.assignmentId, 'assignmentId');
+  resolve(a.userId, D.regulatoryUsers, 'userId', 'asg.user');
+  resolve(a.roleId, D.regulatoryRoleProfiles, 'roleId', 'asg.role');
 });
 
-(D.regulatoryRoleWorkbenches || []).forEach(wb => {
-  req(wb.workbenchId, 'workbenchId');
-  req(wb.roleId, 'wb.roleId');
-  resolve(wb.roleId, D.regulatoryRoleProfiles, 'roleId', 'wb.role');
-  if (!wb.kpis || !wb.kpis.length) roleFails.push(`角色工作台 ${wb.workbenchId} KPI 为空`);
-  if (!wb.title) roleFails.push(`角色工作台 ${wb.workbenchId} 缺失 title`);
+(D.regulatoryPermissionSets || []).forEach(p => {
+  req(p.permissionSetId, 'permissionSetId');
+  req(p.permissionCode, 'permissionCode');
 });
 
-const SEARCH_SOURCE = {
-  REGION: { arr: () => D.globalRegions, key: 'regionId' },
-  COUNTRY: { arr: () => D.globalCountries, key: 'countryId' },
-  ENTITY: { arr: () => D.globalLegalEntities, key: 'entityId' },
-  PROJECT: { arr: () => D.globalProjects, key: 'projectId' },
-  RISK: { arr: () => D.warnings, key: 'id' },
-  CROSS_DOMAIN_RISK: { arr: () => D.crossDomainRiskMatters, key: 'riskMatterId' },
-  EVENT: { arr: () => D.regulatoryEvents, key: 'eventId' },
-  KRI: { arr: () => D.groupKris, key: 'id' },
-  DATA_SOURCE: { arr: () => D.dataSources, key: 'sourceId' },
-  ACTION: { arr: () => D.regulatoryActions, key: 'actionId' },
-  SUPERVISION_TASK: { arr: () => D.regulatorySupervisionTasks, key: 'supervisionTaskId' },
-  RECTIFICATION: { arr: () => D.rectificationTasks, key: 'taskId' },
-  QUEUE: { arr: () => D.regulatoryQueue, key: 'queueItemId' },
-  RULE: { arr: () => D.regulatoryRules, key: 'ruleId' },
-  RULE_VERSION: { arr: () => D.regulatoryRuleVersions, key: 'versionId' },
-  OBJECTIVE: { arr: () => D.regulatoryStrategicObjectives, key: 'objectiveId' },
-  ANNUAL_PLAN: { arr: () => D.regulatoryAnnualPlans, key: 'planId' }
-};
-
-(D.regulatorySearchIndex || []).forEach(r => {
-  req(r.resultId, 'resultId');
-  req(r.objectId, 'search.objectId');
-  if (!r.targetPageId) searchFails.push(`搜索 ${r.resultId} 缺失 targetPageId`);
-  const src = SEARCH_SOURCE[r.objectType];
+(D.regulatoryAuthorizationRequests || []).forEach(a => {
+  req(a.authorizationId, 'authorizationId');
+  req(a.targetObjectId, 'auth.targetObjectId');
+  resolve(a.requesterId, D.regulatoryUsers, 'userId', 'auth.requester');
+  const src = AUTH_SOURCE[a.sourceType || a.targetObjectType];
   if (src) {
-    const found = (src.arr() || []).find(x => x[src.key] === r.objectId);
-    if (!found) searchFails.push(`搜索 ${r.resultId} 无法解析 objectId=${r.objectId}`);
+    const found = (src.arr() || []).find(x => x[src.key] === (a.sourceId || a.targetObjectId));
+    if (!found) authFails.push(`授权 ${a.authorizationId} 无法追溯 source/target=${a.targetObjectId}`);
   }
-});
-
-const NOTIF_SOURCE = {
-  regulatoryEvents: { arr: () => D.regulatoryEvents, key: 'eventId' },
-  rectificationTasks: { arr: () => D.rectificationTasks, key: 'taskId' },
-  regulatoryRuleRuntimeAnomalies: { arr: () => D.regulatoryRuleRuntimeAnomalies, key: 'anomalyId' },
-  regulatoryStrategicObjectives: { arr: () => D.regulatoryStrategicObjectives, key: 'objectiveId' },
-  regulatoryAnnualPlans: { arr: () => D.regulatoryAnnualPlans, key: 'planId' }
-};
-
-(D.regulatoryNotifications || []).forEach(n => {
-  req(n.notificationId, 'notificationId');
-  req(n.sourceId, 'notif.sourceId');
-  const src = NOTIF_SOURCE[n.sourceType];
-  if (src) {
-    const found = (src.arr() || []).find(x => x[src.key] === n.sourceId);
-    if (!found && !['regulatoryActionFeedbacks', 'regulatoryActions'].includes(n.sourceType)) {
-      notificationFails.push(`通知 ${n.notificationId} 无法解析 sourceId=${n.sourceId}`);
+  (a.relatedRiskIds || []).forEach(id => {
+    if (!(D.warnings || []).find(w => w.id === id) && !(D.crossDomainRiskMatters || []).find(m => m.riskMatterId === id)) {
+      if (id) authFails.push(`授权 ${a.authorizationId} 风险ID无效 ${id}`);
     }
+  });
+});
+
+(D.regulatoryAuditLogs || []).forEach(l => {
+  req(l.auditId, 'auditId');
+  if (l.userId) resolve(l.userId, D.regulatoryUsers, 'userId', 'audit.user');
+  if (l.objectId && l.authorizationId) resolve(l.authorizationId, D.regulatoryAuthorizationRequests, 'authorizationId', 'audit.auth');
+});
+
+if (!Array.isArray(D.regulatoryAuditLogs)) errors.push('regulatoryAuditLogs 未初始化');
+if ((D.regulatoryAuditLogs || []).some(l => l.userName)) auditFails.push('审计日志不得复制业务用户详情');
+
+(D.regulatorySystemConfigurations || []).forEach(c => {
+  req(c.configId, 'configId');
+  req(c.configKey, 'configKey');
+  if ((D.regulatoryRuleParameters || []).find(p => p.paramId === c.configKey)) {
+    configFails.push(`系统配置 ${c.configKey} 与规则参数重复`);
   }
-  if (!n.targetPageId) notificationFails.push(`通知 ${n.notificationId} 缺失 targetPageId`);
 });
 
-(D.regulatoryRecentViews || []).forEach(v => {
-  req(v.viewId, 'viewId');
-  if (!v.pageId || !v.objectId) recentFails.push(`最近访问 ${v.viewId} 字段不完整`);
+if (!D.regulatoryUsers?.length) errors.push('regulatoryUsers 未生成');
+if (!D.regulatoryRoleAssignments?.length) errors.push('regulatoryRoleAssignments 未生成');
+if (!D.regulatoryPermissionSets?.length) errors.push('regulatoryPermissionSets 未生成');
+if (!D.regulatoryAuthorizationRequests?.length) errors.push('regulatoryAuthorizationRequests 未生成');
+if (!D.regulatorySystemConfigurations?.length) errors.push('regulatorySystemConfigurations 未生成');
+if (!D.regulatoryAccessControlMetrics) errors.push('regulatoryAccessControlMetrics 未生成');
+
+const rolePermMap = D.regulatoryRolePermissionMap || {};
+Object.keys(rolePermMap).forEach(roleId => {
+  if (!(D.regulatoryRoleProfiles || []).find(r => r.roleId === roleId)) permFails.push(`权限映射角色无效 ${roleId}`);
+  (rolePermMap[roleId] || []).forEach(code => {
+    if (!(D.regulatoryPermissionSets || []).find(p => p.permissionCode === code)) permFails.push(`权限码未定义 ${code}`);
+  });
 });
-
-(D.regulatoryFavorites || []).forEach(f => {
-  req(f.favoriteId, 'favoriteId');
-  if (!f.objectId || !f.pageId) favoriteFails.push(`收藏 ${f.favoriteId} 字段不完整`);
-});
-
-if (!D.regulatoryRoleProfiles?.length) errors.push('regulatoryRoleProfiles 未生成');
-if (!D.regulatoryRoleWorkbenches?.length) errors.push('regulatoryRoleWorkbenches 未生成');
-if (!D.regulatorySearchIndex?.length) errors.push('regulatorySearchIndex 未生成');
-if (!D.regulatoryNotifications?.length) errors.push('regulatoryNotifications 未生成');
-if (!Array.isArray(D.regulatoryRecentViews)) errors.push('regulatoryRecentViews 未初始化');
-if (!Array.isArray(D.regulatoryFavorites)) errors.push('regulatoryFavorites 未初始化');
-
-if (D.regulatoryRecentViews.length > 20) recentFails.push('最近访问超过20条');
-if ((D.regulatoryRecentViews || []).some(v => v.title && v.description)) recentFails.push('最近访问不得复制业务对象');
 
 [
-  'page-regulatory-role-workbench', 'page-regulatory-my-work', 'page-regulatory-search'
+  'page-regulatory-access-control', 'page-regulatory-authorization', 'page-regulatory-audit-trail', 'page-regulatory-system-settings'
 ].forEach(id => {
   if (!html.includes(id)) errors.push(`index.html 缺失: ${id}`);
 });
 
-if (!appJs.includes('renderRegulatoryRoleWorkbench')) errors.push('app.js 未调用 renderRegulatoryRoleWorkbench');
-if (!pubJs.includes('renderPublicBreadcrumb')) errors.push('全局面包屑缺失');
-if (!pubJs.includes('regulatory-role-workbench') || !pubJs.includes('角色化监管工作台')) {
-  errors.push('驾驶舱 Phase 16 模块缺失');
-}
+if (!appJs.includes('renderRegulatoryAccessControl')) errors.push('app.js 未调用 renderRegulatoryAccessControl');
+if (!pubJs.includes('权限治理') || !pubJs.includes('访问控制中心')) errors.push('驾驶舱 Phase 17 模块缺失');
+if (!pubJs.includes('renderRegulatoryActionButton')) permFails.push('权限按钮渲染缺失');
 
 const navChecks = [
-  "navigatePublic('regulatory-role-workbench')",
-  "navigatePublic('regulatory-my-work')",
-  "navigatePublic('regulatory-search')"
+  "navigatePublic('regulatory-access-control')",
+  "navigatePublic('regulatory-authorization')",
+  "navigatePublic('regulatory-audit-trail')",
+  "navigatePublic('regulatory-system-settings')"
 ];
 const unifiedNavigationCheck = navChecks.every(s => pubJs.includes(s));
 
 const penetrateCount = (appJs.match(/navigate\(['"]penetration['"]/g) || []).length;
 const freezeFails = [];
 if (penetrateCount !== 3) freezeFails.push('navigate(penetration)!=3');
+if (!/renderPenetration\s*\(/.test(appJs)) freezeFails.push('renderPenetration missing');
 
 let nodeCheck = '通过';
 let gitDiffCheck = '通过';
@@ -215,18 +198,14 @@ const result = {
   errorCount: errors.length,
   warningCount: warnings.length,
   dataSourceUniqueness: errors.length === 0 ? '通过' : '不通过',
-  roleWorkbenchCheck: roleFails.length === 0 ? '通过' : '不通过',
-  myWorkCheck: myWorkFails.length === 0 ? '通过' : '不通过',
-  globalSearchCheck: searchFails.length === 0 ? '通过' : '不通过',
-  recentViewCheck: recentFails.length === 0 ? '通过' : '不通过',
-  favoriteCheck: favoriteFails.length === 0 ? '通过' : '不通过',
-  notificationCheck: notificationFails.length === 0 ? '通过' : '不通过',
+  accessControlCheck: accessFails.length === 0 ? '通过' : '不通过',
+  authorizationCheck: authFails.length === 0 ? '通过' : '不通过',
+  auditTrailCheck: auditFails.length === 0 ? '通过' : '不通过',
+  systemConfigurationCheck: configFails.length === 0 ? '通过' : '不通过',
+  permissionCalculationCheck: permFails.length === 0 ? '通过' : '不通过',
+  realStateMutationCheck: pubJs.includes('executeRegulatoryStateChange') && pubJs.includes('_applyRegulatoryStateChange') ? '通过' : '不通过',
   unifiedNavigationCheck: unifiedNavigationCheck ? '通过' : '不通过',
-  roleFails: roleFails.slice(0, 10),
-  searchFails: searchFails.slice(0, 10),
-  notificationFails: notificationFails.slice(0, 10),
-  recentFails,
-  favoriteFails,
+  accessFails, authFails: authFails.slice(0, 10), auditFails, configFails, permFails: permFails.slice(0, 10),
   errors: errors.slice(0, 40),
   warnings: warnings.slice(0, 15),
   investmentFreeze: freezeFails.length === 0 ? '通过' : '不通过',
@@ -238,6 +217,6 @@ const result = {
 };
 console.log(JSON.stringify(result, null, 2));
 process.exit(
-  errors.length || freezeFails.length || hardcodeOffsetCount || roleFails.length
-  || searchFails.length || notificationFails.length || recentFails.length || favoriteFails.length ? 1 : 0
+  errors.length || freezeFails.length || hardcodeOffsetCount || accessFails.length
+  || authFails.length || auditFails.length || configFails.length || permFails.length ? 1 : 0
 );

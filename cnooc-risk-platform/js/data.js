@@ -4498,3 +4498,157 @@ Object.assign(APP_DATA, {
   APP_DATA.regulatoryRecentViews = [];
   APP_DATA.regulatoryFavorites = [];
 })();
+
+(function () {
+  const TODAY = '2026-07-22';
+  const roles = APP_DATA.regulatoryRoleProfiles || [];
+  const entities = APP_DATA.globalLegalEntities || [];
+  const regions = APP_DATA.globalRegions || [];
+  const domains = APP_DATA.regulationDomains || [];
+  const changeRequests = APP_DATA.regulatoryRuleChangeRequests || [];
+  const ruleApprovals = APP_DATA.regulatoryRuleApprovals || [];
+  const deployments = APP_DATA.regulatoryRuleDeployments || [];
+  const actions = APP_DATA.regulatoryActions || [];
+  const rects = APP_DATA.rectificationTasks || [];
+  const supTasks = APP_DATA.regulatorySupervisionTasks || [];
+  const objectives = APP_DATA.regulatoryStrategicObjectives || [];
+  const annualPlans = APP_DATA.regulatoryAnnualPlans || [];
+  const focusItems = APP_DATA.regulatoryStrategicFocus || [];
+  const entityReg = entities.find(e => e.entityId !== 'G001') || entities[0];
+
+  const users = [
+    { userId: 'U-GROUP-LEADER', userName: '张建国', userType: 'GROUP_LEADER', organizationId: 'ORG-HQ', status: 'ACTIVE', lastLoginAt: null },
+    { userId: 'U-GROUP-REG', userName: '李监管', userType: 'GROUP_REGULATORY', organizationId: 'ORG-REG', status: 'ACTIVE', lastLoginAt: null },
+    { userId: 'U-DOMAIN-REG', userName: '王领域', userType: 'DOMAIN_REGULATOR', organizationId: 'ORG-DOMAIN-INV', status: 'ACTIVE', lastLoginAt: null },
+    { userId: 'U-ENTITY-REG', userName: '赵法人', userType: 'ENTITY_REGULATOR', organizationId: entityReg?.entityId || 'A001', status: 'ACTIVE', lastLoginAt: null }
+  ];
+
+  const assignments = [
+    { assignmentId: 'ASG-001', userId: 'U-GROUP-LEADER', roleId: 'ROLE-GROUP-LEADER', scopeType: 'GROUP', scopeIds: ['G001'], status: 'ACTIVE', effectiveFrom: '2026-01-01', effectiveTo: null },
+    { assignmentId: 'ASG-002', userId: 'U-GROUP-REG', roleId: 'ROLE-GROUP-REG', scopeType: 'GROUP', scopeIds: ['G001'], status: 'ACTIVE', effectiveFrom: '2026-01-01', effectiveTo: null },
+    { assignmentId: 'ASG-003', userId: 'U-DOMAIN-REG', roleId: 'ROLE-DOMAIN-REG', scopeType: 'DOMAIN', scopeIds: ['investment'], status: 'ACTIVE', effectiveFrom: '2026-01-01', effectiveTo: null },
+    { assignmentId: 'ASG-004', userId: 'U-ENTITY-REG', roleId: 'ROLE-ENTITY-REG', scopeType: 'ENTITY', scopeIds: [entityReg?.entityId || 'A001'], status: 'ACTIVE', effectiveFrom: '2026-01-01', effectiveTo: null }
+  ];
+
+  const permissionSets = [
+    { permissionSetId: 'PS-001', permissionCode: 'ACTION_VIEW', resourceType: 'regulatoryActions', action: 'VIEW', riskLevel: 'LOW' },
+    { permissionSetId: 'PS-002', permissionCode: 'ACTION_ASSIGN', resourceType: 'regulatoryActions', action: 'ASSIGN', riskLevel: 'MEDIUM' },
+    { permissionSetId: 'PS-003', permissionCode: 'ACTION_APPROVE', resourceType: 'regulatoryActions', action: 'APPROVE', riskLevel: 'HIGH' },
+    { permissionSetId: 'PS-004', permissionCode: 'ACTION_CLOSE', resourceType: 'regulatoryActions', action: 'CLOSE', riskLevel: 'HIGH' },
+    { permissionSetId: 'PS-005', permissionCode: 'RULE_SIMULATE', resourceType: 'regulatoryRules', action: 'SIMULATE', riskLevel: 'MEDIUM' },
+    { permissionSetId: 'PS-006', permissionCode: 'RULE_APPROVE', resourceType: 'regulatoryRuleChangeRequests', action: 'APPROVE', riskLevel: 'HIGH' },
+    { permissionSetId: 'PS-007', permissionCode: 'RULE_PUBLISH', resourceType: 'regulatoryRuleDeployments', action: 'PUBLISH', riskLevel: 'CRITICAL' },
+    { permissionSetId: 'PS-008', permissionCode: 'RULE_ROLLBACK', resourceType: 'regulatoryRuleDeployments', action: 'ROLLBACK', riskLevel: 'CRITICAL' },
+    { permissionSetId: 'PS-009', permissionCode: 'RECTIFICATION_CLOSE', resourceType: 'rectificationTasks', action: 'CLOSE', riskLevel: 'HIGH' },
+    { permissionSetId: 'PS-010', permissionCode: 'RECTIFICATION_DEFER', resourceType: 'rectificationTasks', action: 'DEFER', riskLevel: 'HIGH' },
+    { permissionSetId: 'PS-011', permissionCode: 'STRATEGY_OVERRIDE', resourceType: 'regulatoryStrategyAnalysis', action: 'OVERRIDE', riskLevel: 'CRITICAL' },
+    { permissionSetId: 'PS-012', permissionCode: 'TASK_ASSIGN', resourceType: 'regulatorySupervisionTasks', action: 'ASSIGN', riskLevel: 'MEDIUM' },
+    { permissionSetId: 'PS-013', permissionCode: 'CONFIG_VIEW', resourceType: 'regulatorySystemConfigurations', action: 'VIEW', riskLevel: 'LOW' },
+    { permissionSetId: 'PS-014', permissionCode: 'CONFIG_CHANGE', resourceType: 'regulatorySystemConfigurations', action: 'UPDATE', riskLevel: 'HIGH' },
+    { permissionSetId: 'PS-015', permissionCode: 'ACCESS_MANAGE', resourceType: 'regulatoryRoleAssignments', action: 'MANAGE', riskLevel: 'CRITICAL' },
+    { permissionSetId: 'PS-016', permissionCode: 'AUDIT_EXPORT', resourceType: 'regulatoryAuditLogs', action: 'EXPORT', riskLevel: 'HIGH' }
+  ];
+
+  const rolePermissionMap = {
+    'ROLE-GROUP-LEADER': ['ACTION_VIEW', 'ACTION_APPROVE', 'RULE_APPROVE', 'RULE_PUBLISH', 'STRATEGY_OVERRIDE', 'CONFIG_VIEW', 'AUDIT_EXPORT'],
+    'ROLE-GROUP-REG': ['ACTION_VIEW', 'ACTION_ASSIGN', 'ACTION_APPROVE', 'ACTION_CLOSE', 'RULE_SIMULATE', 'RULE_APPROVE', 'RULE_PUBLISH', 'RECTIFICATION_CLOSE', 'RECTIFICATION_DEFER', 'TASK_ASSIGN', 'CONFIG_VIEW', 'CONFIG_CHANGE', 'ACCESS_MANAGE', 'AUDIT_EXPORT'],
+    'ROLE-DOMAIN-REG': ['ACTION_VIEW', 'ACTION_ASSIGN', 'TASK_ASSIGN', 'RECTIFICATION_CLOSE', 'CONFIG_VIEW'],
+    'ROLE-ENTITY-REG': ['ACTION_VIEW', 'CONFIG_VIEW']
+  };
+
+  const scopeMatrix = roles.map(r => ({
+    roleId: r.roleId,
+    roleName: r.roleName,
+    group: r.roleType === 'GROUP_LEADER' || r.roleType === 'GROUP_REGULATORY' ? '全部' : r.roleType === 'ENTITY_REGULATOR' ? '本法人' : '查看',
+    region: r.roleType === 'GROUP_LEADER' || r.roleType === 'GROUP_REGULATORY' ? '全部' : r.roleType === 'ENTITY_REGULATOR' ? '本法人' : '查看',
+    country: r.roleType === 'GROUP_LEADER' || r.roleType === 'GROUP_REGULATORY' ? '全部' : r.roleType === 'ENTITY_REGULATOR' ? '本法人' : '查看',
+    entity: r.roleType === 'GROUP_LEADER' || r.roleType === 'GROUP_REGULATORY' ? '全部' : r.roleType === 'ENTITY_REGULATOR' ? '本法人' : '授权范围',
+    project: r.roleType === 'GROUP_LEADER' ? '查看' : r.roleType === 'GROUP_REGULATORY' ? '查看' : r.roleType === 'ENTITY_REGULATOR' ? '本法人' : '查看',
+    domain: r.roleType === 'GROUP_REGULATORY' ? '管理' : r.roleType === 'DOMAIN_REGULATOR' ? '本领域' : '查看'
+  }));
+
+  const authRequests = [];
+  let authSeq = 1;
+  const mkAuth = (item) => {
+    authRequests.push({
+      authorizationId: 'AUTH-' + String(authSeq++).padStart(3, '0'),
+      requestType: item.requestType,
+      requesterId: item.requesterId || 'U-GROUP-REG',
+      targetObjectType: item.targetObjectType,
+      targetObjectId: item.targetObjectId,
+      requestedAction: item.requestedAction,
+      reason: item.reason || '',
+      status: item.status || 'SUBMITTED',
+      approvalStage: item.approvalStage || 'BUSINESS_REVIEW',
+      riskLevel: item.riskLevel || 'HIGH',
+      submittedAt: item.submittedAt || TODAY + 'T08:00:00',
+      dueAt: item.dueAt || TODAY + 'T18:00:00',
+      approverRole: item.approverRole || 'ROLE-GROUP-LEADER',
+      relatedRiskIds: item.relatedRiskIds || [],
+      relatedActionIds: item.relatedActionIds || [],
+      relatedEventIds: item.relatedEventIds || [],
+      sourceType: item.sourceType,
+      sourceId: item.sourceId,
+      nextPageId: item.nextPageId
+    });
+  };
+
+  changeRequests.filter(cr => ['PENDING_APPROVAL', 'IMPACT_ASSESSED', 'DRAFT'].includes(cr.status)).forEach(cr => {
+    mkAuth({ requestType: 'RULE_CHANGE', requesterId: 'U-GROUP-REG', targetObjectType: 'regulatoryRuleChangeRequests', targetObjectId: cr.changeRequestId, requestedAction: 'APPROVE', reason: cr.changeDescription || cr.reason, status: cr.status === 'PENDING_APPROVAL' ? 'IN_REVIEW' : 'SUBMITTED', approvalStage: 'REGULATORY_REVIEW', riskLevel: 'HIGH', sourceType: 'regulatoryRuleChangeRequests', sourceId: cr.changeRequestId, nextPageId: 'regulatory-rule-approvals' });
+  });
+  ruleApprovals.filter(a => ['PENDING', 'IN_REVIEW'].includes(a.approvalStatus)).forEach(apr => {
+    mkAuth({ requestType: 'RULE_APPROVAL', targetObjectType: 'regulatoryRuleApprovals', targetObjectId: apr.approvalId, requestedAction: 'APPROVE', reason: apr.approvalStage, status: 'IN_REVIEW', approvalStage: apr.approvalStage || 'FINAL_APPROVAL', riskLevel: 'HIGH', sourceType: 'regulatoryRuleApprovals', sourceId: apr.approvalId, nextPageId: 'regulatory-rule-approvals' });
+  });
+  deployments.filter(d => d.deploymentStatus === 'PENDING').forEach(dep => {
+    mkAuth({ requestType: 'RULE_DEPLOY', targetObjectType: 'regulatoryRuleDeployments', targetObjectId: dep.deploymentId, requestedAction: 'PUBLISH', reason: dep.deploymentNotes || '规则版本待发布', status: 'SUBMITTED', approvalStage: 'FINAL_APPROVAL', riskLevel: 'CRITICAL', sourceType: 'regulatoryRuleDeployments', sourceId: dep.deploymentId, nextPageId: 'regulatory-rule-deployments' });
+  });
+  actions.filter(a => a.status === 'RECOMMENDED').slice(0, 4).forEach(act => {
+    mkAuth({ requestType: 'ACTION_ASSIGN', targetObjectType: 'regulatoryActions', targetObjectId: act.actionId, requestedAction: 'ASSIGN', reason: act.triggerReason || act.recommendedAction, status: 'SUBMITTED', approvalStage: 'BUSINESS_REVIEW', riskLevel: act.priority === 'CRITICAL' ? 'CRITICAL' : 'HIGH', relatedActionIds: [act.actionId], relatedEventIds: act.sourceEventIds || [], sourceType: 'regulatoryActions', sourceId: act.actionId, nextPageId: 'regulatory-actions' });
+  });
+  rects.filter(t => t.status === '整改验证' || t.verificationStatus === '验证中').slice(0, 3).forEach(t => {
+    mkAuth({ requestType: 'RECTIFICATION_CLOSE', targetObjectType: 'rectificationTasks', targetObjectId: t.taskId, requestedAction: 'CLOSE', reason: t.measure || '申请关闭整改', status: 'IN_REVIEW', approvalStage: 'RISK_REVIEW', riskLevel: 'HIGH', relatedRiskIds: t.riskMatterId ? [t.riskMatterId] : [], sourceType: 'rectificationTasks', sourceId: t.taskId, nextPageId: 'rectification' });
+  });
+  supTasks.filter(t => t.taskStatus === 'RECOMMENDED').slice(0, 2).forEach(task => {
+    mkAuth({ requestType: 'TASK_ASSIGN', targetObjectType: 'regulatorySupervisionTasks', targetObjectId: task.supervisionTaskId, requestedAction: 'ASSIGN', reason: task.outcomeTarget, status: 'SUBMITTED', riskLevel: 'MEDIUM', relatedActionIds: task.relatedRegulatoryActionIds || [], sourceType: 'regulatorySupervisionTasks', sourceId: task.supervisionTaskId, nextPageId: 'regulatory-supervision-tasks' });
+  });
+  objectives.filter(o => o.status === 'BEHIND').slice(0, 2).forEach(o => {
+    mkAuth({ requestType: 'STRATEGY_ADJUST', targetObjectType: 'regulatoryStrategicObjectives', targetObjectId: o.objectiveId, requestedAction: 'OVERRIDE', reason: '战略目标偏差调整', status: 'SUBMITTED', riskLevel: 'HIGH', sourceType: 'regulatoryStrategicObjectives', sourceId: o.objectiveId, nextPageId: 'regulatory-strategy-planning' });
+  });
+  annualPlans.filter(p => p.planStatus === 'AT_RISK').slice(0, 2).forEach(p => {
+    mkAuth({ requestType: 'PLAN_ADJUST', targetObjectType: 'regulatoryAnnualPlans', targetObjectId: p.planId, requestedAction: 'UPDATE', reason: '年度计划偏差调整', status: 'SUBMITTED', riskLevel: 'MEDIUM', sourceType: 'regulatoryAnnualPlans', sourceId: p.planId, nextPageId: 'regulatory-annual-plan' });
+  });
+  focusItems.slice(0, 2).forEach(f => {
+    mkAuth({ requestType: 'FOCUS_ADJUST', targetObjectType: 'regulatoryStrategicFocus', targetObjectId: f.focusId, requestedAction: 'UPDATE', reason: '年度监管重点调整', status: 'DRAFT', riskLevel: 'MEDIUM', sourceType: 'regulatoryStrategicFocus', sourceId: f.focusId, nextPageId: 'regulatory-focus-management' });
+  });
+
+  const systemConfigurations = [
+    { configId: 'CFG-001', configKey: 'SYS_PRIORITY_ALERT_THRESHOLD', configValue: '85', configType: 'PRIORITY_THRESHOLD', status: 'ACTIVE', effectiveAt: '2026-01-01T00:00:00', changedBy: 'SYSTEM', description: 'CRITICAL 优先级告警阈值（非规则参数）' },
+    { configId: 'CFG-002', configKey: 'ACTION_OVERDUE_DAYS', configValue: '7', configType: 'ACTION_THRESHOLD', status: 'ACTIVE', effectiveAt: '2026-01-01T00:00:00', changedBy: 'SYSTEM', description: '监管行动超期天数' },
+    { configId: 'CFG-003', configKey: 'NOTIFICATION_ESCALATION_HOURS', configValue: '24', configType: 'NOTIFICATION_RULE', status: 'ACTIVE', effectiveAt: '2026-01-01T00:00:00', changedBy: 'SYSTEM', description: '通知升级小时数' },
+    { configId: 'CFG-004', configKey: 'SYS_MATURITY_ALERT_THRESHOLD', configValue: '70', configType: 'MATURITY_THRESHOLD', status: 'ACTIVE', effectiveAt: '2026-01-01T00:00:00', changedBy: 'SYSTEM', description: '成熟度告警阈值（非规则参数）' },
+    { configId: 'CFG-005', configKey: 'DATA_QUALITY_ALERT_THRESHOLD', configValue: '0.85', configType: 'DATA_QUALITY_THRESHOLD', status: 'ACTIVE', effectiveAt: '2026-01-01T00:00:00', changedBy: 'SYSTEM', description: '数据质量告警阈值' },
+    { configId: 'CFG-006', configKey: 'TARGET_AT_RISK_RATIO', configValue: '0.8', configType: 'TARGET_THRESHOLD', status: 'ACTIVE', effectiveAt: '2026-01-01T00:00:00', changedBy: 'SYSTEM', description: '目标预警完成率' },
+    { configId: 'CFG-007', configKey: 'QUEUE_ESCALATION_OVERDUE', configValue: 'true', configType: 'QUEUE_RULE', status: 'ACTIVE', effectiveAt: '2026-01-01T00:00:00', changedBy: 'SYSTEM', description: '待办超期自动升级' }
+  ];
+
+  APP_DATA.regulatoryUsers = users;
+  APP_DATA.regulatoryRoleAssignments = assignments;
+  APP_DATA.regulatoryPermissionSets = permissionSets;
+  APP_DATA.regulatoryRolePermissionMap = rolePermissionMap;
+  APP_DATA.regulatoryScopeMatrix = scopeMatrix;
+  APP_DATA.regulatoryAuthorizationRequests = authRequests;
+  APP_DATA.regulatoryAuditLogs = [];
+  APP_DATA.regulatorySystemConfigurations = systemConfigurations;
+  APP_DATA.regulatoryAccessControlMetrics = {
+    userCount: users.length,
+    roleCount: roles.length,
+    assignmentCount: assignments.length,
+    permissionSetCount: permissionSets.length,
+    pendingAuthorizationCount: authRequests.filter(a => ['SUBMITTED', 'IN_REVIEW', 'DRAFT'].includes(a.status)).length,
+    permissionAnomalyCount: 0,
+    changesLast30Days: assignments.length,
+    auditLogCount: 0,
+    highRiskPendingCount: authRequests.filter(a => ['CRITICAL', 'HIGH'].includes(a.riskLevel) && ['SUBMITTED', 'IN_REVIEW'].includes(a.status)).length,
+    auditAnomalyCount: 0
+  };
+})();
