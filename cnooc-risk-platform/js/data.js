@@ -2851,3 +2851,435 @@ Object.assign(APP_DATA, {
   APP_DATA.regulatoryRuleRuntimeAnomalies = anomalies;
   APP_DATA.regulatoryRuleExecutionMetrics = executionMetrics;
 })();
+
+(function () {
+  const TODAY = '2026-07-22';
+  const PERIOD = '2026-07';
+  const entities = APP_DATA.globalLegalEntities || [];
+  const regions = APP_DATA.globalRegions || [];
+  const countries = APP_DATA.globalCountries || [];
+  const projects = APP_DATA.globalProjects || [];
+  const domains = APP_DATA.regulationDomains || [];
+  const events = APP_DATA.regulatoryEvents || [];
+  const warnings = APP_DATA.warnings || [];
+  const rects = APP_DATA.rectificationTasks || [];
+  const actions = APP_DATA.regulatoryActions || [];
+  const quality = APP_DATA.dataQualityIssues || [];
+  const cbActs = APP_DATA.crossBorderDataActivities || [];
+  const cdrMatters = APP_DATA.crossDomainRiskMatters || [];
+  const health = APP_DATA.regulatoryHealthScores || {};
+  const entityHealth = health.entities || [];
+  const priorities = APP_DATA.regulatoryPrioritiesRecalculated || APP_DATA.regulatoryPriorities || {};
+  const maturity = APP_DATA.regulatoryMaturity || {};
+  const actionEff = APP_DATA.regulatoryActionEfficiency || {};
+
+  const dayDiff = (a, b) => {
+    if (!a || !b) return null;
+    return Math.round((new Date(b.replace(/-/g, '/')) - new Date(a.replace(/-/g, '/'))) / 86400000);
+  };
+  const pct = (n, d) => (d ? n / d : 0);
+  const perfLevel = (score) => score >= 85 ? 'EXCELLENT' : score >= 70 ? 'GOOD' : score >= 55 ? 'FAIR' : 'POOR';
+
+  const entityIdsForScope = (scopeType, scopeId) => {
+    if (scopeType === 'GROUP') return entities.filter(e => e.entityId !== 'G001').map(e => e.entityId);
+    if (scopeType === 'REGION') return entities.filter(e => e.regionId === scopeId && e.entityId !== 'G001').map(e => e.entityId);
+    if (scopeType === 'COUNTRY') return entities.filter(e => e.countryId === scopeId).map(e => e.entityId);
+    if (scopeType === 'ENTITY') return scopeId ? [scopeId] : [];
+    if (scopeType === 'PROJECT') {
+      const p = projects.find(x => x.projectId === scopeId);
+      return p ? [p.entityId] : [];
+    }
+    if (scopeType === 'DOMAIN') {
+      const evEnts = [...new Set(events.filter(e => e.domainId === scopeId).map(e => e.entityId).filter(Boolean))];
+      return evEnts.length ? evEnts : entities.filter(e => e.entityId !== 'G001').map(e => e.entityId);
+    }
+    return [];
+  };
+
+  const calcPerformance = (scopeType, scopeId, opts) => {
+    const o = opts || {};
+    const eids = entityIdsForScope(scopeType, scopeId);
+    const entitySet = new Set(eids);
+    const entEvents = events.filter(e => entitySet.has(e.entityId));
+    const entRects = rects.filter(t => entitySet.has(t.entityId));
+    const entActions = actions.filter(a => entitySet.has(a.entityId));
+    const entWarnings = warnings.filter(w => entitySet.has(w.entityId));
+    const entEntities = entities.filter(e => entitySet.has(e.entityId));
+
+    const detectedWarnings = entWarnings.filter(w => entEvents.some(e => e.riskMatterId === w.id || (e.entityId === w.entityId && e.eventType === 'RISK_MATTER')));
+    const eventDetectionRate = entWarnings.length ? pct(detectedWarnings.length, entWarnings.length) : (entEvents.length ? 0.92 : 1);
+
+    const highRiskEvents = entEvents.filter(e => e.riskLevel === 'HIGH');
+    const resolvedHigh = highRiskEvents.filter(e => e.status === 'CLOSED');
+    const highRiskResolutionRate = highRiskEvents.length ? pct(resolvedHigh.length, highRiskEvents.length) : 1;
+
+    const closedRects = entRects.filter(t => t.status === '已关闭' || t.closedAt);
+    const rectificationClosureRate = entRects.length ? pct(closedRects.length, entRects.length) : 1;
+
+    const completedActions = entActions.filter(a => ['COMPLETED', 'VERIFIED'].includes(a.status));
+    const verifiedActions = entActions.filter(a => a.status === 'VERIFIED');
+    const actionCompletionRate = entActions.length ? pct(completedActions.length, entActions.length) : 0;
+    const actionVerificationRate = entActions.length ? pct(verifiedActions.length, entActions.length) : 0;
+
+    const closedWithDates = closedRects.filter(t => t.closedAt);
+    const rectDays = closedWithDates.map(t => dayDiff(t.deadline || t.createdAt || '2026-06-01', t.closedAt)).filter(d => d !== null);
+    const averageRectificationDays = rectDays.length ? Math.round(rectDays.reduce((s, d) => s + d, 0) / rectDays.length) : (entRects.length ? 18 : 0);
+
+    const overdueNow = entRects.filter(t => t.deadline && t.deadline < TODAY && t.status !== '已关闭' && !t.closedAt).length;
+    const overdueBaseline = Math.max(overdueNow, entRects.filter(t => t.status !== '已关闭').length);
+    const overdueReductionRate = overdueBaseline ? Math.max(0, 1 - overdueNow / overdueBaseline) : 0;
+
+    const qualObjs = (APP_DATA.dataObjects || []).filter(obj => entitySet.has(obj.entityId));
+    const qualIssues = quality.filter(q => qualObjs.some(obj => obj.objectId === q.objectId));
+    const resolvedQual = qualIssues.filter(q => q.status === '已关闭' || q.status === '已修复' || q.status === '已处理');
+    const dataQualityImprovementRate = qualIssues.length ? pct(resolvedQual.length, qualIssues.length) : 0;
+
+    const kriTotal = entEntities.reduce((s, e) => s + (e.kriExceptionCount || 0), 0);
+    const kriEvents = entEvents.filter(e => e.kriId).length;
+    const kriExceptionReductionRate = kriTotal > 0 ? Math.min(0.5, pct(Math.max(0, kriTotal - kriEvents), kriTotal)) : (kriEvents ? 0.1 : 0.21);
+
+    const regulatoryEffectivenessScore = Math.round(
+      eventDetectionRate * 15 +
+      highRiskResolutionRate * 20 +
+      rectificationClosureRate * 20 +
+      actionVerificationRate * 15 +
+      dataQualityImprovementRate * 10 +
+      kriExceptionReductionRate * 10 +
+      overdueReductionRate * 10
+    );
+
+    const matEnt = scopeType === 'ENTITY' ? (maturity.entityMaturity || []).find(x => x.objectId === scopeId) : null;
+    const matReg = scopeType === 'REGION' ? (maturity.regionMaturity || []).find(x => x.objectId === scopeId) : null;
+
+    return {
+      performanceId: o.performanceId,
+      scopeType,
+      scopeId,
+      entityId: scopeType === 'ENTITY' ? scopeId : (eids[0] || null),
+      period: PERIOD,
+      eventDetectionRate: +eventDetectionRate.toFixed(2),
+      highRiskResolutionRate: +highRiskResolutionRate.toFixed(2),
+      rectificationClosureRate: +rectificationClosureRate.toFixed(2),
+      actionCompletionRate: +actionCompletionRate.toFixed(2),
+      actionVerificationRate: +actionVerificationRate.toFixed(2),
+      averageRectificationDays,
+      overdueReductionRate: +overdueReductionRate.toFixed(2),
+      dataQualityImprovementRate: +dataQualityImprovementRate.toFixed(2),
+      kriExceptionReductionRate: +kriExceptionReductionRate.toFixed(2),
+      regulatoryEffectivenessScore,
+      performanceLevel: perfLevel(regulatoryEffectivenessScore),
+      maturityLevel: matEnt ? matEnt.level : matReg ? matReg.level : (maturity.overallLevel || 'L3'),
+      sourceMetricIds: (actionEff.overall ? ['MET-ACT-COMP', 'MET-RECT-CLOSE'] : []).filter(Boolean),
+      calculatedAt: TODAY + 'T10:00:00'
+    };
+  };
+
+  const performanceMetrics = [];
+  let perfSeq = 1;
+  const addPerf = (scopeType, scopeId) => {
+    const p = calcPerformance(scopeType, scopeId, { performanceId: 'PERF-' + String(perfSeq++).padStart(3, '0') });
+    performanceMetrics.push(p);
+    return p;
+  };
+
+  addPerf('GROUP', 'G001');
+  regions.forEach(r => addPerf('REGION', r.regionId));
+  countries.forEach(c => addPerf('COUNTRY', c.countryId));
+  entities.filter(e => e.entityId !== 'G001').forEach(e => addPerf('ENTITY', e.entityId));
+  projects.forEach(p => addPerf('PROJECT', p.projectId));
+  domains.forEach(d => addPerf('DOMAIN', d.id));
+
+  const groupPerf = performanceMetrics.find(p => p.scopeType === 'GROUP');
+
+  const eventTrends = APP_DATA.regulatoryEventTrends || {};
+  const hasHist7 = (eventTrends['7'] || {}).newCount !== undefined;
+  const hasHist30 = (eventTrends['30'] || {}).newCount !== undefined;
+  const buildPerfTrend = (days) => {
+    const trendKey = String(days);
+    const et = eventTrends[trendKey];
+    if (!et || et.dataStatus === 'INSUFFICIENT_HISTORY') return { dataStatus: 'INSUFFICIENT_HISTORY', period: days };
+    const gp = groupPerf || {};
+    const factor = days === 7 ? 0.97 : days === 30 ? 0.94 : 0.9;
+    return {
+      period: days,
+      dataStatus: 'CALCULATED',
+      effectiveness: +(gp.regulatoryEffectivenessScore * factor / 100).toFixed(2),
+      rectificationClosureRate: +(gp.rectificationClosureRate * (factor + 0.02)).toFixed(2),
+      actionVerificationRate: +(gp.actionVerificationRate * factor).toFixed(2),
+      highRiskResolutionRate: +(gp.highRiskResolutionRate * factor).toFixed(2)
+    };
+  };
+
+  const performanceTrends = {
+    '7': hasHist7 ? buildPerfTrend(7) : { dataStatus: 'INSUFFICIENT_HISTORY', period: 7 },
+    '30': hasHist30 ? buildPerfTrend(30) : { dataStatus: 'INSUFFICIENT_HISTORY', period: 30 },
+    '90': hasHist30 ? buildPerfTrend(90) : { dataStatus: 'INSUFFICIENT_HISTORY', period: 90 }
+  };
+
+  const allocations = [];
+  let allocSeq = 1;
+  const mkAlloc = (base) => {
+    const a = {
+      allocationId: 'ALLOC-' + String(allocSeq++).padStart(3, '0'),
+      entityId: base.entityId,
+      regionId: base.regionId,
+      resourceType: base.resourceType,
+      priority: base.priority,
+      allocatedLevel: base.allocatedLevel,
+      sourceActionIds: base.sourceActionIds || [],
+      sourceRiskMatterIds: base.sourceRiskMatterIds || [],
+      sourceEventIds: base.sourceEventIds || [],
+      responsibleDepartment: base.responsibleDepartment || '集团风险管理部',
+      collaboratingDepartments: base.collaboratingDepartments || [],
+      allocationStatus: base.allocationStatus || 'ACTIVE',
+      allocatedAt: base.allocatedAt || TODAY + 'T09:00:00',
+      expectedOutcome: base.expectedOutcome || '降低高风险事件和超期整改'
+    };
+    allocations.push(a);
+    return a;
+  };
+
+  entities.filter(e => e.entityId !== 'G001').forEach(e => {
+    const p = priorities[e.entityId];
+    if (!p || p.priority === 'LOW') return;
+    const evts = events.filter(ev => ev.entityId === e.entityId);
+    const entActions = actions.filter(a => a.entityId === e.entityId);
+    const entRects = rects.filter(t => t.entityId === e.entityId);
+    const overdueRects = entRects.filter(t => t.deadline && t.deadline < TODAY && t.status !== '已关闭');
+    const qualEvts = evts.filter(ev => ev.eventType === 'DATA_QUALITY');
+    const cbEvts = evts.filter(ev => ev.eventType === 'CROSS_BORDER');
+    const cdrEvts = evts.filter(ev => ev.eventType === 'CROSS_DOMAIN');
+    const riskIds = warnings.filter(w => w.entityId === e.entityId).map(w => w.id);
+    const collab = (APP_DATA.crossDomainResponsibilities || []).filter(r => r.entityId === e.entityId).flatMap(r => r.collaboratingDepartments || []);
+
+    if (p.priority === 'CRITICAL') {
+      mkAlloc({ entityId: e.entityId, regionId: e.regionId, resourceType: 'SPECIAL_REVIEW', priority: 'CRITICAL', allocatedLevel: 'HIGH', sourceActionIds: entActions.filter(a => a.actionType === 'FOCUS_SUPERVISION').map(a => a.actionId), sourceRiskMatterIds: riskIds, sourceEventIds: evts.map(x => x.eventId), collaboratingDepartments: collab, expectedOutcome: '完成重点法人专项监管复核' });
+    }
+    if (p.priority === 'HIGH' && cbEvts.length) {
+      mkAlloc({ entityId: e.entityId, regionId: e.regionId, resourceType: 'CROSS_BORDER_REVIEW', priority: 'HIGH', allocatedLevel: 'HIGH', sourceActionIds: entActions.filter(a => a.actionType === 'CROSS_BORDER_REVIEW').map(a => a.actionId), sourceRiskMatterIds: cbEvts.map(x => x.riskMatterId).filter(Boolean), sourceEventIds: cbEvts.map(x => x.eventId), expectedOutcome: '完成跨境数据合规专项复核' });
+    }
+    if (p.priority === 'HIGH' && qualEvts.length) {
+      mkAlloc({ entityId: e.entityId, regionId: e.regionId, resourceType: 'DATA_GOVERNANCE', priority: 'HIGH', allocatedLevel: 'MEDIUM', sourceActionIds: entActions.filter(a => a.actionType === 'DATA_QUALITY_REMEDIATION').map(a => a.actionId), sourceRiskMatterIds: qualEvts.map(x => x.riskMatterId).filter(Boolean), sourceEventIds: qualEvts.map(x => x.eventId), expectedOutcome: '提升数据质量与治理水平' });
+    }
+    if (p.priority === 'HIGH' && cdrEvts.length) {
+      mkAlloc({ entityId: e.entityId, regionId: e.regionId, resourceType: 'CROSS_DOMAIN_COORDINATION', priority: 'HIGH', allocatedLevel: 'MEDIUM', sourceActionIds: entActions.filter(a => a.actionType === 'CROSS_DOMAIN_COORDINATION').map(a => a.actionId), sourceRiskMatterIds: cdrMatters.filter(m => (m.entityIds || []).includes(e.entityId)).map(m => m.riskMatterId), sourceEventIds: cdrEvts.map(x => x.eventId), collaboratingDepartments: collab, expectedOutcome: '协调跨领域风险处置' });
+    }
+    if (overdueRects.length) {
+      mkAlloc({ entityId: e.entityId, regionId: e.regionId, resourceType: 'RECTIFICATION_SUPPORT', priority: overdueRects.length >= 2 ? 'CRITICAL' : 'HIGH', allocatedLevel: 'HIGH', sourceActionIds: entActions.filter(a => a.actionType === 'ESCALATE_RECTIFICATION').map(a => a.actionId), sourceRiskMatterIds: riskIds.filter(id => warnings.find(w => w.id === id && w.rectificationTaskId)), sourceEventIds: evts.filter(x => x.rectificationTaskId).map(x => x.eventId), expectedOutcome: '推动超期整改闭环' });
+    }
+    if ((p.priority === 'HIGH' || p.priority === 'MEDIUM') && !allocations.some(a => a.entityId === e.entityId)) {
+      mkAlloc({ entityId: e.entityId, regionId: e.regionId, resourceType: 'SUPERVISION', priority: p.priority, allocatedLevel: p.priority === 'HIGH' ? 'MEDIUM' : 'LOW', sourceActionIds: entActions.slice(0, 2).map(a => a.actionId), sourceRiskMatterIds: riskIds.slice(0, 3), sourceEventIds: evts.slice(0, 3).map(x => x.eventId), expectedOutcome: '加强常规监管监测' });
+    }
+  });
+
+  const supervisionTasks = [];
+  let supSeq = 1;
+  const taskStatuses = ['RECOMMENDED', 'ASSIGNED', 'IN_PROGRESS', 'WAITING_RESULT', 'COMPLETED', 'EVALUATED'];
+  allocations.forEach((alloc, idx) => {
+    const ent = entities.find(e => e.entityId === alloc.entityId);
+    const entActions = actions.filter(a => alloc.sourceActionIds.includes(a.actionId));
+    const entRects = rects.filter(t => t.entityId === alloc.entityId && t.status !== '已关闭');
+    const status = taskStatuses[Math.min(idx % taskStatuses.length, taskStatuses.length - 1)];
+    const progressMap = { RECOMMENDED: 0, ASSIGNED: 20, IN_PROGRESS: 40, WAITING_RESULT: 70, COMPLETED: 90, EVALUATED: 100 };
+    supervisionTasks.push({
+      supervisionTaskId: 'SUP-' + String(supSeq++).padStart(3, '0'),
+      taskType: alloc.resourceType,
+      entityId: alloc.entityId,
+      regionId: alloc.regionId,
+      sourceActionIds: alloc.sourceActionIds,
+      sourceEventIds: alloc.sourceEventIds,
+      sourceRiskMatterIds: alloc.sourceRiskMatterIds,
+      responsibleDepartment: alloc.responsibleDepartment,
+      collaboratingDepartments: alloc.collaboratingDepartments,
+      taskStatus: status,
+      progress: progressMap[status] || 0,
+      deadline: status === 'COMPLETED' || status === 'EVALUATED' ? '2026-07-20' : '2026-08-15',
+      outcomeTarget: alloc.expectedOutcome,
+      relatedRectificationTaskIds: entActions.flatMap(a => a.sourceRectificationTaskIds || []).slice(0, 5),
+      relatedRegulatoryActionIds: alloc.sourceActionIds,
+      allocationId: alloc.allocationId,
+      overdue: status !== 'COMPLETED' && status !== 'EVALUATED' && '2026-08-15' < TODAY
+    });
+  });
+
+  const effectiveness = [];
+  let effSeq = 1;
+  allocations.forEach(alloc => {
+    const entEvents = events.filter(e => alloc.sourceEventIds.includes(e.eventId));
+    const entActions = actions.filter(a => alloc.sourceActionIds.includes(a.actionId));
+    const entRects = rects.filter(t => (alloc.sourceActionIds || []).some(aid => {
+      const act = actions.find(a => a.actionId === aid);
+      return act && (act.sourceRectificationTaskIds || []).includes(t.taskId);
+    }));
+    const closedRects = entRects.filter(t => t.status === '已关闭' || t.closedAt);
+    const completedActs = entActions.filter(a => ['COMPLETED', 'VERIFIED'].includes(a.status));
+    const riskCount = (alloc.sourceRiskMatterIds || []).length;
+    const closedRisk = (alloc.sourceRiskMatterIds || []).filter(id => {
+      const w = warnings.find(x => x.id === id);
+      return w && (w.status === '已关闭' || w.status === '已处置');
+    }).length;
+    effectiveness.push({
+      effectivenessId: 'REFF-' + String(effSeq++).padStart(3, '0'),
+      allocationId: alloc.allocationId,
+      entityId: alloc.entityId,
+      inputLevel: alloc.allocatedLevel,
+      sourceEventCount: entEvents.length,
+      sourceRiskCount: riskCount,
+      actionCount: entActions.length,
+      completedActionCount: completedActs.length,
+      closedRectificationCount: closedRects.length,
+      riskReductionRate: riskCount ? +(pct(closedRisk, riskCount)).toFixed(2) : 0,
+      overdueReductionRate: alloc.resourceType === 'RECTIFICATION_SUPPORT' ? +(groupPerf?.overdueReductionRate || 0).toFixed(2) : +(pct(Math.max(0, riskCount - closedRisk), Math.max(1, riskCount)) * 0.24).toFixed(2),
+      kriImprovementRate: +(groupPerf?.kriExceptionReductionRate || 0).toFixed(2),
+      effectivenessScore: Math.round(
+        (completedActs.length / Math.max(1, entActions.length)) * 40 +
+        (closedRects.length / Math.max(1, entRects.length || 1)) * 30 +
+        (closedRisk / Math.max(1, riskCount || 1)) * 30
+      ),
+      effectivenessLevel: 'EFFECTIVE',
+      evaluationStatus: 'CALCULATED'
+    });
+  });
+  effectiveness.forEach(e => {
+    e.effectivenessLevel = e.effectivenessScore >= 80 ? 'EFFECTIVE' : e.effectivenessScore >= 60 ? 'PARTIAL' : 'INEFFECTIVE';
+  });
+
+  const benchmarkPosition = (score, allScores) => {
+    const sorted = [...allScores].sort((a, b) => b - a);
+    const q1 = sorted[Math.floor(sorted.length * 0.25)] || score;
+    const q3 = sorted[Math.floor(sorted.length * 0.75)] || score;
+    if (score >= q1) return 'TOP_QUARTILE';
+    if (score <= q3) return 'BOTTOM_QUARTILE';
+    return 'MIDDLE';
+  };
+
+  const entityPerfs = performanceMetrics.filter(p => p.scopeType === 'ENTITY');
+  const entityScores = entityPerfs.map(p => p.regulatoryEffectivenessScore);
+  const regionPerfs = performanceMetrics.filter(p => p.scopeType === 'REGION');
+  const regionScores = regionPerfs.map(p => p.regulatoryEffectivenessScore);
+  const countryPerfs = performanceMetrics.filter(p => p.scopeType === 'COUNTRY');
+  const countryScores = countryPerfs.map(p => p.regulatoryEffectivenessScore);
+  const domainPerfs = performanceMetrics.filter(p => p.scopeType === 'DOMAIN');
+  const domainScores = domainPerfs.map(p => p.regulatoryEffectivenessScore);
+
+  const gapDims = (perf, peers) => {
+    const dims = [
+      { key: 'highRiskResolutionRate', label: '风险解决率' },
+      { key: 'rectificationClosureRate', label: '整改闭环率' },
+      { key: 'actionVerificationRate', label: '行动验证率' },
+      { key: 'dataQualityImprovementRate', label: '数据质量改善' },
+      { key: 'kriExceptionReductionRate', label: 'KRI改善' }
+    ];
+    const avgPeer = (key) => peers.length ? peers.reduce((s, p) => s + (p[key] || 0), 0) / peers.length : 0;
+    return dims.map(d => ({
+      dimension: d.label,
+      score: perf[d.key] || 0,
+      peerAverage: +(avgPeer(d.key)).toFixed(2),
+      gap: +((perf[d.key] || 0) - avgPeer(d.key)).toFixed(2),
+      type: (perf[d.key] || 0) >= avgPeer(d.key) ? 'LEAD' : 'LAG'
+    }));
+  };
+
+  const benchmarking = [];
+  let benchSeq = 1;
+  const addBench = (benchmarkType, scopeId, comparedScopes, peerPerfs, allScores) => {
+    const perf = performanceMetrics.find(p => p.scopeType === benchmarkType && p.scopeId === scopeId);
+    if (!perf) return;
+    const gaps = gapDims(perf, peerPerfs.filter(p => p.scopeId !== scopeId));
+    const leads = gaps.filter(g => g.type === 'LEAD').map(g => g.dimension);
+    const lags = gaps.filter(g => g.type === 'LAG').map(g => g.dimension);
+    benchmarking.push({
+      benchmarkId: 'BENCH-' + String(benchSeq++).padStart(3, '0'),
+      benchmarkType,
+      scopeId,
+      comparedScopes,
+      performanceScore: perf.regulatoryEffectivenessScore,
+      maturityLevel: perf.maturityLevel,
+      closureRate: perf.rectificationClosureRate,
+      actionVerificationRate: perf.actionVerificationRate,
+      dataQualityScore: Math.round((perf.dataQualityImprovementRate || 0) * 100),
+      riskResponseScore: Math.round((perf.highRiskResolutionRate || 0) * 100),
+      kriImprovementRate: perf.kriExceptionReductionRate,
+      responseEfficiencyScore: Math.round((perf.actionCompletionRate || 0) * 100),
+      benchmarkPosition: benchmarkPosition(perf.regulatoryEffectivenessScore, allScores),
+      gapDimensions: gaps,
+      leadingDimensions: leads,
+      laggingDimensions: lags,
+      improvementSuggestions: lags.map(d => `加强${d}，对标集团内部领先水平`),
+      sourcePerformanceIds: [perf.performanceId],
+      relatedOptimizationIds: (APP_DATA.regulatoryOptimizationRecommendations || []).filter(r => r.status === 'OPEN').slice(0, 2).map(r => r.recommendationId)
+    });
+  };
+
+  entityPerfs.forEach(p => addBench('ENTITY', p.scopeId, entityPerfs.filter(x => x.scopeId !== p.scopeId).slice(0, 3).map(x => x.scopeId), entityPerfs, entityScores));
+  regionPerfs.forEach(p => addBench('REGION', p.scopeId, regionPerfs.filter(x => x.scopeId !== p.scopeId).map(x => x.scopeId), regionPerfs, regionScores));
+  countryPerfs.slice(0, 6).forEach(p => addBench('COUNTRY', p.scopeId, countryPerfs.filter(x => x.scopeId !== p.scopeId).slice(0, 2).map(x => x.scopeId), countryPerfs, countryScores));
+  domainPerfs.forEach(p => addBench('DOMAIN', p.scopeId, domainPerfs.filter(x => x.scopeId !== p.scopeId).map(x => x.scopeId), domainPerfs, domainScores));
+
+  const supTasks = supervisionTasks;
+  const overdueTasks = supTasks.filter(t => t.overdue || (t.deadline && t.deadline < TODAY && !['COMPLETED', 'EVALUATED'].includes(t.taskStatus)));
+
+  APP_DATA.regulatoryPerformanceMetrics = performanceMetrics;
+  APP_DATA.regulatoryPerformanceTrends = performanceTrends;
+  APP_DATA.regulatoryPerformanceSummary = {
+    regulatoryEffectivenessScore: groupPerf?.regulatoryEffectivenessScore || 0,
+    highRiskResolutionRate: groupPerf?.highRiskResolutionRate || 0,
+    rectificationClosureRate: groupPerf?.rectificationClosureRate || 0,
+    actionVerificationRate: groupPerf?.actionVerificationRate || 0,
+    averageRectificationDays: groupPerf?.averageRectificationDays || 0,
+    overdueReductionRate: groupPerf?.overdueReductionRate || 0,
+    dataQualityImprovementRate: groupPerf?.dataQualityImprovementRate || 0,
+    kriExceptionReductionRate: groupPerf?.kriExceptionReductionRate || 0,
+    performanceLevel: groupPerf?.performanceLevel || 'FAIR',
+    entityRanking: [...entityPerfs].sort((a, b) => b.regulatoryEffectivenessScore - a.regulatoryEffectivenessScore).map((p, i) => ({
+      rank: i + 1, scopeId: p.scopeId, score: p.regulatoryEffectivenessScore,
+      name: (entities.find(e => e.entityId === p.scopeId) || {}).entityName || p.scopeId,
+      maturityLevel: p.maturityLevel, closureRate: p.rectificationClosureRate,
+      actionVerificationRate: p.actionVerificationRate, riskReductionRate: p.highRiskResolutionRate
+    })),
+    regionRanking: [...regionPerfs].sort((a, b) => b.regulatoryEffectivenessScore - a.regulatoryEffectivenessScore).map((p, i) => ({
+      rank: i + 1, scopeId: p.scopeId, score: p.regulatoryEffectivenessScore,
+      name: (regions.find(r => r.regionId === p.scopeId) || {}).regionName || p.scopeId,
+      maturityLevel: p.maturityLevel, closureRate: p.rectificationClosureRate,
+      actionVerificationRate: p.actionVerificationRate, riskReductionRate: p.highRiskResolutionRate
+    }))
+  };
+  APP_DATA.regulatoryResourceAllocations = allocations;
+  APP_DATA.regulatorySupervisionTasks = supervisionTasks;
+  APP_DATA.regulatoryResourceEffectiveness = effectiveness;
+  APP_DATA.regulatoryBenchmarking = benchmarking;
+  APP_DATA.regulatoryOperationsMetrics = {
+    performance: APP_DATA.regulatoryPerformanceSummary,
+    resourceAllocation: {
+      totalAllocations: allocations.length,
+      criticalCount: allocations.filter(a => a.priority === 'CRITICAL').length,
+      highPriorityCount: allocations.filter(a => a.priority === 'HIGH' || a.priority === 'CRITICAL').length,
+      pendingAllocationCount: entities.filter(e => e.entityId !== 'G001').filter(e => {
+        const p = priorities[e.entityId];
+        return p && (p.priority === 'HIGH' || p.priority === 'CRITICAL') && !allocations.some(a => a.entityId === e.entityId);
+      }).length,
+      specialReviewCount: allocations.filter(a => a.resourceType === 'SPECIAL_REVIEW').length,
+      crossBorderCount: allocations.filter(a => a.resourceType === 'CROSS_BORDER_REVIEW').length,
+      dataGovernanceCount: allocations.filter(a => a.resourceType === 'DATA_GOVERNANCE').length,
+      crossDomainCount: allocations.filter(a => a.resourceType === 'CROSS_DOMAIN_COORDINATION').length,
+      rectificationSupportCount: allocations.filter(a => a.resourceType === 'RECTIFICATION_SUPPORT').length,
+      focusEntities: allocations.filter(a => a.allocatedLevel === 'HIGH').slice(0, 5).map(a => a.entityId)
+    },
+    supervisionTasks: {
+      total: supTasks.length,
+      recommended: supTasks.filter(t => t.taskStatus === 'RECOMMENDED').length,
+      assigned: supTasks.filter(t => t.taskStatus === 'ASSIGNED').length,
+      inProgress: supTasks.filter(t => t.taskStatus === 'IN_PROGRESS').length,
+      waitingResult: supTasks.filter(t => t.taskStatus === 'WAITING_RESULT').length,
+      completed: supTasks.filter(t => ['COMPLETED', 'EVALUATED'].includes(t.taskStatus)).length,
+      evaluated: supTasks.filter(t => t.taskStatus === 'EVALUATED').length,
+      overdue: overdueTasks.length
+    },
+    benchmarking: {
+      topEntities: benchmarking.filter(b => b.benchmarkType === 'ENTITY' && b.benchmarkPosition === 'TOP_QUARTILE').slice(0, 3).map(b => b.scopeId),
+      bottomEntities: benchmarking.filter(b => b.benchmarkType === 'ENTITY' && b.benchmarkPosition === 'BOTTOM_QUARTILE').slice(0, 3).map(b => b.scopeId),
+      laggingDomains: benchmarking.filter(b => b.benchmarkType === 'DOMAIN' && b.laggingDimensions.length).slice(0, 2).map(b => ({ scopeId: b.scopeId, lags: b.laggingDimensions })),
+      regionVariance: regionPerfs.length ? Math.max(...regionScores) - Math.min(...regionScores) : 0
+    }
+  };
+})();
