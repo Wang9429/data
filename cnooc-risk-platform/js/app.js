@@ -68,7 +68,10 @@ const App = {
     'global-group-overview': '集团监管总览',
     'regulatory-events': '集团监管事件中心',
     'rectification-operations': '集团整改运营中心',
-    'regulatory-evaluation': '集团监管评价'
+    'regulatory-evaluation': '集团监管评价',
+    'regulatory-command-center': '集团监管决策驾驶舱',
+    'regulatory-actions': '集团监管行动中心',
+    'regulatory-strategy': '集团监管策略分析'
   },
 
   init() {
@@ -77,6 +80,9 @@ const App = {
     this.renderRegulatoryEvents();
     this.renderRectificationOperations();
     this.renderRegulatoryEvaluation();
+    this.renderRegulatoryCommandCenter();
+    this.renderRegulatoryActions();
+    this.renderRegulatoryStrategy();
     this.renderGlobalLegalEntities();
     this.renderGlobalRegions();
     this.renderCoverageGaps();
@@ -144,7 +150,7 @@ const App = {
       this.renderKriDetail(params.kriId, params.scenarioId);
     }
 
-    if (['global-group-overview', 'group', 'global-legal-entities', 'global-regions', 'coverage-gaps', 'platform-operations', 'data-governance', 'cross-border-compliance', 'cross-domain-risks', 'warnings', 'rectification', 'regulatory-events', 'rectification-operations', 'regulatory-evaluation'].includes(pageId) && Object.keys(params).length) {
+    if (['global-group-overview', 'group', 'global-legal-entities', 'global-regions', 'coverage-gaps', 'platform-operations', 'data-governance', 'cross-border-compliance', 'cross-domain-risks', 'warnings', 'rectification', 'regulatory-events', 'rectification-operations', 'regulatory-evaluation', 'regulatory-command-center', 'regulatory-actions', 'regulatory-strategy'].includes(pageId) && Object.keys(params).length) {
       setTimeout(() => this.applyPublicNavigationContext(pageId, params), 50);
     }
   },
@@ -211,6 +217,7 @@ const App = {
     if (pageId === 'cross-border-compliance' && ctx.activityId) this.showCrossBorderActivityDetail(ctx.activityId);
     if (pageId === 'cross-domain-risks' && ctx.riskMatterId) this.showCrossDomainRiskMatterDetail(ctx.riskMatterId);
     if (pageId === 'regulatory-events' && ctx.eventId) this.showRegulatoryEventDetail(ctx.eventId);
+    if (pageId === 'regulatory-actions' && ctx.actionId) this.showRegulatoryActionDetail(ctx.actionId);
   },
 
   applyPublicNavigationContext(pageId, params) {
@@ -262,6 +269,7 @@ const App = {
     if (pageId === 'warnings' && (params.riskId || params.riskMatterId)) this.showPublicWarningDetail(params.riskMatterId || params.riskId);
     if (pageId === 'rectification' && (params.taskId || params.rectificationTaskId)) this.showRectificationTaskDetail(params.taskId || params.rectificationTaskId);
     if (pageId === 'regulatory-events' && params.eventId) { this.regulatoryEventFocusId = params.eventId; this.showRegulatoryEventDetail(params.eventId); }
+    if (pageId === 'regulatory-actions' && params.actionId) { this.regulatoryActionFocusId = params.actionId; this.showRegulatoryActionDetail(params.actionId); }
   },
 
   renderNav() {

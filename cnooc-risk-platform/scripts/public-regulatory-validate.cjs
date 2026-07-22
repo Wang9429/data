@@ -36,11 +36,12 @@ function resolve(id, arr, key, label) {
   return found;
 }
 
-// --- 页面目录（14个）---
+// --- 页面目录（17个）---
 const expectedPages = [
   'global-group-overview', 'global-legal-entities', 'global-regions', 'coverage-gaps',
   'platform-operations', 'data-governance', 'cross-border-compliance', 'cross-domain-risks',
-  'warnings', 'rectification', 'regulatory-events', 'rectification-operations', 'regulatory-evaluation', 'major'
+  'warnings', 'rectification', 'regulatory-events', 'rectification-operations', 'regulatory-evaluation',
+  'regulatory-command-center', 'regulatory-actions', 'regulatory-strategy', 'major'
 ];
 expectedPages.forEach(pid => {
   if (!pubJs.includes(`pageId: '${pid}'`)) errors.push(`公共页面清单缺失: ${pid}`);
@@ -58,7 +59,10 @@ const components = [
   'renderPublicEmptyState', 'renderPublicErrorState', 'renderPublicFilterBar',
   'renderPublicNotFoundPanel', 'showPublicDetailOrNotFound', 'resolvePublicRouteId',
   'renderPublicTimeline', 'renderPublicTrendChart', 'renderPublicHealthBadge',
-  'renderPublicKpiCard', 'renderPublicEventTypeBadge', 'showRegulatoryEventDetail'
+  'renderPublicKpiCard', 'renderPublicEventTypeBadge', 'showRegulatoryEventDetail',
+  'renderPublicPriorityBadge', 'renderPublicActionCard', 'renderPublicConcentrationChart',
+  'renderPublicStrategyBadge', 'showRegulatoryActionDetail', 'calculateRegulatoryPriority',
+  'getRegulatoryRiskConcentration', 'getRegulatoryStrategyLevel'
 ];
 components.forEach(fn => {
   if (!pubJs.includes(fn)) errors.push(`公共组件缺失: ${fn}`);
@@ -186,13 +190,28 @@ const summaryFields = ['projectCount', 'sourceCount', 'warningCount', 'highRiskM
 summaryFields.forEach(f => {
   if (s[f] === undefined || s[f] === null) errors.push(`publicRegulatorySummary 缺失字段: ${f}`);
 });
-const groupHelpers = ['computeGroupOverviewMetrics', 'renderGroupOverviewFilterBar', 'renderGroupOverviewRegulatoryChain', 'renderGroupOverviewObjectTree', 'renderGroupOverviewCoverageSummary', 'renderGroupOverviewRiskSummary', 'renderGroupOverviewRectificationSummary', 'renderGroupOverviewPageCatalog', 'renderGroupOverviewHealthSummary', 'getGroupOverviewFilter', 'getRectificationClosureRate', 'getRectificationOverdueRate', 'renderRegulatoryEvents', 'renderRectificationOperations', 'renderRegulatoryEvaluation'];
+const groupHelpers = ['computeGroupOverviewMetrics', 'renderGroupOverviewFilterBar', 'renderGroupOverviewRegulatoryChain', 'renderGroupOverviewObjectTree', 'renderGroupOverviewCoverageSummary', 'renderGroupOverviewRiskSummary', 'renderGroupOverviewRectificationSummary', 'renderGroupOverviewPageCatalog', 'renderGroupOverviewHealthSummary', 'getGroupOverviewFilter', 'getRectificationClosureRate', 'getRectificationOverdueRate', 'renderRegulatoryEvents', 'renderRectificationOperations', 'renderRegulatoryEvaluation', 'renderRegulatoryCommandCenter', 'renderRegulatoryActions', 'renderRegulatoryStrategy'];
 groupHelpers.forEach(fn => {
   if (!pubJs.includes(fn)) errors.push(`集团运营组件缺失: ${fn}`);
 });
 if (!D.regulatoryEvents || !D.regulatoryEvents.length) errors.push('regulatoryEvents 未生成');
 if (!D.regulatoryEventMetrics) errors.push('regulatoryEventMetrics 未生成');
 if (!D.regulatoryHealthScores) errors.push('regulatoryHealthScores 未生成');
+if (!D.regulatoryActions || !D.regulatoryActions.length) errors.push('regulatoryActions 未生成');
+if (!D.regulatoryCommandCenterMetrics) errors.push('regulatoryCommandCenterMetrics 未生成');
+if (!D.regulatoryRiskConcentration) errors.push('regulatoryRiskConcentration 未生成');
+if (!D.regulatoryStrategyAnalysis) errors.push('regulatoryStrategyAnalysis 未生成');
+(D.regulatoryActions || []).forEach(a => {
+  req(a.actionId, 'actionId');
+  (a.sourceEventIds || []).forEach(eid => resolve(eid, D.regulatoryEvents, 'eventId', 'action.sourceEventId'));
+  (a.sourceRiskMatterIds || []).forEach(rid => {
+    const w = D.warnings.find(x => x.id === rid);
+    const m = D.crossDomainRiskMatters.find(x => x.riskMatterId === rid);
+    if (!w && !m) errors.push(`无法解析: action.sourceRiskMatterId=${rid}`);
+  });
+  (a.sourceRectificationTaskIds || []).forEach(tid => resolve(tid, D.rectificationTasks, 'taskId', 'action.sourceRectTaskId'));
+  if (a.entityId) resolve(a.entityId, D.globalLegalEntities, 'entityId', 'action.entityId');
+});
 (D.regulatoryEvents || []).forEach(ev => {
   req(ev.eventId, 'eventId');
   if (ev.entityId) resolve(ev.entityId, D.globalLegalEntities, 'entityId', 'event.entityId');

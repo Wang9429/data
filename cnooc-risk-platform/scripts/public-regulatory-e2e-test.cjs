@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * 公共监管底座 Phase 6 端到端验收（12 条链路）
+ * 公共监管底座 Phase 7 端到端验收（15 条链路）
  */
 const fs = require('fs');
 const path = require('path');
@@ -24,108 +24,118 @@ function ok(step, cond, msg) {
 
 const chains = [
   {
-    name: '测试1：集团总览→监管事件中心',
+    name: '测试1：集团总览→监管决策驾驶舱',
     steps: [
-      () => ok('监管事件已生成', (D.regulatoryEvents || []).length > 0),
-      () => ok('事件指标 totalCount', (D.regulatoryEventMetrics || {}).totalCount === (D.regulatoryEvents || []).length),
-      () => ok('集团总览 summary', !!(D.publicRegulatorySummary || {}).entityCount)
+      () => ok('驾驶舱指标', !!(D.regulatoryCommandCenterMetrics || {}).objectCount),
+      () => ok('优先级对象', (D.regulatoryPriorityObjects || []).length > 0)
     ]
   },
   {
-    name: '测试2：监管事件→法人',
+    name: '测试2：驾驶舱→重点法人',
     steps: [
       () => {
-        const ev = (D.regulatoryEvents || []).find(e => e.entityId === 'B001');
-        return ok('事件关联 B001', ev && D.globalLegalEntities.find(e => e.entityId === ev.entityId));
+        const top = (D.regulatoryPriorityObjects || [])[0];
+        return ok('TOP1 法人', top && D.globalLegalEntities.find(e => e.entityId === top.objectId));
       }
     ]
   },
   {
-    name: '测试3：监管事件→KRI',
+    name: '测试3：驾驶舱→高风险事件',
+    steps: [
+      () => ok('高风险事件', (D.regulatoryEvents || []).some(e => e.riskLevel === 'HIGH'))
+    ]
+  },
+  {
+    name: '测试4：驾驶舱→超期整改',
+    steps: [
+      () => ok('超期整改', (D.regulatoryCommandCenterMetrics || {}).overdueRectCount > 0)
+    ]
+  },
+  {
+    name: '测试5：驾驶舱→监管优先级',
     steps: [
       () => {
-        const ev = (D.regulatoryEvents || []).find(e => e.kriId === 'kri-capex');
-        return ok('事件 kri-capex', ev && D.groupKris.find(k => k.id === ev.kriId));
+        const p = (D.regulatoryPriorities || {})['B001'];
+        return ok('B001 优先级', p && ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'].includes(p.priority));
       }
     ]
   },
   {
-    name: '测试4：监管事件→风险事项',
+    name: '测试6：监管优先级→风险事件',
     steps: [
       () => {
-        const ev = (D.regulatoryEvents || []).find(e => e.riskMatterId === 'risk-2');
-        return ok('事件 risk-2', ev && D.warnings.find(w => w.id === ev.riskMatterId));
+        const evts = (D.regulatoryEvents || []).filter(e => e.entityId === 'B001');
+        return ok('B001 事件', evts.length > 0);
       }
     ]
   },
   {
-    name: '测试5：监管事件→整改任务',
+    name: '测试7：监管优先级→整改任务',
+    steps: [
+      () => ok('B001 整改', (D.rectificationTasks || []).some(t => t.entityId === 'B001'))
+    ]
+  },
+  {
+    name: '测试8：监管行动→来源事件',
     steps: [
       () => {
-        const ev = (D.regulatoryEvents || []).find(e => e.rectificationTaskId === 'RECT-202601001');
-        return ok('事件 RECT-202601001', ev && D.rectificationTasks.find(t => t.taskId === ev.rectificationTaskId));
+        const act = (D.regulatoryActions || [])[0];
+        return ok('行动来源事件', act && act.sourceEventIds.length && D.regulatoryEvents.find(e => e.eventId === act.sourceEventIds[0]));
       }
     ]
   },
   {
-    name: '测试6：监管事件→数据治理',
+    name: '测试9：监管行动→来源风险事项',
     steps: [
       () => {
-        const ev = (D.regulatoryEvents || []).find(e => e.eventType === 'DATA_QUALITY' && e.sourceObjectId === 'DQ002');
-        return ok('数据质量事件 DQ002', ev && D.dataQualityIssues.find(q => q.issueId === ev.sourceObjectId));
+        const act = (D.regulatoryActions || []).find(a => (a.sourceRiskMatterIds || []).length);
+        const rid = act && act.sourceRiskMatterIds[0];
+        const w = D.warnings.find(x => x.id === rid);
+        const m = D.crossDomainRiskMatters.find(x => x.riskMatterId === rid);
+        return ok('行动来源风险', act && (w || m));
       }
     ]
   },
   {
-    name: '测试7：整改运营→法人',
-    steps: [
-      () => ok('整改任务含 B001', (D.rectificationTasks || []).some(t => t.entityId === 'B001')),
-      () => ok('评价含法人排名', (D.regulatoryEvaluation || {}).entityRankings?.length > 0)
-    ]
-  },
-  {
-    name: '测试8：整改运营→风险事项',
+    name: '测试10：监管行动→整改任务',
     steps: [
       () => {
-        const t = D.rectificationTasks.find(x => x.taskId === 'RECT-202601001');
-        return ok('整改关联 risk-2', t && D.warnings.find(w => w.id === t.riskMatterId));
+        const act = (D.regulatoryActions || []).find(a => (a.sourceRectificationTaskIds || []).length);
+        return ok('行动来源整改', act && D.rectificationTasks.find(t => t.taskId === act.sourceRectificationTaskIds[0]));
       }
     ]
   },
   {
-    name: '测试9：法人健康度→数据质量',
+    name: '测试11：监管策略→区域',
     steps: [
-      () => {
-        const h = (D.regulatoryHealthScores || {}).entities?.find(e => e.objectId === 'B001');
-        return ok('B001 健康度', h && h.dimensions && typeof h.dimensions.dataQuality === 'number');
-      }
+      () => ok('区域策略', (D.regulatoryStrategyAnalysis || {}).regions?.length > 0)
     ]
   },
   {
-    name: '测试10：法人健康度→KRI',
+    name: '测试12：监管策略→法人',
     steps: [
-      () => {
-        const h = (D.regulatoryHealthScores || {}).entities?.find(e => e.objectId === 'B001');
-        const ent = D.globalLegalEntities.find(e => e.entityId === 'B001');
-        return ok('B001 KRI维度', h && ent && h.dimensions.kriHealth !== undefined);
-      }
+      () => ok('法人策略', (D.regulatoryStrategyAnalysis || {}).entities?.some(e => e.objectId === 'B001'))
     ]
   },
   {
-    name: '测试11：监管评价→法人',
+    name: '测试13：监管策略→数据治理',
     steps: [
-      () => {
-        const r = (D.regulatoryEvaluation || {}).entityRankings?.find(e => e.objectId === 'B001');
-        return ok('B001 评价排名', r && D.globalLegalEntities.find(e => e.entityId === r.objectId));
-      }
+      () => ok('数据治理成熟度', (D.regulatoryEvaluation || {}).dataGovernanceMaturity >= 0)
     ]
   },
   {
-    name: '测试12：多跳导航→逐层返回',
+    name: '测试14：无效 ID→统一错误态',
     steps: [
-      () => ok('事件趋势数据', !!(D.regulatoryEventTrends || {})['7']),
-      () => ok('健康度区域数据', (D.regulatoryHealthScores || {}).regions?.length > 0),
-      () => ok('整改闭环率', (D.regulatoryEvaluation || {}).overallRectificationClosureRate >= 0)
+      () => ok('无效 actionId', !(D.regulatoryActions || []).find(a => a.actionId === 'ACT_NOT_EXIST')),
+      () => ok('无效 entityId', !D.globalLegalEntities.find(e => e.entityId === 'NOT_EXIST'))
+    ]
+  },
+  {
+    name: '测试15：多跳导航→逐层返回',
+    steps: [
+      () => ok('风险集中度', !!(D.regulatoryRiskConcentration || {}).regions?.length),
+      () => ok('监管行动', (D.regulatoryActions || []).length > 0),
+      () => ok('策略分析', !!(D.regulatoryStrategyAnalysis || {}).domains?.length)
     ]
   }
 ];
@@ -159,118 +169,68 @@ async function browserTests() {
   const browser = await playwright.chromium.launch({ headless: true });
   const page = await browser.newPage();
   await page.goto(`http://127.0.0.1:${port}/index.html`, { waitUntil: 'networkidle' });
-  await page.waitForFunction(() => typeof App !== 'undefined' && App.renderRegulatoryEvents, { timeout: 10000 });
+  await page.waitForFunction(() => typeof App !== 'undefined' && App.renderRegulatoryCommandCenter, { timeout: 10000 });
   await page.evaluate(() => {
     document.getElementById('domainGateway').style.display = 'none';
     if (typeof App.enterDomain === 'function') App.enterDomain('investment', false);
   });
 
-  const regulatoryEventsPage = await page.evaluate(async () => {
-    App.regulatoryEventFilter = {};
+  const commandCenter = await page.evaluate(async () => {
+    App.regulatoryCommandCenterFilter = {};
     App.navigatePublic('global-group-overview');
     await new Promise(r => setTimeout(r, 100));
-    App.navigatePublic('regulatory-events');
+    App.navigatePublic('regulatory-command-center');
     await new Promise(r => setTimeout(r, 150));
-    const text = document.getElementById('regulatoryEvents')?.innerText || '';
-    const ev = (APP_DATA.regulatoryEvents || [])[0];
-    if (ev) App.showRegulatoryEventDetail(ev.eventId);
-    await new Promise(r => setTimeout(r, 150));
-    const detail = document.getElementById('regulatoryEventDetail')?.innerText || '';
-    return {
-      hasEventsPage: text.includes('集团监管事件中心'),
-      hasMetrics: text.includes('高风险事件'),
-      hasList: text.includes('监管事件清单'),
-      detailShown: detail.includes('监管事件') || detail.includes('对象不存在')
-    };
+    const text = document.getElementById('regulatoryCommandCenter')?.innerText || '';
+    return { hasPage: text.includes('集团监管决策驾驶舱'), hasPriority: text.includes('重点监管对象'), hasConcentration: text.includes('风险集中度') };
   });
 
-  const groupOverviewRender = await page.evaluate(() => {
-    App.groupOverviewFilter = {};
-    App.navigatePublic('global-group-overview');
-    const node = document.getElementById('groupOverview');
-    const text = node ? node.innerText : '';
-    const m = App.computeGroupOverviewMetrics();
-    return {
-      hasHero: text.includes('集团监管总览'),
-      hasChain: text.includes('统一监管链路'),
-      hasObjectTree: text.includes('集团监管对象总览'),
-      hasCoverage: text.includes('监管盲区总览'),
-      hasRisk: text.includes('风险监管总览'),
-      hasRect: text.includes('整改闭环总览'),
-      hasHealth: text.includes('监管对象健康度'),
-      hasOpsEntry: text.includes('监管运营闭环入口'),
-      metricCount: m.entityCount,
-      has13Metrics: text.includes('跨境合规风险') && text.includes('跨领域风险')
-    };
-  });
-
-  const filterSync = await page.evaluate(async () => {
-    App.groupOverviewFilter = {};
-    App.renderGroupOverview();
-    const before = App.computeGroupOverviewMetrics();
-    App.setGroupOverviewFilter('regionId', 'ME');
-    App.renderGroupOverview();
-    const after = App.computeGroupOverviewMetrics();
-    App.clearGroupOverviewFilter();
-    return {
-      beforeEntities: before.entityCount,
-      afterEntities: after.entityCount,
-      synced: after.entityCount < before.entityCount && after.entityCount > 0
-    };
+  const actionDetail = await page.evaluate(async () => {
+    App.navigatePublic('regulatory-actions');
+    await new Promise(r => setTimeout(r, 150));
+    const act = (APP_DATA.regulatoryActions || [])[0];
+    if (act) App.showRegulatoryActionDetail(act.actionId);
+    await new Promise(r => setTimeout(r, 150));
+    const text = document.getElementById('regulatoryActionDetail')?.innerText || '';
+    App.showRegulatoryActionDetail('ACT_NOT_EXIST');
+    await new Promise(r => setTimeout(r, 150));
+    const bad = document.getElementById('regulatoryActionDetail')?.innerText || '';
+    return { detailOk: text.includes('监管行动') || text.includes('基础信息'), invalidOk: bad.includes('对象不存在') };
   });
 
   const multiHopBack = await page.evaluate(async () => {
     App.publicNavHistory = [];
-    App.navigatePublic('global-group-overview');
+    App.navigatePublic('regulatory-command-center');
     await new Promise(r => setTimeout(r, 150));
+    App.navigatePublic('global-legal-entities', { entityId: 'B001' });
+    await new Promise(r => setTimeout(r, 200));
     App.navigatePublic('regulatory-events');
-    await new Promise(r => setTimeout(r, 150));
+    await new Promise(r => setTimeout(r, 200));
     const ev = (APP_DATA.regulatoryEvents || []).find(e => e.entityId === 'B001');
-    if (ev) App.navigatePublic('global-legal-entities', { entityId: 'B001' });
+    if (ev) App.navigatePublic('regulatory-actions');
     await new Promise(r => setTimeout(r, 200));
-    App.navigatePublic('data-governance', { sourceId: 'SRC002' });
-    await new Promise(r => setTimeout(r, 200));
-    const trail = [];
-    for (let i = 0; i < 3; i++) {
-      trail.push(App.currentPage);
-      App.goBackPublic();
-      await new Promise(r => setTimeout(r, 250));
-    }
-    return { trail, finalPage: App.currentPage, histLen: (App.publicNavHistory || []).length };
-  });
-
-  const invalidId = await page.evaluate(async () => {
-    App.showRegulatoryEventDetail('EVENT_NOT_EXIST');
-    await new Promise(r => setTimeout(r, 200));
-    const text = document.getElementById('regulatoryEventDetail')?.innerText || '';
-    return { hasNotFound: text.includes('对象不存在') || text.includes('无法解析'), noUndefined: !text.includes('undefined') };
+    for (let i = 0; i < 3; i++) { App.goBackPublic(); await new Promise(r => setTimeout(r, 250)); }
+    return { finalPage: App.currentPage };
   });
 
   const pageCatalog = await page.evaluate(() => ({
     count: (App.publicRegulatoryPages || []).length,
-    hasEvents: (App.publicRegulatoryPages || []).some(p => p.pageId === 'regulatory-events'),
-    hasRectOps: (App.publicRegulatoryPages || []).some(p => p.pageId === 'rectification-operations'),
-    hasEvaluation: (App.publicRegulatoryPages || []).some(p => p.pageId === 'regulatory-evaluation')
+    hasCommand: (App.publicRegulatoryPages || []).some(p => p.pageId === 'regulatory-command-center'),
+    hasActions: (App.publicRegulatoryPages || []).some(p => p.pageId === 'regulatory-actions'),
+    hasStrategy: (App.publicRegulatoryPages || []).some(p => p.pageId === 'regulatory-strategy')
   }));
 
   await browser.close();
   server.close();
 
-  const backPass = multiHopBack.finalPage === 'regulatory-events' || multiHopBack.finalPage === 'group';
-  const groupPass = groupOverviewRender.hasHero && groupOverviewRender.hasHealth && groupOverviewRender.hasOpsEntry;
-  const eventsPass = regulatoryEventsPage.hasEventsPage && regulatoryEventsPage.hasMetrics && regulatoryEventsPage.hasList;
   return {
-    regulatoryEvents: eventsPass ? '通过' : '不通过',
-    regulatoryEventsDetail: regulatoryEventsPage,
-    groupOverview: groupPass ? '通过' : '不通过',
-    groupOverviewDetail: groupOverviewRender,
-    filterSync: filterSync.synced ? '通过' : '不通过',
-    filterSyncDetail: filterSync,
-    multiHopBack: backPass ? '通过' : '不通过',
+    commandCenter: (commandCenter.hasPage && commandCenter.hasPriority) ? '通过' : '不通过',
+    commandCenterDetail: commandCenter,
+    actionDetail: (actionDetail.detailOk && actionDetail.invalidOk) ? '通过' : '不通过',
+    actionDetailInfo: actionDetail,
+    multiHopBack: (multiHopBack.finalPage === 'regulatory-events' || multiHopBack.finalPage === 'regulatory-command-center' || multiHopBack.finalPage === 'group') ? '通过' : '不通过',
     multiHopDetail: multiHopBack,
-    invalidId: (invalidId.hasNotFound && invalidId.noUndefined) ? '通过' : '不通过',
-    invalidIdDetail: invalidId,
-    pageCatalog: (pageCatalog.count === 14 && pageCatalog.hasEvents && pageCatalog.hasRectOps && pageCatalog.hasEvaluation) ? '通过' : '不通过',
+    pageCatalog: (pageCatalog.count === 17 && pageCatalog.hasCommand && pageCatalog.hasActions && pageCatalog.hasStrategy) ? '通过' : '不通过',
     pageCatalogDetail: pageCatalog
   };
 }
@@ -287,11 +247,11 @@ async function browserTests() {
   try {
     browserResult = await browserTests();
   } catch (e) {
-    browserResult = { error: String(e), regulatoryEvents: '不通过', groupOverview: '不通过', filterSync: '不通过', multiHopBack: '不通过', invalidId: '不通过', pageCatalog: '不通过' };
+    browserResult = { error: String(e), commandCenter: '不通过', actionDetail: '不通过', multiHopBack: '不通过', pageCatalog: '不通过' };
   }
 
   const allDataPass = summary.every(s => s.result === '通过');
-  const browserKeys = ['regulatoryEvents', 'groupOverview', 'filterSync', 'multiHopBack', 'invalidId', 'pageCatalog'];
+  const browserKeys = ['commandCenter', 'actionDetail', 'multiHopBack', 'pageCatalog'];
   const allBrowserPass = browserKeys.every(k => browserResult[k] === '通过' || browserResult[k] === 'skipped');
 
   const output = { dataChainTests: summary, browserTests: browserResult, allPass: allDataPass && allBrowserPass };

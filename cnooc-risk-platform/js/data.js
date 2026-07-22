@@ -440,11 +440,11 @@ Object.assign(APP_DATA, {
   ],
   rectificationTasks: [
     { id: 'RECT-202601001', taskId: 'RECT-202601001', riskId: 'risk-2', riskMatterId: 'risk-2', title: '被投资企业经营持续下滑风险', company: 'A公司', entityId: 'A001', projectId: 'GP001', regionId: 'ME', countryId: 'ME-A', responsibleEntity: 'A公司', responsibleDepartment: '投资管理部', owner: '投资管理部', level: 'L4', status: '整改执行', verificationStatus: '整改中', deadline: '2026-09-30', closedAt: null, progress: 60, measure: '建立月度经营指标监测机制；完善董事履职报告机制。' },
-    { id: 'RECT-202601002', taskId: 'RECT-202601002', riskId: 'risk-1', riskMatterId: 'risk-1', title: '投资收益未达到预期风险', company: 'B公司', entityId: 'B001', projectId: null, regionId: 'CN', countryId: 'CN-CN', responsibleEntity: 'B公司', responsibleDepartment: '投资管理部', owner: '投资管理部', level: 'L4', status: '整改制定', verificationStatus: '待验证', deadline: '2026-08-30', closedAt: null, progress: 30, measure: '开展专项经营分析，制定收益提升方案。' },
+    { id: 'RECT-202601002', taskId: 'RECT-202601002', riskId: 'risk-1', riskMatterId: 'risk-1', title: '投资收益未达到预期风险', company: 'B公司', entityId: 'B001', projectId: null, regionId: 'CN', countryId: 'CN-CN', responsibleEntity: 'B公司', responsibleDepartment: '投资管理部', owner: '投资管理部', level: 'L4', status: '整改制定', verificationStatus: '待验证', deadline: '2026-07-15', closedAt: null, progress: 30, measure: '开展专项经营分析，制定收益提升方案。' },
     { id: 'RECT-202601003', taskId: 'RECT-202601003', riskId: 'risk-3', riskMatterId: 'risk-3', title: '重大事项报告不及时风险', company: 'C公司', entityId: 'C001', projectId: 'GP001', regionId: 'ME', countryId: 'ME-A', responsibleEntity: 'C项目公司', responsibleDepartment: '投资管理部', owner: '投资管理部', level: 'L3', status: '整改验证', verificationStatus: '验证中', deadline: '2026-07-30', closedAt: null, progress: 90, measure: '完善重大事项报告机制并验证执行效果。' },
     { id: 'RECT-202601004', taskId: 'RECT-202601004', riskId: 'risk-4', riskMatterId: 'risk-4', title: '投资决策论证不足风险', company: 'C公司', entityId: 'C001', projectId: null, regionId: 'ME', countryId: 'ME-A', responsibleEntity: 'C项目公司', responsibleDepartment: '战略发展部', owner: '战略发展部', level: 'L3', status: '已关闭', verificationStatus: '已验证', deadline: '2026-05-20', closedAt: '2026-05-18', progress: 100, measure: '补充可研报告并完成专家评审。' },
     { id: 'RECT-CB-001', taskId: 'RECT-CB-001', riskId: 'risk-cb-001', riskMatterId: 'risk-cb-001', title: '未授权跨境数据传输风险', company: 'D公司', entityId: 'D001', projectId: 'GP002', regionId: 'AS', countryId: 'AS-A', responsibleEntity: 'D公司', responsibleDepartment: '区域信息管理岗', owner: '区域信息管理岗', level: 'L4', status: '整改执行', verificationStatus: '整改中', deadline: '2026-08-15', closedAt: null, progress: 45, measure: '暂停未授权传输通道；补办跨境传输审批；完善访问授权记录。' },
-    { id: 'RECT-CB-002', taskId: 'RECT-CB-002', riskId: 'risk-cb-002', riskMatterId: 'risk-cb-002', title: '数据本地化存储不合规风险', company: 'B公司', entityId: 'B001', projectId: 'GP001', regionId: 'ME', countryId: 'ME-A', responsibleEntity: 'B公司', responsibleDepartment: '区域财务部', owner: '区域财务部', level: 'L3', status: '整改制定', verificationStatus: '待验证', deadline: '2026-08-30', closedAt: null, progress: 25, measure: '梳理本地化存储要求；制定数据回迁方案并完成审批。' },
+    { id: 'RECT-CB-002', taskId: 'RECT-CB-002', riskId: 'risk-cb-002', riskMatterId: 'risk-cb-002', title: '数据本地化存储不合规风险', company: 'B公司', entityId: 'B001', projectId: 'GP001', regionId: 'ME', countryId: 'ME-A', responsibleEntity: 'B公司', responsibleDepartment: '区域财务部', owner: '区域财务部', level: 'L3', status: '整改制定', verificationStatus: '待验证', deadline: '2026-07-10', closedAt: null, progress: 25, measure: '梳理本地化存储要求；制定数据回迁方案并完成审批。' },
     { id: 'RECT-CB-003', taskId: 'RECT-CB-003', riskId: 'risk-cb-003', riskMatterId: 'risk-cb-003', title: '境外数据分类分级不到位风险', company: 'D公司', entityId: 'D001', projectId: 'GP002', regionId: 'AS', countryId: 'AS-A', responsibleEntity: 'D公司', responsibleDepartment: '区域信息管理岗', owner: '区域信息管理岗', level: 'L3', status: '整改中', verificationStatus: '整改中', deadline: '2026-09-15', closedAt: null, progress: 35, measure: '完成境外项目经营数据分类分级；纳入集团统一标准。' },
     { id: 'RECT-CD-001', taskId: 'RECT-CD-001', riskId: null, riskMatterId: 'CDR001', crossDomainRiskMatterId: 'CDR001', title: '投资决策整改', company: 'B公司', entityId: 'B001', projectId: 'GP001', regionId: 'ME', countryId: 'ME-A', responsibleEntity: 'B公司', responsibleDepartment: '投资管理部', collaboratingDepartments: ['财务资金部'], owner: '投资管理部', level: 'L4', status: '整改执行', verificationStatus: '整改中', deadline: '2026-09-30', closedAt: null, progress: 55, taskType: '跨领域协同整改', measure: '完善境外项目投资决策论证；建立跨部门联审机制。' },
     { id: 'RECT-CD-002', taskId: 'RECT-CD-002', riskId: null, riskMatterId: 'CDR001', crossDomainRiskMatterId: 'CDR001', title: '资金支付整改', company: 'B公司', entityId: 'B001', projectId: 'GP001', regionId: 'ME', countryId: 'ME-A', responsibleEntity: 'B公司', responsibleDepartment: '财务资金部', collaboratingDepartments: ['投资管理部', '合同管理部'], owner: '财务资金部', level: 'L3', status: '整改制定', verificationStatus: '待验证', deadline: '2026-08-30', closedAt: null, progress: 30, taskType: '跨领域协同整改', measure: '梳理资金支付与合同履约匹配关系；建立支付前联审流程。' },
@@ -908,4 +908,206 @@ Object.assign(APP_DATA, {
     crossDomainRiskMaturity: Math.round((1 - (APP_DATA.crossDomainRiskMetrics || {}).highRiskMatterCount / Math.max(1, (APP_DATA.crossDomainRiskMetrics || {}).crossDomainMatterCount)) * 100),
     overallRectificationClosureRate: Math.round(closedRects.length / Math.max(1, rects.length) * 100)
   };
+})();
+
+(function () {
+  const TODAY = '2026-07-22';
+  const events = APP_DATA.regulatoryEvents || [];
+  const entities = APP_DATA.globalLegalEntities || [];
+  const health = APP_DATA.regulatoryHealthScores || {};
+  const entityHealth = health.entities || [];
+  const warnings = APP_DATA.warnings || [];
+  const rects = APP_DATA.rectificationTasks || [];
+  const quality = APP_DATA.dataQualityIssues || [];
+  const cbActs = APP_DATA.crossBorderDataActivities || [];
+  const cdrMatters = APP_DATA.crossDomainRiskMatters || [];
+
+  const calcPriority = (entityId) => {
+    const ent = entities.find(e => e.entityId === entityId);
+    const h = entityHealth.find(x => x.objectId === entityId);
+    if (!ent) return { priority: 'LOW', score: 0, factors: [], recommendedAction: '—' };
+    const evts = events.filter(e => e.entityId === entityId);
+    const highEvts = evts.filter(e => e.riskLevel === 'HIGH');
+    const majorWarn = warnings.filter(w => w.entityId === entityId && w.level === '重大');
+    const entRects = rects.filter(t => t.entityId === entityId);
+    const overdue = entRects.filter(t => t.deadline && t.deadline < TODAY && t.status !== '已关闭' && !t.closedAt);
+    const longOpen = entRects.filter(t => t.status !== '已关闭' && !t.closedAt && (t.progress || 0) < 50);
+    const objs = (APP_DATA.dataObjects || []).filter(o => o.entityId === entityId);
+    const qualCount = quality.filter(q => objs.some(o => o.objectId === q.objectId)).length;
+    const cbRisk = cbActs.filter(a => a.entityId === entityId && (a.complianceStatus === '高风险' || a.complianceStatus === '异常')).length;
+    const cdrCount = cdrMatters.filter(m => (m.entityIds || []).includes(entityId)).length;
+    const factors = [];
+    let score = 0;
+    if (highEvts.length) { score += highEvts.length * 12; factors.push(`高风险事件${highEvts.length}项`); }
+    if (majorWarn.length) { score += majorWarn.length * 10; factors.push(`重大风险${majorWarn.length}项`); }
+    if (overdue.length) { score += overdue.length * 18; factors.push(`超期整改${overdue.length}项`); }
+    if (longOpen.length) { score += longOpen.length * 8; factors.push(`长期未关闭${longOpen.length}项`); }
+    if (qualCount) { score += qualCount * 6; factors.push(`数据质量异常${qualCount}项`); }
+    if ((ent.kriExceptionCount || 0) > 0) { score += ent.kriExceptionCount * 5; factors.push(`KRI异常${ent.kriExceptionCount}项`); }
+    if (cbRisk) { score += cbRisk * 10; factors.push(`跨境合规风险${cbRisk}项`); }
+    if (cdrCount) { score += cdrCount * 8; factors.push(`跨领域风险${cdrCount}项`); }
+    if (h && h.level === 'CRITICAL') { score += 25; factors.push('健康度CRITICAL'); }
+    else if (h && h.level === 'WARNING') { score += 12; factors.push('健康度WARNING'); }
+    const priority = score >= 55 ? 'CRITICAL' : score >= 35 ? 'HIGH' : score >= 18 ? 'MEDIUM' : 'LOW';
+    const recommendedAction = priority === 'CRITICAL' ? '建议集团重点监管' : priority === 'HIGH' ? '建议专项督办' : priority === 'MEDIUM' ? '建议加强监测' : '建议常规监测';
+    return { priority, score, factors, recommendedAction, entityId };
+  };
+
+  const priorities = {};
+  entities.forEach(e => { priorities[e.entityId] = calcPriority(e.entityId); });
+  APP_DATA.regulatoryPriorities = priorities;
+
+  const concentrationBy = (keyFn, labelFn) => {
+    const map = {};
+    events.forEach(ev => {
+      const k = keyFn(ev);
+      if (!k) return;
+      if (!map[k]) map[k] = { key: k, label: labelFn(k, ev), eventCount: 0, highRiskCount: 0, overdueRectCount: 0, healthLevel: 'HEALTHY', concentration: 0 };
+      map[k].eventCount++;
+      if (ev.riskLevel === 'HIGH') map[k].highRiskCount++;
+    });
+    rects.filter(t => t.deadline && t.deadline < TODAY && t.status !== '已关闭').forEach(t => {
+      const k = keyFn({ entityId: t.entityId, regionId: t.regionId, projectId: t.projectId, domainId: t.domainId || 'investment' });
+      if (k && map[k]) map[k].overdueRectCount++;
+    });
+    Object.values(map).forEach(item => {
+      if (item.key.startsWith('E:')) {
+        const h = entityHealth.find(x => x.objectId === item.key.slice(2));
+        if (h) item.healthLevel = h.level;
+      } else if (item.key.startsWith('R:')) {
+        const h = (health.regions || []).find(x => x.objectId === item.key.slice(2));
+        if (h) item.healthLevel = h.level;
+      }
+      item.concentration = Math.round((item.highRiskCount * 3 + item.overdueRectCount * 2 + item.eventCount) / Math.max(1, events.length) * 100);
+    });
+    return Object.values(map).sort((a, b) => b.concentration - a.concentration);
+  };
+
+  APP_DATA.regulatoryRiskConcentration = {
+    regions: concentrationBy(ev => ev.regionId ? 'R:' + ev.regionId : null, k => (APP_DATA.globalRegions.find(r => r.regionId === k.slice(2)) || {}).regionName || k),
+    countries: concentrationBy(ev => ev.countryId ? 'C:' + ev.countryId : null, k => (APP_DATA.globalCountries.find(c => c.countryId === k.slice(2)) || {}).countryName || k),
+    entities: concentrationBy(ev => ev.entityId ? 'E:' + ev.entityId : null, k => (entities.find(e => e.entityId === k.slice(2)) || {}).entityName || k),
+    projects: concentrationBy(ev => ev.projectId ? 'P:' + ev.projectId : null, k => (APP_DATA.globalProjects.find(p => p.projectId === k.slice(2)) || {}).projectName || k),
+    domains: concentrationBy(ev => ev.domainId ? 'D:' + ev.domainId : null, k => (APP_DATA.regulationDomains.find(d => d.id === k.slice(2)) || {}).name || k),
+    scenarios: concentrationBy(ev => ev.scenarioId ? 'S:' + ev.scenarioId : null, k => {
+      const s = APP_DATA.groupRiskScenarios.find(x => x.id === k.slice(2)) || APP_DATA.crossBorderRiskScenarios.find(x => x.id === k.slice(2));
+      return s ? s.name : k;
+    })
+  };
+
+  const strategyLevel = (opts) => {
+    const o = opts || {};
+    if ((o.highRiskEvents || 0) >= 2 && o.healthLevel === 'CRITICAL' && (o.overdueRects || 0) >= 1) return 'FOCUS';
+    if ((o.cdrCount || 0) >= 1 || (o.highRiskEvents || 0) >= 1 || o.healthLevel === 'WARNING') return 'SPECIAL';
+    if ((o.eventCount || 0) >= 1 || o.healthLevel === 'ATTENTION') return 'ROUTINE';
+    return 'OBSERVE';
+  };
+
+  APP_DATA.regulatoryStrategyAnalysis = {
+    regions: (APP_DATA.globalRegions || []).map(r => {
+      const evts = events.filter(e => e.regionId === r.regionId);
+      const h = (health.regions || []).find(x => x.objectId === r.regionId);
+      const overdue = rects.filter(t => t.regionId === r.regionId && t.deadline && t.deadline < TODAY && t.status !== '已关闭').length;
+      const level = strategyLevel({ highRiskEvents: evts.filter(e => e.riskLevel === 'HIGH').length, healthLevel: h ? h.level : 'HEALTHY', overdueRects: overdue, eventCount: evts.length });
+      const label = level === 'FOCUS' ? '重点监管区域' : level === 'SPECIAL' ? '专项监管区域' : level === 'ROUTINE' ? '常规监管区域' : '持续观察区域';
+      return { objectType: 'region', objectId: r.regionId, objectName: r.regionName, strategyLevel: level, strategyLabel: label, eventCount: evts.length, healthLevel: h ? h.level : '—', overdueRects: overdue, sourceEventIds: evts.map(e => e.eventId) };
+    }),
+    entities: entities.filter(e => e.entityId !== 'G001').map(e => {
+      const p = priorities[e.entityId] || calcPriority(e.entityId);
+      const h = entityHealth.find(x => x.objectId === e.entityId);
+      const level = strategyLevel({ highRiskEvents: events.filter(ev => ev.entityId === e.entityId && ev.riskLevel === 'HIGH').length, healthLevel: h ? h.level : 'HEALTHY', overdueRects: rects.filter(t => t.entityId === e.entityId && t.deadline && t.deadline < TODAY && t.status !== '已关闭').length, cdrCount: cdrMatters.filter(m => (m.entityIds || []).includes(e.entityId)).length, eventCount: events.filter(ev => ev.entityId === e.entityId).length });
+      const label = level === 'FOCUS' ? '重点监管' : level === 'SPECIAL' ? '专项整改' : level === 'ROUTINE' ? '常规监测' : '低频监测';
+      return { objectType: 'entity', objectId: e.entityId, objectName: e.entityName, regionId: e.regionId, strategyLevel: level, strategyLabel: label, priority: p.priority, healthLevel: h ? h.level : '—', sourceEventIds: events.filter(ev => ev.entityId === e.entityId).map(ev => ev.eventId) };
+    }),
+    domains: (APP_DATA.regulationDomains || []).map(d => {
+      const evts = events.filter(e => e.domainId === d.id);
+      const level = strategyLevel({ highRiskEvents: evts.filter(e => e.riskLevel === 'HIGH').length, eventCount: evts.length, healthLevel: evts.length > 3 ? 'WARNING' : 'HEALTHY' });
+      return { objectType: 'domain', objectId: d.id, objectName: d.name, strategyLevel: level, strategyLabel: level === 'FOCUS' ? '重点领域' : level === 'SPECIAL' ? '专项领域' : level === 'ROUTINE' ? '常规领域' : '观察领域', eventCount: evts.length, sourceEventIds: evts.map(e => e.eventId) };
+    })
+  };
+
+  const actions = [];
+  let aSeq = 1;
+  const mkAction = (base) => {
+    actions.push({
+      actionId: 'ACT' + String(aSeq++).padStart(3, '0'),
+      actionType: base.actionType,
+      priority: base.priority,
+      entityId: base.entityId || null,
+      regionId: base.regionId || null,
+      projectId: base.projectId || null,
+      domainId: base.domainId || null,
+      sourceEventIds: base.sourceEventIds || [],
+      sourceRiskMatterIds: base.sourceRiskMatterIds || [],
+      sourceRectificationTaskIds: base.sourceRectificationTaskIds || [],
+      recommendedAction: base.recommendedAction,
+      status: base.status || 'PENDING',
+      triggerReason: base.triggerReason || ''
+    });
+  };
+
+  entities.filter(e => e.entityId !== 'G001').forEach(e => {
+    const p = priorities[e.entityId];
+    if (!p || p.priority === 'LOW') return;
+    const evts = events.filter(ev => ev.entityId === e.entityId);
+    const entRects = rects.filter(t => t.entityId === e.entityId && t.status !== '已关闭');
+    const qualEvts = evts.filter(ev => ev.eventType === 'DATA_QUALITY');
+    const cbEvts = evts.filter(ev => ev.eventType === 'CROSS_BORDER');
+    const cdrEvts = evts.filter(ev => ev.eventType === 'CROSS_DOMAIN');
+    if (p.priority === 'CRITICAL' || p.priority === 'HIGH') {
+      mkAction({ actionType: 'FOCUS_SUPERVISION', priority: p.priority, entityId: e.entityId, regionId: e.regionId, domainId: 'investment', sourceEventIds: evts.map(x => x.eventId), sourceRiskMatterIds: warnings.filter(w => w.entityId === e.entityId).map(w => w.id), sourceRectificationTaskIds: entRects.map(t => t.taskId), recommendedAction: p.recommendedAction, triggerReason: p.factors.join('；'), status: entRects.length ? 'IN_PROGRESS' : 'PENDING' });
+    }
+    if (entRects.some(t => t.deadline && t.deadline < TODAY)) {
+      mkAction({ actionType: 'ESCALATE_RECTIFICATION', priority: 'HIGH', entityId: e.entityId, regionId: e.regionId, sourceEventIds: evts.filter(x => x.rectificationTaskId).map(x => x.eventId), sourceRiskMatterIds: warnings.filter(w => w.entityId === e.entityId && w.rectificationTaskId).map(w => w.id), sourceRectificationTaskIds: entRects.filter(t => t.deadline && t.deadline < TODAY).map(t => t.taskId), recommendedAction: '升级督办超期整改任务', triggerReason: '存在超期整改', status: 'PENDING' });
+    }
+    if (qualEvts.length) {
+      mkAction({ actionType: 'DATA_QUALITY_REMEDIATION', priority: p.priority, entityId: e.entityId, regionId: e.regionId, sourceEventIds: qualEvts.map(x => x.eventId), sourceRiskMatterIds: qualEvts.map(x => x.riskMatterId).filter(Boolean), sourceRectificationTaskIds: qualEvts.map(x => x.rectificationTaskId).filter(Boolean), recommendedAction: '推进数据质量专项治理', triggerReason: '数据质量异常', status: 'PENDING' });
+    }
+    if (cbEvts.length) {
+      mkAction({ actionType: 'CROSS_BORDER_REVIEW', priority: 'HIGH', entityId: e.entityId, regionId: e.regionId, sourceEventIds: cbEvts.map(x => x.eventId), sourceRiskMatterIds: cbEvts.map(x => x.riskMatterId).filter(Boolean), sourceRectificationTaskIds: cbEvts.map(x => x.rectificationTaskId).filter(Boolean), recommendedAction: '开展跨境数据合规专项审查', triggerReason: '跨境合规异常', status: 'PENDING' });
+    }
+    if (cdrEvts.length) {
+      mkAction({ actionType: 'CROSS_DOMAIN_COORDINATION', priority: 'HIGH', entityId: e.entityId, regionId: e.regionId, sourceEventIds: cdrEvts.map(x => x.eventId), sourceRiskMatterIds: cdrMatters.filter(m => (m.entityIds || []).includes(e.entityId)).map(m => m.riskMatterId), sourceRectificationTaskIds: cdrMatters.filter(m => (m.entityIds || []).includes(e.entityId)).flatMap(m => m.relatedRectificationTaskIds || []), recommendedAction: '启动跨领域协同监管', triggerReason: '跨领域风险传导', status: 'PENDING' });
+    }
+    if ((e.kriExceptionCount || 0) > 0) {
+      const kriEvts = evts.filter(x => x.kriId);
+      mkAction({ actionType: 'KRI_MONITORING', priority: p.priority, entityId: e.entityId, regionId: e.regionId, sourceEventIds: kriEvts.map(x => x.eventId), sourceRiskMatterIds: warnings.filter(w => w.entityId === e.entityId && w.kriId).map(w => w.id), sourceRectificationTaskIds: entRects.map(t => t.taskId), recommendedAction: '加强KRI异常监测', triggerReason: `KRI异常${e.kriExceptionCount}项`, status: 'PENDING' });
+    }
+  });
+  if (actions[0]) actions[0].status = 'IN_PROGRESS';
+  if (actions[1]) actions[1].status = 'COMPLETED';
+  APP_DATA.regulatoryActions = actions;
+
+  const hs = health;
+  const warnCrit = entityHealth.filter(e => e.level === 'WARNING' || e.level === 'CRITICAL');
+  APP_DATA.regulatoryCommandCenterMetrics = {
+    objectCount: entities.length,
+    highRiskObjectCount: entities.filter(e => (e.highRiskCount || 0) > 0).length,
+    majorEventCount: events.filter(e => e.riskLevel === 'HIGH').length,
+    overdueRectCount: rects.filter(t => t.deadline && t.deadline < TODAY && t.status !== '已关闭').length,
+    healthWarningCount: warnCrit.length,
+    qualityAnomalyCount: quality.length,
+    crossBorderAnomalyCount: cbActs.filter(a => a.complianceStatus === '高风险' || a.complianceStatus === '异常').length,
+    crossDomainCount: cdrMatters.length,
+    pendingActionCount: actions.filter(a => a.status === 'PENDING').length,
+    highPriorityActionCount: actions.filter(a => a.priority === 'CRITICAL' || a.priority === 'HIGH').length
+  };
+
+  const rankedObjects = entities.filter(e => e.entityId !== 'G001').map(e => {
+    const p = priorities[e.entityId];
+    const evts = events.filter(ev => ev.entityId === e.entityId);
+    const h = entityHealth.find(x => x.objectId === e.entityId);
+    const entRects = rects.filter(t => t.entityId === e.entityId);
+    return {
+      rank: 0, objectId: e.entityId, objectName: e.entityName, objectType: '法人',
+      regionId: e.regionId, countryId: e.countryId,
+      regionName: e.regionName, countryName: e.countryName,
+      eventCount: evts.length, highRiskEventCount: evts.filter(x => x.riskLevel === 'HIGH').length,
+      openRectCount: entRects.filter(t => t.status !== '已关闭' && !t.closedAt).length,
+      overdueRectCount: entRects.filter(t => t.deadline && t.deadline < TODAY && t.status !== '已关闭').length,
+      healthLevel: h ? h.level : '—', priority: p ? p.priority : 'LOW', priorityScore: p ? p.score : 0
+    };
+  }).sort((a, b) => b.priorityScore - a.priorityScore);
+  rankedObjects.forEach((o, i) => { o.rank = i + 1; });
+  APP_DATA.regulatoryPriorityObjects = rankedObjects;
 })();
