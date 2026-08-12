@@ -234,11 +234,11 @@ def build_pdf(items):
             spaceAfter=0.3 * mm, keepWithNext=True, **{"fontName": FONT_NAME}
         ),
         "body": ParagraphStyle(
-            "Body", parent=styles["Normal"], fontSize=8.8, leading=12.2,
+            "Body", parent=styles["Normal"], fontSize=9.1, leading=12.7,
             spaceAfter=0.9 * mm, alignment=0, **common
         ),
         "bullet": ParagraphStyle(
-            "Bullet", parent=styles["Normal"], fontSize=8.65, leading=12.1,
+            "Bullet", parent=styles["Normal"], fontSize=8.95, leading=12.6,
             leftIndent=3.4 * mm, firstLineIndent=-2.5 * mm, bulletIndent=0.7 * mm,
             spaceAfter=0.75 * mm, **common
         ),
