@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""Export property rights penetration risk library (26 scenarios) to Excel."""
+"""Export property rights penetration risk library (18 A/B/C scenarios) to Excel."""
 
 import csv
 import sys
@@ -11,7 +11,7 @@ from openpyxl.styles import Alignment, Font
 from openpyxl.utils import get_column_letter
 
 sys.path.insert(0, str(Path(__file__).parent))
-from property_rights_risk_scenarios import L1_NAMES, REQ_SOURCES, SCENARIOS
+from property_rights_risk_scenarios_v2 import L1_NAMES, REQ_SOURCES, SCENARIOS
 
 SRC_CSV = Path("/home/ubuntu/.cursor/projects/workspace/uploads/_____71bd.csv")
 OUT_XLSX = Path("/workspace/cnooc-risk-platform/data/产权管理领域穿透式监管风险库.xlsx")
@@ -79,7 +79,7 @@ def build_rows():
             "序号": i,
             "风险场景\n（以国资委46号文为主）": l1,
             "子风险场景": s["l2"],
-            "风险点描述": build_risk_desc(s["id"], desc_map, s.get("risk_desc", "")),
+            "风险点描述": s.get("risk_desc") or build_risk_desc(s["id"], desc_map, ""),
             "监管要求/风险事件": "",
             "穿透监管必要性": s["necessity"],
             "目前是否有管控举措/管控是否已到位\n（待调研具体了解）": "",
