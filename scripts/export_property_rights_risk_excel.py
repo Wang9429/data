@@ -70,18 +70,36 @@ def build_risk_desc(scenario_id, desc_map, fallback=""):
     return fallback
 
 
+def build_regulatory_and_event(l1, risk_desc):
+    return (
+        "监管要求：\n"
+        f"国资委46号文产权管理责任追究事项明确，将“{l1}”纳入责任追究范围。"
+        "产权经济行为应按照国家出资企业产权管理、企业国有资产交易、资产评估和产权登记等适用规定，"
+        "履行相应决策审批、审计评估、交易流转、产权登记或专项治理程序，确保国有产权权属清晰、"
+        "交易公开公允、管理链条可追溯。\n"
+        "风险事件：\n"
+        f"{risk_desc}"
+    )
+
+
 def build_rows():
     desc_map, req_map = load_original_data()
     rows = []
     for i, s in enumerate(SCENARIOS, 1):
         l1 = L1_NAMES[s["l1_key"]]
+        risk_desc = s.get("risk_desc") or build_risk_desc(s["id"], desc_map, "")
+        category_text = {
+            "A": "A类：纳入总部持续穿透监测和系统规则预警。",
+            "B": "B类：纳入穿透监测，以专项或事项监测为主。",
+            "C": "C类：以专项清查为主，不强行设置持续KRI。",
+        }[s["category"]]
         rows.append({
             "序号": i,
             "风险场景\n（以国资委46号文为主）": l1,
             "子风险场景": s["l2"],
-            "风险点描述": s.get("risk_desc") or build_risk_desc(s["id"], desc_map, ""),
-            "监管要求/风险事件": "",
-            "穿透监管必要性": s["necessity"],
+            "风险点描述": risk_desc,
+            "监管要求/风险事件": build_regulatory_and_event(l1, risk_desc),
+            "穿透监管必要性": f"{category_text}\n{s['necessity']}",
             "目前是否有管控举措/管控是否已到位\n（待调研具体了解）": "",
             "穿透层级": s["level"],
             "穿透层级描述": s["level_desc"],
